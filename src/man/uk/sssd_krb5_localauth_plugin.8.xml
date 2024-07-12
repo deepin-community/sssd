@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<reference>
+<title>Сторінки підручника SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd_krb5_localauth_plugin</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd_krb5_localauth_plugin</refname>
+        <refpurpose>Додаток для локального уповноваження Kerberos</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>ОПИС</title>
+        <para>
+            Додаток локального уповноваження Kerberos
+<command>sssd_krb5_localauth_plugin</command> використовує libkrb5 для того,
+щоб або знайти локальну назву для заданого реєстраційного запису Kerberos,
+або для перевірки того, чи задана локальна назва і заданий реєстраційний
+запис Kerberos є пов'язаними між собою.
+        </para>
+        <para>
+            SSSD обробляє локальні назви записів користувачів з віддаленого джерела і
+може також читати назву реєстраційного запису користувача Kerberos з
+віддаленого джерела. На основі цих даних SSSD може дуже просто обробити
+згадані вище прив'язки, навіть якщо локальна назва і реєстраційний запис
+Kerberos значно відрізняються.
+        </para>
+        <para>
+            Крім того, на основі даних, прочитаних з віддаленого джерела SSSD може
+допомогти запобігти неочікуваним або небажаним прив'язкам у випадку, коли
+назва запису користувача у реєстраційному записі Kerberos випадково
+збігатиметься із локальною назвою запису іншого користувача. Типово, libkrb5
+може просто вилучити з реєстраційного запису Kerberos частину, яку пов'язано
+із областю дії, для отримання локальної назви запису, що може призвести у
+цьому випадку до помилкових прив'язок.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration'>
+        <title>НАЛАШТУВАННЯ</title>
+        <para>
+            Додаток локального уповноваження Kerberos має бути явним чином увімкнено у
+налаштуваннях Kerberos, див. <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>. SSSD автоматично створить фрагмент налаштувань із вмістом,
+подібним до такого: <programlisting>
+[plugins]
+ localauth = {
+  module = sssd:/usr/lib64/sssd/modules/sssd_krb5_localauth_plugin.so
+ }
+</programlisting> у
+загальнодоступному каталозі фрагментів налаштувань SSSD Kerberos. Якщо цей
+каталог включено до локальних налаштувань Kerberos, додаток буде увімкнено
+автоматично.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<reference>
+<title>SSSD manualsidor</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd_krb5_localauth_plugin</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd_krb5_localauth_plugin</refname>
+        <refpurpose>Kerberos lokala auktoriseringsinsticksmodul</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>BESKRIVNING</title>
+        <para>
+            Kerberos lokala auktoriseringsinsticksmodul
+<command>sssd_krb5_localauth_plugin</command> används av libkrb5 för att
+antingen hitta det lokala namnet för en given Kerberoshuvudman eller för att
+kontrollera om ett givet lokalt namn och en given Kerberoshuvudman relaterar
+till varandra.
+        </para>
+        <para>
+            SSSD hanterar de lokala namnen för användare från fjärrkällor och kan även
+läsa från Kerberos användarhuvudmannanamn från fjärrkällor. Med denna
+information kan SSSD enkelt hantera avbildningarna nämnda ovan även om det
+lokala namnet och Kerberoshuvudmannen skiljer avsevärt.
+        </para>
+        <para>
+            Dessutom kan SSSD med informationen som lästs från fjärrkällor hjälpa till
+att förhindra oväntade eller oönskade avbildningar ifall användardelen av
+Kerberoshuvudmannen oavsiktligt motsvarar ett lokalt namn på en annan
+användare. Som standard kan libkrb5 bara plocka bort delen rike från
+Kerberoshuvudmannen för att få det lokala namnet vilket skulle leda till
+felaktiga avbildningar i detta fall.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration'>
+        <title>KONFIGURATION</title>
+        <para>
+            Kerberos lokala auktoriseringsinsticksmodul måste aktiveras explicit i
+Kerberoskonfigurationen, se <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>. SSSD kommer automatiskt skapa en konfigurationssnutt med
+innehållet som t.ex. <programlisting>
+[plugins]
+ localauth = {
+  module = sssd:/usr/lib64/sssd/modules/sssd_krb5_localauth_plugin.so
+ }
+</programlisting> i SSSD:s
+publika katalog med Kerberoskonfigurationssnuttar. Om denna katalog är
+inkluderad i den lokala Kerberoskonfigurationen kommer insticksmodulen
+automatiskt aktiveras.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

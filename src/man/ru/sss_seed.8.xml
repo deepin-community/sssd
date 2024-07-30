@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<reference>
+<title>Справка по SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_seed</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_seed</refname>
+        <refpurpose>пополнить кэш SSSD данными пользователя</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_seed</command> <arg choice='opt'>
+<replaceable>options</replaceable> </arg> <arg choice='plain'>-D
+<replaceable>DOMAIN</replaceable></arg> <arg choice='plain'>-n
+<replaceable>USER</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>ОПИСАНИЕ</title>
+        <para>
+            <command>sss_seed</command> пополняет кэш SSSD записью пользователя и
+временным паролем. Если запись пользователя уже присутствует в кэше SSSD,
+она будет обновлена данными временного пароля.
+        </para>
+        <para>
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>ОПЦИИ</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-D</option>,<option>--domain</option>
+<replaceable>DOMAIN</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Указать имя домена, участником которого является пользователь. Домен также
+используется для получения данных пользователя. Домен необходимо настроить в
+sssd.conf. Необходимо задать параметр <replaceable>DOMAIN</replaceable>.
+Данные, полученные от домена, имеют приоритет над данными, указанными с
+помощью параметров.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-n</option>,<option>--username</option>
+<replaceable>USER</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Имя пользователя, запись которого следует создать или изменить в
+кэше. Необходимо указать параметр <replaceable>ПОЛЬЗОВАТЕЛЬ</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-u</option>,<option>--uid</option> <replaceable>UID</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Установить UID пользователя в значение <replaceable>UID</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g</option>,<option>--gid</option> <replaceable>GID</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Установить GID пользователя в значение <replaceable>GID</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-c</option>,<option>--gecos</option>
+<replaceable>КОММЕНТАРИЙ</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Любая текстовая строка, описывающая пользователя. Часто используется в
+качестве поля для полного имени пользователя.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-h</option>,<option>--home</option>
+<replaceable>ДОМАШНИЙ_КАТАЛОГ</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Установить домашний каталог пользователя в значение
+<replaceable>ДОМАШНИЙ_КАТАЛОГ</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-s</option>,<option>--shell</option>
+<replaceable>ОБОЛОЧКА</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Установить командную оболочку входа пользователя в значение
+<replaceable>ОБОЛОЧКА</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-i</option>,<option>--interactive</option>
+                </term>
+                <listitem>
+                    <para>
+                        Интерактивный режим ввода данных пользователя. При использовании этого
+параметра программа отправляет запрос только тех данных, которые не были
+получены из параметров команды или домена.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-p</option>,<option>--password-file</option>
+<replaceable>ФАЙЛ_ПАРОЛЕЙ</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Позволяет указать файл, из которого следует прочитать пароль
+пользователя. Если значение не указано, программа запросит пароль.
+                    </para>
+                </listitem>
+            </varlistentry>
+           <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='notes'>
+        <title>ПРИМЕЧАНИЯ</title>
+        <para>
+            Длина пароля (или размер файла, указанного с помощью параметра -p или
+--password-file) должна быть меньше или равна PASS_MAX байт (64 байт в
+системах, где значение PASS_MAX не задано глобально).
+        </para>
+        <para>
+        </para>
+    </refsect1>
+
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

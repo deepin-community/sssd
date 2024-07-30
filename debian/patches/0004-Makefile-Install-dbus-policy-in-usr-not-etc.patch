@@ -1,0 +1,29 @@
+From: Gioele Barabucci <gioele@svario.it>
+Date: Sat, 18 Feb 2023 10:53:27 +0100
+Subject: Makefile: Install dbus policy in /usr, not /etc
+Forwarded: https://github.com/SSSD/sssd/pull/6580
+
+From <https://bugs.debian.org/1006631>:
+
+> dbus supports policy files in both `/usr/share/dbus-1/system.d` and
+> `/etc/dbus-1/systemd`. [The] recently released dbus 1.14.0, officially
+> deprecates installing packages' default policies into `/etc/dbus-1/systemd`,
+> instead reserving it for the sysadmin. This is the same idea as the
+> difference between `/usr/lib/udev/rules.d` and `/etc/udev/rules.d`.
+---
+ Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 99209e6..3aa73c5 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -58,7 +58,7 @@ sssddatadir = $(datadir)/sssd
+ sssdapiplugindir = $(sssddatadir)/sssd.api.d
+ sssdtapscriptdir = $(sssddatadir)/systemtap
+ krb5snippetsdir = $(sssddatadir)/krb5-snippets
+-dbuspolicydir = $(sysconfdir)/dbus-1/system.d
++dbuspolicydir = $(datadir)/dbus-1/system.d
+ dbusservicedir = $(datadir)/dbus-1/system-services
+ sss_statedir = $(localstatedir)/lib/sss
+ runstatedir = @runstatedir@

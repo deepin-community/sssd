@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Справка по SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd_krb5_localauth_plugin</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd_krb5_localauth_plugin</refname>
+        <refpurpose>Модуль локальной авторизации Kerberos</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>ОПИСАНИЕ</title>
+        <para>
+            Подключаемый модуль локальной авторизации Kerberos
+<command>sssd_krb5_localauth_plugin</command> используется libkrb5 либо для
+поиска локального имени для данного принципала Kerberos, либо для проверки
+того, связаны ли данное локальное имя и данный принципал Kerberos друг с
+другом.
+        </para>
+        <para>
+            SSSD обрабатывает локальные имена пользователей из удаленного источника, а
+также может считывать имя пользователя (UPN) Kerberos из удаленного
+источника. С помощью этой информации SSSD может легко обрабатывать
+сопоставления, упомянутые выше, даже если локальное имя и принципал Kerberos
+значительно различаются.
+        </para>
+        <para>
+            Кроме того, благодаря информации, считанной с удаленного источника, SSSD
+может предотвратить неожиданные или нежелательные привязки в случае, если
+пользовательская часть принципала Kerberos случайно совпадает с локальным
+именем другого пользователя. По умолчанию libkrb5 может просто удалить из
+регистрационной записи Kerberos часть, связанную с областью действия, для
+получения локального имени, что в этом случае может привести к ошибочным
+привязкам.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration'>
+        <title>КОНФИГУРАЦИЯ</title>
+        <para>
+            Подключаемый модуль локальной авторизации Kerberos должен быть явно включен
+в конфигурации Kerberos, см. <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.  SSSD автоматически создаст фрагмент конфигурации,
+например, с таким содержимым: <programlisting>
+[plugins]
+ localauth = {
+  module = sssd:/usr/lib64/sssd/modules/sssd_krb5_localauth_plugin.so
+ }
+</programlisting> в
+общедоступном каталоге фрагментов конфигурации SSSD Kerberos. Если этот
+каталог включен в локальную конфигурацию Kerberos, подключаемый модуль будет
+включен автоматически.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

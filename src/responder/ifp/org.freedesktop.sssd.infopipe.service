@@ -1,0 +1,6 @@
+[D-BUS Service]
+Name=org.freedesktop.sssd.infopipe
+# "sss_signal" is used to force SSSD monitor to trigger "sssd_ifp" reconnection to dbus
+Exec=/usr/local/libexec/sssd/sss_signal
+User=root
+

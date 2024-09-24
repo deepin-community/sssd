@@ -1,7 +1,8 @@
 Source: sssd
 Section: utils
 Priority: optional
-Maintainer: Debian SSSD Team <pkg-sssd-devel@alioth-lists.debian.net>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian SSSD Team <pkg-sssd-devel@alioth-lists.debian.net>
 Uploaders: Timo Aaltonen <tjaalton@debian.org>,
  Dominik George <natureshadow@debian.org>
 Build-Depends: dpkg-dev (>= 1.22.5),
@@ -17,7 +18,9 @@ Build-Depends: dpkg-dev (>= 1.22.5),
  docbook-xml,
  docbook-xsl,
  dpkg-dev (>= 1.16.1~),
- faketime <!nocheck>,
+# faketime is broken on armhf with _TIME_BITS=64,
+# see LP: #2059078
+ faketime [!armhf] <!nocheck>,
  gnutls-bin <!nocheck>,
  krb5-config,
  ldap-utils,
@@ -29,7 +32,6 @@ Build-Depends: dpkg-dev (>= 1.22.5),
  libdbus-1-dev,
  libdhash-dev,
  libfido2-dev,
- libgdm-dev [!s390x !kfreebsd-any !hurd-any],
  libglib2.0-dev,
  libini-config-dev,
  libjansson-dev,
@@ -170,7 +172,7 @@ Description: System Security Services Daemon -- Kerberos plugins for external id
 Package: sssd-ipa
 Architecture: any
 Depends:
- libipa-hbac0t64 (= ${binary:Version}),
+ libipa-hbac0 (= ${binary:Version}),
  libsss-idmap0 (= ${binary:Version}),
  sssd-ad-common (= ${binary:Version}),
  sssd-common (= ${binary:Version}),
@@ -241,7 +243,7 @@ Description: System Security Services Daemon -- proxy back end
  PAM modules to leverage SSSD caching.
 
 Package: sssd-tools
-Architecture: any
+Architecture: amd64 arm64 armhf ppc64el riscv64 s390x
 Depends:
  python3,
  python3-sss,
@@ -293,10 +295,7 @@ Description: Pam module for the System Security Services Daemon
  .
  This package provide the pam module to connect to the sssd daemon.
 
-Package: libipa-hbac0t64
-Provides: ${t64:Provides}
-Replaces: libipa-hbac0
-Breaks: libipa-hbac0 (<< ${source:Version})
+Package: libipa-hbac0
 Section: libs
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -306,7 +305,7 @@ Description: FreeIPA HBAC Evaluator library
 Package: libipa-hbac-dev
 Section: libdevel
 Architecture: any
-Depends: libipa-hbac0t64 (= ${binary:Version}), ${misc:Depends}
+Depends: libipa-hbac0 (= ${binary:Version}), ${misc:Depends}
 Description: FreeIPA HBAC Evaluator library -- development files
  Utility library to validate FreeIPA HBAC rules for authorization requests.
  .
@@ -376,7 +375,7 @@ Package: python3-libipa-hbac
 Section: python
 Architecture: any
 Depends:
- libipa-hbac0t64 (= ${binary:Version}),
+ libipa-hbac0 (= ${binary:Version}),
  ${misc:Depends},
  ${python3:Depends},
  ${shlibs:Depends}

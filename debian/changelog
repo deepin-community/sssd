@@ -1,3 +1,9 @@
+sssd (2.9.5-3deepin1) unstable; urgency=medium
+
+  * Revert t64.
+
+ -- xiangzelong <xiangzelong@deepin.org>  Tue, 24 Sep 2024 14:41:42 +0800
+
 sssd (2.9.5-3) unstable; urgency=medium
 
   * rules: Flip the test logic to fix ftbfs on armel/armhf.

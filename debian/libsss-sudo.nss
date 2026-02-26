@@ -1,3 +1,3 @@
-sudoers	database-require
+sudoers	database-add
 
 sudoers last	sss

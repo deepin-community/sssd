@@ -6,7 +6,10 @@ Created on Sep 18, 2009
 
 import os
 import re
+import shutil
+import subprocess
 import sys
+from contextlib import suppress
 from .sssdoptions import SSSDOptions
 from .ipachangeconf import SSSDChangeConf
 
@@ -1007,14 +1010,6 @@ class SSSDConfig(SSSDChangeConf):
         self.configfile = configfile
         self.initialized = True
 
-        try:
-            if int(self.get('sssd', 'config_file_version')) != self.API_VERSION:
-                raise ParsingError("Wrong config_file_version")
-        except TypeError:
-            # This happens when config_file_version is missing. We
-            # can assume it is the default version and continue.
-            pass
-
     def new_config(self):
         """
         Initialize the SSSDConfig object with the defaults from the schema.
@@ -1066,11 +1061,22 @@ class SSSDConfig(SSSDChangeConf):
             outputfile = self.configfile
 
         # open() will raise IOError if it fails
-        old_umask = os.umask(0o177)
+        old_umask = os.umask(0o137)
         with open(outputfile, "w") as of:
             output = self.dump(self.opts)
             of.write(output)
         os.umask(old_umask)
+        service_user = ""
+        try:
+            ret = subprocess.run(["systemctl", "show", "sssd", "--value", "--property", "User"], capture_output=True, text=True)
+            if ret.returncode == 0:
+                service_user = ret.stdout.strip()
+        except Exception:
+            pass
+        if service_user == "":
+            service_user = "wheel" if sys.platform.startswith('freebsd') else "root"
+        with suppress(PermissionError):
+            shutil.chown(outputfile, "root", service_user)
 
     def list_active_services(self):
         """

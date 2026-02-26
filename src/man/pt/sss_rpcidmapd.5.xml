@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <refentryinfo>
+<productname>sss rpc.idmapd plugin</productname> <author>
+<firstname>Noam</firstname> <surname>Meltzer</surname> <affiliation>
+<orgname>Primary Data Inc.</orgname> </affiliation> <contrib>Developer
+(2013-2014)</contrib> </author> <author> <firstname>Noam</firstname>
+<surname>Meltzer</surname> <contrib>Developer (2014-)</contrib>
+<email>tsnoam@gmail.com</email> </author></refentryinfo>
+
+    <refmeta>
+        <refentrytitle>sss_rpcidmapd</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_rpcidmapd</refname>
+        <refpurpose>Diretivas de configuração do plugin sss para rpc.idmapd</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='conf-file'>
+        <title>FICHEIRO DE CONFIGURAÇÃO</title>
+        <para>
+            O ficheiro de configuração rpc.idmapd é geralmente encontrado em
+<emphasis>/etc/idmapd.conf</emphasis>. Veja <citerefentry>
+<refentrytitle>idmapd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação.
+        </para>
+    </refsect1>
+
+    <refsect1 id='sss-conf-extension'>
+        <title>EXTENSÃO DE CONFIGURAÇÃO DO SSS</title>
+        <refsect2 id='enable-sss'>
+            <title>Activar o plugin SSS</title>
+            <para>
+                Na secção <quote>[Translation]</quote>, modifique/defina o atributo
+<quote>Method</quote> para conter <emphasis>sss</emphasis>.
+            </para>
+        </refsect2>
+        <refsect2 id='sss-conf-sect'>
+            <title>secção de configuração [sss]</title>
+            <para>
+                De modo a alterar a predefinição de um dos atributos de configuração do
+plugin <emphasis>sss</emphasis> listado em baixo você precisa de criar uma
+secção de configuração para isso, chamada <quote>[sss]</quote>.
+            </para>
+            <variablelist>
+                <title>Atributos de configuração</title>
+                <varlistentry>
+                    <term>memcache (booleano)</term>
+                    <listitem>
+                        <para>
+                            Indica se deve-se ou não usar a técnica de optimização memcache.
+                        </para>
+                        <para>
+                            Predefinição: TRUE
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+    </refsect1>
+
+    <refsect1 id='sssd-integration'>
+        <title>INTEGRAÇÃO DO SSSD</title>
+        <para>
+            O plugin sss requer o <emphasis>NSS Responder</emphasis> para ser activo em
+sssd.
+        </para>
+        <para>
+            O atributo <quote>use_fully_qualified_names</quote> tem de ser activado em
+todos os domínios (os clientes NFSv4 esperam que um nome totalmente
+qualificado seja enviado pelos fios).
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EXEMPLO</title>
+        <para>
+            O seguinte exemplo mostra um idmapd.conf mínimo que faz uso do plugin sss.
+<programlisting>
+[General]
+Verbosity = 2
+# domain must be synced between NFSv4 server and clients
+# Solaris/Illumos/AIX use "localdomain" as default!
+Domain = default
+
+[Mapping]
+Nobody-User = nfsnobody
+Nobody-Group = nfsnobody
+
+[Translation]
+Method = sss
+</programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='see_also'>
+        <title>VEJA TAMBÉM</title>
+        <para>
+            <citerefentry> <refentrytitle>sssd</refentrytitle><manvolnum>8</manvolnum>
+</citerefentry>, <citerefentry> <refentrytitle>idmapd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>
+        </para>
+    </refsect1>
+</refentry>
+</reference>

@@ -21,9 +21,13 @@
 #ifndef __SSSD_UTIL_ERRORS_H__
 #define __SSSD_UTIL_ERRORS_H__
 
+#include "config.h"
+
 #ifndef HAVE_ERRNO_T
 #define HAVE_ERRNO_T
 typedef int errno_t;
+#else
+#include <errno.h>
 #endif
 
 /*
@@ -152,6 +156,7 @@ enum sssd_errors {
     ERR_UNSUPPORTED_RANGE_TYPE,
     ERR_PROXY_CHILD_SIGNAL,
     ERR_CHECK_PAC_FAILED,
+    ERR_CHECK_NEXT_AUTH_TYPE,
 
     /* DBUS Errors */
     ERR_SBUS_KILL_CONNECTION,
@@ -170,6 +175,7 @@ enum sssd_errors {
     ERR_INI_INVALID_PERMISSION,
     ERR_INI_PARSE_FAILED,
     ERR_INI_ADD_SNIPPETS_FAILED,
+    ERR_INI_EMPTY_CONFIG,
 
     ERR_TLS_HANDSHAKE_INTERRUPTED,
 
@@ -187,6 +193,19 @@ enum sssd_errors {
 /* Backwards compat */
 #ifndef EOK
 #define EOK ERR_OK
+#endif
+
+#if !defined(ENODATA)
+// libc++ <errno.h> defines it this way
+#define ENODATA 9919
+#endif
+
+#if !defined(ELIBACC)
+#define ELIBACC 10000
+#endif
+
+#if !defined(ELIBBAD)
+#define ELIBBAD 10001
 #endif
 
 /**

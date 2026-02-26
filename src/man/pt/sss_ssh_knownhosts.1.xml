@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_knownhosts</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_knownhosts</refname>
+        <refpurpose>obtém chaves públicas OpenSSH de máquinas conhecidas</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_ssh_knownhosts</command> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg> <arg
+choice='plain'><replaceable>MÁQUINA</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            <command>sss_ssh_knownhosts</command> adquire chaves públicas SSH para
+máquina <replaceable>MÁQUINA</replaceable> e gera-as em formato de chave
+known_hosts do OpenSSH (veja a secção <quote>FORMATO DE FICHEIRO
+SSH_KNOWN_HOSTS</quote> do <citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> para mais informação).
+        </para>
+        <para>
+            <citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> pode ser configurado para usar
+<command>sss_ssh_knownhosts</command> para autenticação de máquina de chave
+pública usando a opção <quote>KnownHostsCommand</quote>: <programlisting>
+                KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H
+            </programlisting> Por favor consulte o manual <citerefentry>
+<refentrytitle>ssh_config</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry> para mais detalhes acerca desta opção.
+        </para>
+        <para>
+            Esta ferramenta requer que o serviço ssh do SSSD esteja ativo para funcionar
+de modo apropriado.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMÍNIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Procura por chaves públicas da máquina no domínio do SSSD
+<replaceable>DOMÍNIO</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-o</option>,<option>--only-host-name</option>
+                </term>
+                <listitem>
+                    <para>
+                        Quando as chaves obtidas do backend não incluem o nome de máquina, esta
+ferramenta irá adicionar o nome de máquina não modificado como fornecido
+pelo chamador. Se esta bandeira estiver definida, apenas o nome de máquina
+(nenhum número de porto) será adicionado às chaves.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='key_retrieval'>
+        <title>OBTENÇÃO DE CHAVE</title>
+        <para>
+            As linhas de chave obtidas a partir do backend são esperadas que respeitem o
+formato de chave descrito na secção <quote>FORMATO DE FICHEIRO
+SSH_KNOWN_HOSTS </quote> do
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>. No entanto, retornar apenas o tipo
+de chave e a própria chave é tolerado, que no caso, o nome de máquina
+recebido como parâmetro será adicionado antes do tipo de chave para resultar
+numa linha formatada corretamente. O nome de máquina será adicionado não
+modificado apenas o nome de máquina (nenhum número de porto), dependendo de
+se a opção <option>-o</option>,<option>--only-host-name</option> foi
+fornecida.
+        </para>
+        <para>
+            Quando o servidor SSH está a escutar num porto não-predefinido, o backend
+TEM DE fornecer o nome de máquina incluindo o número de porto no formato e
+posição corretos como parte da linha de chave. Por exemplo, a linha de chave
+mínima seria: <programlisting>
+                [canonical.host.name]:2222 &lt;keytype&gt; &lt;base64-encoded key&gt;
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='exit_status'>
+        <title>ESTADO DE SAÍDA</title>
+        <para>
+            No caso de execução com sucesso, mesmo que nenhuma chave seja encontrada
+para essa máquina ou se o respondedor ssh não possa ser contactado, é
+retornado 0. É retornado 1 em caso qualquer outro erro.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

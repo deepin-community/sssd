@@ -23,6 +23,7 @@
 #ifndef __INT_SYS_DB_H__
 #define __INT_SYS_DB_H__
 
+#define SYSDB_VERSION_0_25 "0.25"
 #define SYSDB_VERSION_0_24 "0.24"
 #define SYSDB_VERSION_0_23 "0.23"
 #define SYSDB_VERSION_0_22 "0.22"
@@ -48,7 +49,7 @@
 #define SYSDB_VERSION_0_2 "0.2"
 #define SYSDB_VERSION_0_1 "0.1"
 
-#define SYSDB_VERSION SYSDB_VERSION_0_24
+#define SYSDB_VERSION SYSDB_VERSION_0_25
 
 #define SYSDB_BASE_LDIF \
      "dn: @ATTRIBUTES\n" \
@@ -62,6 +63,7 @@
      "ipHostNumber: CASE_INSENSITIVE\n" \
      "ipNetworkNumber: CASE_INSENSITIVE\n" \
      "mail: CASE_INSENSITIVE\n" \
+     "gpoGUID: CASE_INSENSITIVE\n" \
      "\n" \
      "dn: @INDEXLIST\n" \
      "@IDXATTR: cn\n" \
@@ -72,7 +74,6 @@
      "@IDXATTR: uidNumber\n" \
      "@IDXATTR: gidNumber\n" \
      "@IDXATTR: lastUpdate\n" \
-     "@IDXATTR: dataExpireTimestamp\n" \
      "@IDXATTR: originalDN\n" \
      "@IDXATTR: nameAlias\n" \
      "@IDXATTR: servicePort\n" \
@@ -90,6 +91,7 @@
      "@IDXATTR: ipHostNumber\n" \
      "@IDXATTR: ipNetworkNumber\n" \
      "@IDXATTR: originalADgidNumber\n" \
+     "@IDXATTR: gpoGUID\n" \
      "\n" \
      "dn: @MODULES\n" \
      "@LIST: asq,memberof\n" \
@@ -104,10 +106,11 @@
      "\n"
 
 /* The timestamp cache has its own versioning */
+#define SYSDB_TS_VERSION_0_3 "0.3"
 #define SYSDB_TS_VERSION_0_2 "0.2"
 #define SYSDB_TS_VERSION_0_1 "0.1"
 
-#define SYSDB_TS_VERSION SYSDB_TS_VERSION_0_2
+#define SYSDB_TS_VERSION SYSDB_TS_VERSION_0_3
 
 #define SYSDB_TS_BASE_LDIF \
      "dn: @ATTRIBUTES\n" \
@@ -115,7 +118,6 @@
      "\n" \
      "dn: @INDEXLIST\n" \
      "@IDXATTR: lastUpdate\n" \
-     "@IDXATTR: dataExpireTimestamp\n" \
      "\n" \
      "dn: cn=sysdb\n" \
      "cn: sysdb\n" \
@@ -162,28 +164,11 @@ struct sysdb_dom_upgrade_ctx {
 int sysdb_domain_init_internal(TALLOC_CTX *mem_ctx,
                                struct sss_domain_info *domain,
                                const char *db_path,
+                               bool create_missing_cache,
                                struct sysdb_dom_upgrade_ctx *upgrade_ctx,
                                struct sysdb_ctx **_ctx);
 
 /* Upgrade routines */
-int sysdb_upgrade_01(struct ldb_context *ldb, const char **ver);
-int sysdb_check_upgrade_02(struct sss_domain_info *domains,
-                           const char *db_path);
-int sysdb_upgrade_03(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_04(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_05(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_06(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_07(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_08(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_09(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_10(struct sysdb_ctx *sysdb, struct sss_domain_info *domain,
-                     const char **ver);
-int sysdb_upgrade_11(struct sysdb_ctx *sysdb, struct sss_domain_info *domain,
-                     const char **ver);
-int sysdb_upgrade_12(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_13(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_14(struct sysdb_ctx *sysdb, const char **ver);
-int sysdb_upgrade_15(struct sysdb_ctx *sysdb, const char **ver);
 int sysdb_upgrade_16(struct sysdb_ctx *sysdb, const char **ver);
 int sysdb_upgrade_17(struct sysdb_ctx *sysdb,
                      struct sysdb_dom_upgrade_ctx *upgrade_ctx,
@@ -194,6 +179,7 @@ int sysdb_upgrade_20(struct sysdb_ctx *sysdb, const char **ver);
 int sysdb_upgrade_21(struct sysdb_ctx *sysdb, const char **ver);
 int sysdb_upgrade_22(struct sysdb_ctx *sysdb, const char **ver);
 int sysdb_upgrade_23(struct sysdb_ctx *sysdb, const char **ver);
+int sysdb_upgrade_24(struct sysdb_ctx *sysdb, const char **ver);
 
 int sysdb_ts_upgrade_01(struct sysdb_ctx *sysdb, const char **ver);
 
@@ -203,6 +189,8 @@ int sysdb_replace_string(struct ldb_message *msg,
                          const char *attr, const char *value);
 int sysdb_delete_string(struct ldb_message *msg,
                         const char *attr, const char *value);
+int sysdb_add_bool(struct ldb_message *msg,
+                   const char *attr, bool value);
 int sysdb_add_ulong(struct ldb_message *msg,
                     const char *attr, unsigned long value);
 int sysdb_replace_ulong(struct ldb_message *msg,

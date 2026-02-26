@@ -1,77 +1,79 @@
 <listitem>
     <para>
-        SSSD supports two representations for specifying the debug level. The
-simplest is to specify a decimal value from 0-9, which represents enabling
-that level and all lower-level debug messages. The more comprehensive option
-is to specify a hexadecimal bitmask to enable or disable specific levels
-(such as if you wish to suppress a level).
+        O SSSD suporta duas representações para especificar o nível de depuração. A
+mais simples é para especificar um valor decimal de 0-9, o que representa
+activar esse nível e todas as mensagens de depuração de baixo-nível. A opção
+mais compreensiva é especificar uma máscara de bits hexadecimal para activar
+ou desactivar níveis específicos (tais como você desejar suprimir um nível).
     </para>
     <para>
-        Currently supported debug levels:
+        Níveis de depuração actualmente suportados:
     </para>
     <para>
-         <emphasis>0</emphasis>, <emphasis>0x0010</emphasis>: Fatal
-failures. Anything that would prevent SSSD from starting up or causes it to
-cease running.
+         <emphasis>0</emphasis>, <emphasis>0x0010</emphasis>: Falhas fatais. Qualquer
+coisa que previna o SSSD de arrancar ou causa que este cesse o
+funcionamento.
     </para>
     <para>
-         <emphasis>1</emphasis>, <emphasis>0x0020</emphasis>: Critical failures. An
-error that doesn't kill SSSD, but one that indicates that at least one major
-feature is not going to work properly.
+         <emphasis>1</emphasis>, <emphasis>0x0020</emphasis>: Falhas críticas. Um
+erro que não mata o SSSD, mas um que indica que pelo menos uma grande
+funcionalidade não vai funcionar apropriadamente.
     </para>
     <para>
-         <emphasis>2</emphasis>, <emphasis>0x0040</emphasis>: Serious failures. An
-error announcing that a particular request or operation has failed.
+         <emphasis>2</emphasis>, <emphasis>0x0040</emphasis>: Falhas sérias. Um erro
+que anuncia que um pedido ou operação particular falhou.
     </para>
     <para>
-         <emphasis>3</emphasis>, <emphasis>0x0080</emphasis>: Minor failures. These
-are the errors that would percolate down to cause the operation failure of
-2.
+         <emphasis>3</emphasis>, <emphasis>0x0080</emphasis>: Falhas menores. Estes
+são os erros que se filtrariam para causar a falha de operação de 2.
     </para>
     <para>
-         <emphasis>4</emphasis>, <emphasis>0x0100</emphasis>: Configuration settings.
+         <emphasis>4</emphasis>, <emphasis>0x0100</emphasis>: Definições de
+configuração.
     </para>
     <para>
-         <emphasis>5</emphasis>, <emphasis>0x0200</emphasis>: Function data.
+         <emphasis>5</emphasis>, <emphasis>0x0200</emphasis>: Dados de função.
     </para>
     <para>
-         <emphasis>6</emphasis>, <emphasis>0x0400</emphasis>: Trace messages for
-operation functions.
+         <emphasis>6</emphasis>, <emphasis>0x0400</emphasis>: Mensagens de seguimento
+para funções de operação.
     </para>
     <para>
-         <emphasis>7</emphasis>, <emphasis>0x1000</emphasis>: Trace messages for
-internal control functions.
+         <emphasis>7</emphasis>, <emphasis>0x1000</emphasis>: Mensagens de seguimento
+para funções de controle internas.
     </para>
     <para>
-         <emphasis>8</emphasis>, <emphasis>0x2000</emphasis>: Contents of
-function-internal variables that may be interesting.
+         <emphasis>8</emphasis>, <emphasis>0x2000</emphasis>: Conteúdos de variáveis
+internas de função que podem ser interessantes.
     </para>
     <para>
-         <emphasis>9</emphasis>, <emphasis>0x4000</emphasis>: Extremely low-level
-tracing information.
+         <emphasis>9</emphasis>, <emphasis>0x4000</emphasis>: Informação de
+seguimento de baixo-nível extremo.
     </para>
     <para>
-         <emphasis>10</emphasis>, <emphasis>0x10000</emphasis>: Even more low-level
-libldb tracing information. Almost never really required.
+         <emphasis>10</emphasis>, <emphasis>0x10000</emphasis>: Ainda mais informação
+de seguimento da libldb de baixo-nível. Quase nunca realmente necessário.
     </para>
     <para>
-        To log required bitmask debug levels, simply add their numbers together as
-shown in following examples:
+        Para registar os níveis de depuração de máscara de bits requeridos,
+simplesmente adicione os seus números juntamente como mostrado nos seguintes
+exemplos:
     </para>
     <para>
-        <emphasis>Example</emphasis>: To log fatal failures, critical failures,
-serious failures and function data use 0x0270.
+        <emphasis>Exemplo</emphasis>: Para registar falhas fatais, falhas críticas,
+falhas sérias e dados de funcionamento use 0x0270.
     </para>
     <para>
-        <emphasis>Example</emphasis>: To log fatal failures, configuration settings,
-function data, trace messages for internal control functions use 0x1310.
+        <emphasis>Exemplo</emphasis>: Para registar falhas fatais, definições de
+configuração, dados de função, mensagens de seguimento para funções de
+controle internas, use 0x1310.
     </para>
     <para>
-        <emphasis>Note</emphasis>: The bitmask format of debug levels was introduced
-in 1.7.0.
+        <emphasis>Nota</emphasis>: O formato bitmask dos níveis de depuração foi
+introduzido em 1.7.0.
     </para>
     <para>
-        <emphasis>Default</emphasis>: 0x0070 (i.e. fatal, critical and serious
-failures; corresponds to setting 2 in decimal notation)
+        <emphasis>Predefinição</emphasis>: 0x0070 (isto é, falhas fatais, críticas e
+sérias; corresponde à definição 2 na notação decimal)
     </para>
 </listitem>

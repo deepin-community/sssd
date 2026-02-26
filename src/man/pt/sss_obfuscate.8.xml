@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_obfuscate</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_obfuscate</refname>
+        <refpurpose>ofusca uma palavra passe em texto simples</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_obfuscate</command> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg> <arg
+choice='plain'><replaceable>[PALAVRA PASSE]</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            <command>sss_obfuscate</command> converte uma palavra passe dada num formato
+legível por humanos e coloca-a na secção de domínio apropriada do ficheiro
+de configuração do SSSD.
+        </para>
+        <para>
+            A palavra passe em texto simples é lida a partir da entrada standard ou
+inserida interactivamente.  A palavra passe ofuscada é colocada no parâmetro
+<quote>ldap_default_authtok</quote> de um dado domínio SSSD e o parâmetro
+<quote>ldap_default_authtok_type</quote> é definido para
+<quote>obfuscated_password</quote>. Consulte <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais detalhes sobre estes parâmetros.
+        </para>
+        <para>
+            Por favor note que ofuscar a palavra passe não fornece <emphasis>nenhum
+benefício de segurança real</emphasis> pois é ainda possível a um atacante
+fazer engenharia-reversa na palavra passe. Usar melhores mecanismos de
+segurança tais como certificados no lado cliente ou GSSAPI é
+<emphasis>fortemente</emphasis> recomendado.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help_py.xml" />
+            <varlistentry>
+                <term>
+                    <option>-s</option>,<option>--stdin</option>
+                </term>
+                <listitem>
+                    <para>
+                        A palavra passe a ofuscar será lida a partir da entrada standard.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMÍNIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        O domínio SSSD a onde usar a palavra passe. O nome predefinido é
+<quote>default</quote>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-f</option>,<option>--file</option>
+<replaceable>FICHEIRO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Lê o ficheiro de configuração especificado pelo parâmetro posicional.
+                    </para>
+                    <para>
+                        Predefinição: <filename>/etc/sssd/sssd.conf</filename>
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>SSSD manualsidor</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_knownhosts</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_knownhosts</refname>
+        <refpurpose>hämta OpenSSH kända värdars publika nycklar</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_knownhosts</command> <arg choice='opt'>
+<replaceable>flaggor</replaceable> </arg> <arg
+choice='plain'><replaceable>VÄRD</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>BESKRIVNING</title>
+        <para>
+            <command>sss_ssh_knownhosts</command> hämtar publika SSH-nycklar för värden
+<replaceable>VÄRD</replaceable> och skriver ut dem i formatet för OpenSSH:s
+known_hosts-nycklar (se avsnittet <quote>SSH_KNOWN_HOSTS-FILFORMAT</quote> i
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> för mer information).
+        </para>
+        <para>
+            <citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> kan konfigureras till att använda
+<command>sss_ssh_knownhosts</command> för autentisering med värdens publika
+nyckel med alternativet <quote>KnownHostsCommand</quote>: <programlisting>
+                KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H
+            </programlisting> Se manualsidan <citerefentry>
+<refentrytitle>ssh_config</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> för mer detaljer om detta alternativ.
+        </para>
+        <para>
+            This tool requires that SSSD's ssh service is enabled to work properly.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>FLAGGOR</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMÄN</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Sök efter värdars publika nycklar i SSSD-domänen
+<replaceable>DOMÄN</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-o</option>,<option>--only-host-name</option>
+                </term>
+                <listitem>
+                    <para>
+                        När nycklarna hämtas från en bakände, inkludera då inte värdnamnet, detta
+verktyg kommer lägga till det omodifierade värdnamnet som det ges av
+anroparen. Om denna flagga är satt kommer bara värdnamnet (inget portnummer)
+läggas till till nycklarna.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='key_retrieval'>
+        <title>NYCKELHÄMTNING</title>
+        <para>
+            Nyckelraderna som hämtas från en bakände förväntas att följa ncykelformatet
+som det beskrivs i avsnittet <quote>SSH_KNOWN_HOSTS FILE FORMAT</quote> i
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>. Dock tolereras det att returnera
+endast nyckeltypen och själva nyckeln, i vilket fall värdnamnet tas emot som
+en parameter kommer läggas till före nyckeltypen för att mata ut en korrekt
+formaterad rad. Värdnamnet kommer läggas till oförändrat eller bara
+värdnamnet (inget portnummer), beroende på huruvida flaggan
+<option>-o</option>,<option>--only-host-name</option> gavs.
+        </para>
+        <para>
+            När SSH-servern lyssnar på en annan port än standardporten MÅSTE bakänden
+tillhandahålla värdnamnet inklusive portnumret i korrekt format och position
+som en del av nyckelraden. Till exempel skulle den minimala nyckelraden
+vara:<programlisting>
+                [kanoniskt.värdnamn]:2222 &lt;nyckeltyp&gt; &lt;base64-kodad nyckel&gt;
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='exit_status'>
+        <title>SLUTSTATUS</title>
+        <para>
+            In case of successful execution, even if no key was found for that host or
+if the ssh responder could not be contacted, 0 is returned.  1 is returned
+in case of any other error.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

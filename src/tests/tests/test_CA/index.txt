@@ -1,0 +1,10 @@
+V	260802150200Z		01	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0001
+V	260802150200Z		02	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0002
+V	260802150200Z		03	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0003
+V	260802150200Z		04	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0004
+V	260802150200Z		05	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0005
+V	260802150200Z		06	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0006
+V	260802150200Z		07	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0007 \/oddchar
+V	160804150200Z		08	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0008 expired
+R	260802150200Z	260114150200Z	09	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test cert 0009 - revoked
+V	260802150202Z		0A	unknown	/O=SSSD/OU=SSSD test/CN=SSSD test intermediate CA

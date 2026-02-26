@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_seed</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_seed</refname>
+        <refpurpose>semeia a cache do SSSD com um utilizador</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_seed</command> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg> <arg choice='plain'>-D
+<replaceable>DOMÍNIO</replaceable></arg> <arg choice='plain'>-n
+<replaceable>UTILIZADOR</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            <command>sss_seed</command> semeia a cache do SSSD com uma entrada de
+utilizador e palavra passe temporária. Se o utilizador já estiver presente
+na cache do SSSD então a entrada é actualizada com a palavra passe
+temporária.
+        </para>
+        <para>
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-D</option>,<option>--domain</option>
+<replaceable>DOMÍNIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Fornece o nome do domínio no qual o utilizador é membro. O domínio é também
+usado para obter informação do utilizador. O domínio tem de ser configurado
+no sssd.conf. A opção <replaceable>DOMAIN</replaceable> tem de ser
+fornecida. option must be provided. A informação obtida a partir do domínio
+sobrepõe a que é fornecida nas opções.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-n</option>,<option>--username</option>
+<replaceable>UTILIZADOR</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        O nome de utilizador da entrada a ser criada ou modificada na cache. A opção
+<replaceable>UTILIZADOR</replaceable> tem de ser fornecida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-u</option>,<option>--uid</option> <replaceable>UID</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Define o UID do utilizador para <replaceable>UID</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g</option>,<option>--gid</option> <replaceable>GID</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Define o GID do utilizador para <replaceable>GID</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-c</option>,<option>--gecos</option>
+<replaceable>COMENTÁRIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Qualquer string de texto que descreva o utilizador. Muitas vezes usado como
+o campo para o nome completo do utilizador.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-h</option>,<option>--home</option>
+<replaceable>DIRECTÓRIO_HOME</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Define o directório home do utilizador para
+<replaceable>DIRECTÓRIO_HOME</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-s</option>,<option>--shell</option>
+<replaceable>SHELL</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Define a shell de login do utilizador para <replaceable>SHELL</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-i</option>,<option>--interactive</option>
+                </term>
+                <listitem>
+                    <para>
+                        Modo interactivo para inserir informação do utilizador. Esta opção apenas
+irá pedir informação não fornecida nas opções ou obtida a partir do domínio.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-p</option>,<option>--password-file</option>
+<replaceable>FICHEIRO-PASSE</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Especifica o ficheiro de onde ler a palavra passe do utilizador. (se não for
+especificado é incitada uma palavra passe)
+                    </para>
+                </listitem>
+            </varlistentry>
+           <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='notes'>
+        <title>NOTAS</title>
+        <para>
+            O comprimento da palavra passe (ou o tamanho do ficheiro especificado com
+opção -p ou --password-file) tem de ser menor ou igual a PASS_MAX bytes (64
+bytes em sistemas sem um valor PASS_MAX globalmente definido).
+        </para>
+        <para>
+        </para>
+    </refsect1>
+
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

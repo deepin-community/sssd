@@ -22,17 +22,34 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 
-#include <sys/types.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 #include <sys/stat.h>
 #include <popt.h>
-#include <sys/prctl.h>
 
+#include "util/child_bootstrap.h"
+#include "shared/io.h"
 #include "util/util.h"
-#include "util/child_common.h"
 #include "util/sss_chain_id.h"
-#include "providers/backend.h"
+#include "util/sss_prctl.h"
+
+/* from selinux_child_semanage.c */
+/* Please note that libsemange relies on files and directories created with
+ * certain permissions. Therefore the caller should make sure the umask is
+ * not too restricted (especially when called from the daemon code).
+ */
+int sss_set_seuser(const char *login_name, const char *seuser_name,
+                   const char *mlsrange);
+int sss_del_seuser(const char *login_name);
+int sss_get_seuser(const char *linuxuser,
+                   char **selinuxuser,
+                   char **level);
+int sss_seuser_exists(const char *linuxuser);
+
 
 struct input_buffer {
     const char *seuser;
@@ -92,54 +109,6 @@ static errno_t unpack_buffer(uint8_t *buf,
         p += len;
     }
 
-    return EOK;
-}
-
-static errno_t pack_buffer(struct response *r, int result)
-{
-    size_t p = 0;
-
-    /* A buffer with the following structure must be created:
-     *   uint32_t status of the request (required)
-     */
-    r->size =  sizeof(uint32_t);
-
-    r->buf = talloc_array(r, uint8_t, r->size);
-    if(r->buf == NULL) {
-        return ENOMEM;
-    }
-
-    DEBUG(SSSDBG_TRACE_FUNC, "result [%d]\n", result);
-
-    /* result */
-    SAFEALIGN_SET_UINT32(&r->buf[p], result, &p);
-
-    return EOK;
-}
-
-static errno_t prepare_response(TALLOC_CTX *mem_ctx,
-                                int result,
-                                struct response **rsp)
-{
-    int ret;
-    struct response *r = NULL;
-
-    r = talloc_zero(mem_ctx, struct response);
-    if (r == NULL) {
-        return ENOMEM;
-    }
-
-    r->buf = NULL;
-    r->size = 0;
-
-    ret = pack_buffer(r, result);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "pack_buffer failed\n");
-        return ret;
-    }
-
-    *rsp = r;
-    DEBUG(SSSDBG_TRACE_ALL, "r->size: %zu\n", r->size);
     return EOK;
 }
 
@@ -205,33 +174,22 @@ static bool seuser_needs_update(const char *username,
 
 int main(int argc, const char *argv[])
 {
+    static const size_t IN_BUF_SIZE = 2048;
     int opt;
     poptContext pc;
-    int debug_fd = -1;
-    int dumpable = 1;
     errno_t ret;
     TALLOC_CTX *main_ctx = NULL;
     uint8_t *buf = NULL;
     ssize_t len = 0;
     struct input_buffer *ibuf = NULL;
-    struct response *resp = NULL;
     struct passwd *passwd = NULL;
-    ssize_t written;
     bool needs_update;
     const char *username;
-    const char *opt_logger = NULL;
-    long chain_id;
+    uid_t ruid, euid, suid;
+    gid_t rgid, egid, sgid;
 
     struct poptOption long_options[] = {
-        POPT_AUTOHELP
-        SSSD_DEBUG_OPTS
-        {"dumpable", 0, POPT_ARG_INT, &dumpable, 0,
-         _("Allow core dumps"), NULL },
-        {"debug-fd", 0, POPT_ARG_INT, &debug_fd, 0,
-         _("An open file descriptor for the debug logs"), NULL},
-        {"chain-id", 0, POPT_ARG_LONG, &chain_id,
-         0, _("Tevent chain ID used for logging purposes"), NULL},
-        SSSD_LOGGER_OPTS
+        SSSD_BASIC_CHILD_OPTS
         POPT_TABLEEND
     };
 
@@ -251,32 +209,13 @@ int main(int argc, const char *argv[])
 
     poptFreeContext(pc);
 
-    prctl(PR_SET_DUMPABLE, (dumpable == 0) ? 0 : 1);
 
-    debug_prg_name = talloc_asprintf(NULL, "selinux_child[%d]", getpid());
-    if (debug_prg_name == NULL) {
-        ERROR("talloc_asprintf failed.\n");
-        goto fail;
+    sss_child_basic_settings.name = "selinux_child";
+    if (!sss_child_setup_basics(&sss_child_basic_settings)) {
+        _exit(-1);
     }
 
-    if (debug_fd != -1) {
-        opt_logger = sss_logger_str[FILES_LOGGER];
-        ret = set_debug_file_from_fd(debug_fd);
-        if (ret != EOK) {
-            opt_logger = sss_logger_str[STDERR_LOGGER];
-            ERROR("set_debug_file_from_fd failed.\n");
-        }
-    }
-
-    sss_chain_id_set_format(DEBUG_CHAIN_ID_FMT_RID);
-    sss_chain_id_set((uint64_t)chain_id);
-
-    DEBUG_INIT(debug_level, opt_logger);
-
-    DEBUG(SSSDBG_TRACE_FUNC, "selinux_child started.\n");
-    DEBUG(SSSDBG_TRACE_INTERNAL,
-          "Running with effective IDs: [%"SPRIuid"][%"SPRIgid"].\n",
-          geteuid(), getegid());
+    sss_log_process_caps("Starting");
 
     /* The functions semanage_genhomedircon and getseuserbyname use gepwnam_r
      * and they might fail to return values if they are not in memory cache.
@@ -293,31 +232,6 @@ int main(int argc, const char *argv[])
               "Failed to unset _SSS_LOOPS, some libsemanage functions might "
               "fail.\n");
     }
-
-    /* libsemanage calls access(2) which works with real IDs, not effective.
-     * We need to switch also the real ID to 0.
-     */
-    if (getuid() != 0) {
-        ret = setuid(0);
-        if (ret == -1) {
-            ret = errno;
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "setuid failed: %d, selinux_child might not work!\n", ret);
-        }
-    }
-
-    if (getgid() != 0) {
-        ret = setgid(0);
-        if (ret == -1) {
-            ret = errno;
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "setgid failed: %d, selinux_child might not work!\n", ret);
-        }
-    }
-
-    DEBUG(SSSDBG_TRACE_INTERNAL,
-          "Running with real IDs [%"SPRIuid"][%"SPRIgid"].\n",
-          getuid(), getgid());
 
     main_ctx = talloc_new(NULL);
     if (main_ctx == NULL) {
@@ -358,8 +272,6 @@ int main(int argc, const char *argv[])
         goto fail;
     }
 
-    DEBUG(SSSDBG_TRACE_FUNC, "performing selinux operations\n");
-
     /* When using domain_resolution_order the username will always be
      * fully-qualified, what has been causing some SELinux issues as mappings
      * for user 'admin' are not applied for 'admin@ipa.example'.
@@ -378,6 +290,32 @@ int main(int argc, const char *argv[])
         username = passwd->pw_name;
     }
 
+    /* libsemanage calls access(2) which works with real IDs, not effective.
+     * We need to switch also the real ID to 0.
+     */
+    if (getuid() != 0) {
+        sss_set_cap_effective(CAP_SETUID, true);
+        ret = setresuid(0, 0, -1);
+        if (ret == -1) {
+            ret = errno;
+            DEBUG(SSSDBG_CRIT_FAILURE, "setresuid() failed: %d\n", ret);
+            goto fail;
+        }
+    }
+    if (getgid() != 0) {
+        sss_set_cap_effective(CAP_SETGID, true);
+        setgroups(0, NULL);
+        ret = setresgid(0, 0, -1);
+        if (ret == -1) {
+            ret = errno;
+            DEBUG(SSSDBG_CRIT_FAILURE, "setresgid() failed: %d\n", ret);
+            goto fail;
+        }
+    }
+    sss_drop_all_caps();
+
+    sss_log_process_caps("Performing selinux operations");
+
     needs_update = seuser_needs_update(username, ibuf->seuser,
                                        ibuf->mls_range);
     if (needs_update == true) {
@@ -388,26 +326,11 @@ int main(int argc, const char *argv[])
         }
     }
 
-    ret = prepare_response(main_ctx, ret, &resp);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Failed to prepare response buffer.\n");
-        goto fail;
+    if (getresuid(&ruid, &euid, &suid) == 0) {
+        setresuid(suid, suid, suid);
     }
-
-    errno = 0;
-
-    written = sss_atomic_write_s(STDOUT_FILENO, resp->buf, resp->size);
-    if (written == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "write failed [%d][%s].\n", ret,
-                    strerror(ret));
-        goto fail;
-    }
-
-    if (written != resp->size) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Expected to write %zu bytes, wrote %zu\n",
-              resp->size, written);
-        goto fail;
+    if (getresgid(&rgid, &egid, &sgid) == 0) {
+        setresgid(sgid, sgid, sgid);
     }
 
     DEBUG(SSSDBG_TRACE_FUNC, "selinux_child completed successfully\n");

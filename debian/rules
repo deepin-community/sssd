@@ -41,7 +41,6 @@ override_dh_auto_configure:
 	--with-ssh \
 	--with-initscript=systemd \
 	--with-systemdunitdir=/$(systemdsystemunitdir) \
-	--with-files-provider \
 	--with-smb-idmap-interface-version=6 \
 	--without-python2-bindings \
 	--with-syslog=journald \
@@ -66,7 +65,7 @@ override_dh_auto_install:
 	dh_auto_install --max-parallel=1
 
 override_dh_fixperms:
-	dh_fixperms -Xkrb5_child -Xldap_child -Xselinux_child
+	dh_fixperms -Xproxy_child -Xkrb5_child -Xldap_child -Xselinux_child -Xsssd_pam
 
 override_dh_install:
 	install -D -m755 $(CURDIR)/debian/generate-config \

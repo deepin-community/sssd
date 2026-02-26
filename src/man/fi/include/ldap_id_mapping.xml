@@ -58,7 +58,7 @@ represent the Active Directory domain identity and the relative identifier
         </para>
         <para>
             The SSSD ID-mapping algorithm takes a range of available UIDs and divides it
-into equally-sized component sections - called "slices"-. Each slice
+into equally-sized component sections - called "slices". Each slice
 represents the space available to an Active Directory domain.
         </para>
         <para>
@@ -68,9 +68,9 @@ domain. In order to make this slice-assignment repeatable on different
 client machines, we select the slice based on the following algorithm:
         </para>
         <para>
-            The SID string is passed through the murmurhash3 algorithm to convert it to
-a 32-bit hashed value. We then take the modulus of this value with the total
-number of available slices to pick the slice.
+            SID-merkkijono välitetään murmurhash3-algoritmin läpi sen muuntamiseksi
+32-bittiseksi hajautusarvoksi. Otamme sitten tämän arvon modulusin
+käytettävissä olevien siivujen kokonaismäärällä valitaksesi siivun.
         </para>
         <para>
             NOTE: It is possible to encounter collisions in the hash and subsequent
@@ -163,7 +163,7 @@ will fail for any user whose RID is greater than this value.
                             For example, if your most recently-added Active Directory user has
 objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
 <quote>ldap_idmap_range_size</quote> must be at least 1108 as range size is
-equal to maximal SID minus minimal SID plus one (e.g. 1108 = 1107 - 0 + 1).
+equal to maximal RID minus minimal RID plus one (e.g. 1108 = 1107 - 0 + 1).
                         </para>
                         <para>
                             It is important to plan ahead for future expansion, as changing this value
@@ -261,7 +261,7 @@ different domains. The authorities for the Well-Known SIDs are
                 <listitem><para>Local Authority</para></listitem>
                 <listitem><para>Creator Authority</para></listitem>
                 <listitem><para>Mandatory Label Authority</para></listitem>
-                <listitem><para>Authentication Authority</para></listitem>
+                <listitem><para>Todennusviranomainen</para></listitem>
                 <listitem><para>NT Authority</para></listitem>
                 <listitem><para>Built-in</para></listitem>
             </itemizedlist>

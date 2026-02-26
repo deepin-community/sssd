@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-session-recording</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-session-recording</refname>
+        <refpurpose>Configurar registro de sesión con SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página del manual describe como configurar
+<citerefentry><refentrytitle>sssd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+para funcionar con
+<citerefentry><refentrytitle>tlog-rec-session</refentrytitle><manvolnum>8</manvolnum></citerefentry>,
+una parte del paquete tlog, para implementar sesión de usuario registrando
+sobre terminales de tecto.  Para una referencia de sintaxis de configuración
+detallada, refiérase a la sección <quote>FORMATO DE ARCHIVO</quote> de la
+página
+<citerefentry><refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>.
+        </para>
+        <para>
+            SSSD puede ser configurado par habilitar registros de cada cosa específica
+que los usuarios vean o tecleen durante sus sesiones en los terminales de
+texto. P. ej. cuando los usuarios accedas en la consola, o por medio de
+SSH. El mismo SSSD no registra nada, pero asegura que tlog-rec-session sea
+iniciado al acceder el usuario, de tal que pueda registrar de acuerdo a su
+configuración.
+        </para>
+        <para>
+            Para los usuarios con el registro de sesiones habilitada, SSSD reemplaza el
+intérprete del usuario con tlog-rec-session en las respuestas NSS y agrega
+una variable que especifica el intérprete original al entorno del usuario al
+configurar la sesión PAM. De esta forma, se puede iniciar tlog-rec-session
+en lugar del intérprete del usuario y saber qué intérprete iniciar una vez
+configurado el registro.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPCIONES DE CONFIGURACIÓN</title>
+            <para>
+                Se pueden utilizar estas opciones para configurar la grabación de sesión.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>scope (cadena)</term>
+                    <listitem>
+                        <para>
+                            Una de las siguientes cadena especifica el alcande de la sesión de
+grabación: <variablelist>
+                                <varlistentry>
+                                    <term>"none"</term>
+                                    <listitem>
+                                        <para>
+                                            Ningún usuario está registrado.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"some"</term>
+                                    <listitem>
+                                        <para>
+                                            Usuarios/grupos especificados por las opciones
+<replaceable>users</replaceable> y<replaceable>groups</replaceable> están
+registrados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"all"</term>
+                                    <listitem>
+                                        <para>
+                                            Todos los usuarios están registrados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predeterminado: "none"
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>users (cadena)</term>
+                    <listitem>
+                        <para>
+                            Una lista separada por comas de usuarios que deberían tener el registro de
+sesión habilitado. Coincide con los nombres de usuario que son devueltos por
+NSS. I.e. después de las posibles sustituciones de espacios, cambios de
+mayúsculas/minúsculas, etc.
+                        </para>
+                        <para>
+                            Predeterminado: Vacío. No hay usuarios coincidentes.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>groups (cadena)</term>
+                    <listitem>
+                        <para>
+                            Una lista separada por comas de grupos, cuyos miembros tendrían habilitado
+la grabación de sesión. Coincide con los nombres de grupo devueltos por
+NSS. I.e. después de los posibles cambios de espacio, cambios de
+mayúsculas/minúsculas, etc.
+                        </para>
+                        <para>
+                            AVISO: el uso de esta opción (teniéndolo ajustado a cualquiera) tiene un
+costo considerable de rendimiento, puesto que cada petición sin caché para
+un usuario requiere a recuperación y el emparejado de los grupos a los que
+pertenece el usuario.
+                        </para>
+                        <para>
+                            Predeterminado: Vacío. No empareja grupos.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_users (cadena)</term>
+                    <listitem>
+                        <para>
+                            Un listado de usuarios separados por comas para ser excluidos desde
+registro, solo aplicable a todos los ámbitos con 'scope=all'.
+                        </para>
+                        <para>
+                            Predeterminado: Vacío. No hay usuarios excluidos.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_groups (cadena)</term>
+                    <listitem>
+                        <para>
+                            Un listado separado por comas de grupos, miembros de los cuales serían
+excluidos desde registro. Solo aplicable con 'scope=all'.
+                        </para>
+                        <para>
+                            AVISO: el uso de esta opción (teniéndolo ajustado a cualquiera) tiene un
+costo considerable de rendimiento, puesto que cada petición sin caché para
+un usuario requiere a recuperación y el emparejado de los grupos a los que
+pertenece el usuario.
+                        </para>
+                        <para>
+                            Predeterminado: Vacío. Sin grupos excluidos.
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EJEMPLO</title>
+        <para>
+            El siguiente fragmento de sssd.conf habilita el registro de sesión para los
+usuarios "contractor1" y "contractor2", y el grupo "estudiantes".
+        </para>
+        <para>
+<programlisting>
+[session_recording]
+scope = alguno
+users = contractor1, contractor2
+groups = estudiantes
+</programlisting>
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

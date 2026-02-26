@@ -41,8 +41,8 @@ the PAC checks will be skipped as well.
         <term>krb5_renewable_lifetime (string)</term>
         <listitem>
             <para>
-                Request a renewable ticket with a total lifetime, given as an integer
-immediately followed by a time unit:
+                Pyydä uusittava lippu, jonka käyttöikä on kokonaisluku, jota seuraa
+välittömästi aikayksikkö:
             </para>
             <para>
                 <emphasis>s</emphasis> for seconds

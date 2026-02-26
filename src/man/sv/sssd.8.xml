@@ -142,31 +142,6 @@ konfigurationsfilsyntaxen och -alternativ, konsultera manualsidan
                     </para>
                 </listitem>
             </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-g</option>,<option>--genconf</option>
-                </term>
-                <listitem>
-                    <para>
-                        Starta inte SSSD, men uppdatera konfigurationsdatabasen från innehållet i
-<filename>/etc/sssd/sssd.conf</filename> och avsluta sedan.
-                    </para>
-                </listitem>
-            </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-s</option>,<option>--genconf-section</option>
-                </term>
-                <listitem>
-                    <para>
-                        Liknande <quote>--genconf</quote>, men uppdatera endast ett enskilt avsnitt
-av konfigurationsfilen.  Detta alternativt är huvudsakligen användbart för
-att anropas från systemd:s unit-filer för att låta uttagsaktiverade
-respondenter att uppdatera sina konfigurationer utan att kräva att
-administratören startar om hela SSSD.
-                    </para>
-                </listitem>
-            </varlistentry>
             <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
             <varlistentry>
                 <term>
@@ -221,6 +196,64 @@ sssd_be-process.
                         Säger till SSSD att gå till uppkopplat läge omedelbart.  Detta är användbart
 för att testa.  Signalen kan skickas antingen till sssd-processen eller
 direkt till någon sssd_be-process.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGRTMIN+1</term>
+                <listitem>
+                    <para>
+                        Säger till SSSD:n att schemalägga om de periodiska uppgifterna. Den interna
+vakthunde skickar denna signal till leverantörerna när en klockförändring
+upptäcks även om den kan skickas direkt till en sssd_be-process.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>SLUTSTATUS</title>
+        <variablelist>
+            <varlistentry>
+                <term>0</term>
+                <listitem>
+                    <para>
+                        SSSD stängdes av snyggt.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>1</term>
+                <listitem>
+                    <para>
+                        Felaktig konfiguration eller kommandoradsflagga.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>2</term>
+                <listitem>
+                    <para>
+                        Minnesallokeringsfel.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>6</term>
+                <listitem>
+                    <para>
+                        SSSD kör redan.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Andra koder</term>
+                <listitem>
+                    <para>
+                        Andra koder markerar andra olika fel, sannolikt om saknade nödvändiga
+åtkomsträttigheter. Se SSSD:s och systemets loggar för detaljer.
                     </para>
                 </listitem>
             </varlistentry>

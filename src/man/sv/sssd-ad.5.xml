@@ -136,15 +136,16 @@ detekteras automatiskt av SSSD.
                     <term>ad_enabled_domains (sträng)</term>
                     <listitem>
                         <para>
-                            A comma-separated list of enabled Active Directory domains. If provided,
-SSSD will ignore any domains not listed in this option. If left unset, all
-discovered domains from the AD forest will be available.
+                            En kommaseparerad lista av aktiverade Active Directory-domäner. Om det
+tillhandahålls kommer SSSD ignorera eventuella domäner som inte räknas upp i
+detta alternativ. Om det lämnas osatt kommer alla upptäckta domäner från
+AD-skogen vara tillgängliga.
                         </para>
                         <para>
-                            During the discovery of the domains SSSD will filter out some domains where
-flags or attributes indicate that they do not belong to the local forest or
-are not trusted. If ad_enabled_domains is set, SSSD will try to enable all
-listed domains.
+                            När den letar efter domänerna kommer SSSD filtrera ut några domäner vars
+flaggor eller attribut indikerar att de inte tillhör den lokala skogen eller
+inte är betrodda. Om ad_enabled_domains är satt kommer SSSD försöka aktivera
+alla listade domäner.
                         </para>
                         <para>
                             För att fungera ordentligt bör detta alternativ anges helt i gemener och som
@@ -223,10 +224,12 @@ sajtupptäckten.
                     <term>ad_access_filter (sträng)</term>
                     <listitem>
                         <para>
-                            Detta alternativ anger LDAP:s åtkomstkontrollfilter som användaren måste
-matcha för att tillåtas åtkomst.  Observera att alternativet
-<quote>access_provider</quote> måste vara uttryckligen satt till
-<quote>ad</quote> för att detta alternativ skall ha någon effekt.
+                            Anger et filter för LDAP-åtkomstkontroll som en användare måste matcha för
+att få åtkomst. Alternativet <quote>access_provider</quote> måste vara
+uttryckligen satt till <quote>ad</quote> för att detta alternativ skall ha
+någon verkan. Om man vill använda <quote>ad_access_filter</quote> som det
+enda åtkomstkontrollschemat måste man avaktivera GPO-baserad åtkomstkontroll
+(se alternativet <quote>ad_gpo_access_control</quote> för detaljer).
                         </para>
                         <para>
                             Alternativet stödjer också att ange olika filter per domän eller skog.
@@ -952,14 +955,34 @@ förhindra förnyelseförsöket.
                     <term>ad_machine_account_password_renewal_opts (sträng)</term>
                     <listitem>
                         <para>
-                            Detta alternativ skall endast användas för att testa
-maskinkontoförnyelsefunktionen.  Alternativet förväntar sig 2 heltal
-separerade av ett kolon (”:”).  Det första heltalet anger intervallet i
-sekunder hur ofta funktionen körs.  Det andra anger den initiala tidsgränsen
-i sekunder före funktionen körs för första gången efter uppstart.
+                            This option should only be used to test the machine account renewal
+task. The option expects 3 integers and a string separated by a colon
+(':'). The first integer defines the interval in seconds how often the task
+is run. The second specifies the initial timeout in seconds before the task
+is run for the first time after startup. The optional third value specifies
+a maximal random offset to the previous two values to avoid updates of many
+hosts at the same time ("thundering herd problem"). If this value is missing
+or empty in the value string '0' will be used.
                         </para>
                         <para>
-                            Standard: 86400:750 (24h och 15m)
+                            The optional fourth string value identifies the helper binary which should
+be used for the renewal.  Currently <command>adcli</command> and
+<command>realm</command> are supported. If this value is missing or empty in
+the value string <command>realm</command> will be used. Since the helper is
+started as the user SSSD is running as there might be the chance that the
+renewal will fail if this user does not has permissions to modify the keytab
+file where the machine account credentials are stored. This will typically
+be the case for <command>adcli</command>.
+                        </para>
+                        <para>
+                            <command>realm</command> is not updating the keytab directly but is calling
+the <command>realmd</command> process, which runs as root user, for this
+task. <command>realmd</command> can allow access to non-privileged users
+with the help of PolicyKit and by default SSSD provides suitable rules for
+the user SSSD is running as.
+                        </para>
+                        <para>
+                            Default: 86400:750:300:realm (24h, 12m30s and 5m)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -990,45 +1013,6 @@ LDAPS-skydd. Eftersom AD inte tillåter att ha flera krypteringsnivåer på en
 ensam förbindelse och vi fortfarande vill använda SASL/GSSAPI eller
 SASL/GSS-SPNEGO till autentisering är SASL-säkerhetsegenskapen maxssf satt
 till 0 (noll) för dessa förbindelser.
-                        </para>
-                        <para>
-                            Standard: False
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>ad_allow_remote_domain_local_groups (boolean)</term>
-                    <listitem>
-                        <para>
-                            Om detta alternativ är satt till <quote>sant</quote> kommer SSSD inte att
-filtrera ut domänlokala grupper från fjärrdomäner i AD-skogen. Som standard
-filtreras de ut t.ex. när man följer en nästad grupphierarki i fjärrdomäner
-för att de inte är giltiga i den lokala domänen. För att vara kompatibel med
-andra lösningar som gör AD-användare och -grupper tillgängliga i
-Linuxklienter lades detta alternativ till.
-                        </para>
-                        <para>
-                            Observera att sätta detta alternativ till <quote>sant</quote> kommer strida
-mot avsikten med domänlokala grupper i Active Directory och <emphasis>SKALL
-ENDAST ANVÄNDAS FÖR ATT MÖJLIGGÖRA MIGRERING FRÅN ANDRA
-LÖSNINGAR</emphasis>. Även om grruppen finns och användaren kan vara medlem
-av gruppen är avsikten att gruppen endast skall användas i domänen den är
-definierad och inte i några andra. Eftersom det endast finns en typ av
-POSIX-grupper är det enda sättet att uppnå detta på Linuxsidan att ignorera
-dessa grupper. Detta görs också av Active Directory som kan ses i PAC:en i
-Kerberosbiljetten för en lokal tjänst sller i tokenGroups-begäranden där
-också de domänlokala fjärrgrupperna saknas.
-                        </para>
-                        <para>
-                            Givet ovanstående kommentarer, om detta alternativ är satt till
-<quote>sant</quote> måste tokenGroups-begäranden avaktiveras genom att sätta
-<quote>ldap_use_tokengroups</quote> till <quote>falskt</quote> för att få
-konsistenta gruppmedlemskap för en användare. Dessutom skall uppslagningar i
-Global Catalog också hoppas över genom att sätta <quote>ad_enable_gc</quote>
-till <quote>falskt</quote>. Slutligen kan det vara nödvändigt att ändra
-<quote>ldap_group_nesting_level</quote> om de domänlokala fjärrgurpperna
-endast finns med en djupare nästningsnivå.
                         </para>
                         <para>
                             Standard: False
@@ -1075,17 +1059,45 @@ om det är satt av en administratör.
                     <term>dyndns_iface (sträng)</term>
                     <listitem>
                         <para>
-                            Valfri.  Endast tillämpligt när dyndns_update är sann.  Välj gränssnittet
-eller en lista av gränssnitt vars IP-adresser skall användas för dynamiska
-DNS-uppdateringar.  Specialvärdet <quote>*</quote> betyder att IP:n från
-alla gränssnitt skall användas.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
+                        </para>
+                        <para>
+                            OBS: även om det fortfarande är möjligt att använda det gamla alternativet
+<emphasis>ipa_dyndns_iface</emphasis> bör användare migrera till att använda
+<emphasis>dyndns_iface</emphasis> i sin konfigurationsfil.
                         </para>
                         <para>
                             Standard: använd IP-adresser för gränssnittet som används för AD
 LDAP-förbindelsen
                         </para>
                         <para>
-                            Exempel: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1114,8 +1126,9 @@ mindre än 60 ges kommer parametern endast anta det lägsta värdet.
 uppdateras.  Tillämpligt endast när dyndns_update är sann.
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Observera att parametern <emphasis>dyndns_update_per_family</emphasis> inte
+gäller för uppdateringar av PTR-poster. Dessa uppdateringar skickas alltid
+separat.
                         </para>
                         <para>
                             Standard: True
@@ -1172,13 +1185,24 @@ sätta detta alternativ till ”none”.
 flesta uppsättningar rekommenderas det att låta detta alternativ vara osatt.
                         </para>
                         <para>
-                            Att sätta detta alternativ är meningsfullt i miljöer där DNS-servern är
-skild från identitetsservern.
+                            Setting this option makes sense for environments where the DNS server is
+different from the identity server or when we use encrypted DNS.
                         </para>
                         <para>
-                            Observera att detta alternativ bara kommer användas i försök att falla
-tillbaka på när tidigare försök som använder automatiskt upptäckta
-inställningar misslyckas.
+                           The parameter can be a simple string containing DNS name or IP address. It
+can also be an URI.  The URI can look like
+<emphasis>dns://servername/</emphasis> or
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            The second example enables DNS-over-TLS protocol for DNS updates. The
+nsupdate utility must support DoT - check the <emphasis>man
+nsupdate</emphasis> before enabling it in SSSD.
+                        </para>
+                        <para>
+                            Please note that this option will be only used in fallback attempt when
+previous attempt using autodetected settings failed or when DNS-over-TLS is
+enabled.
                         </para>
                         <para>
                             Standard: Ingen (låt nsupdate välja servern)
@@ -1196,6 +1220,53 @@ och IPv6-uppdateringar i ett enda steg.
                         </para>
                         <para>
                             Standard: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cacert (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option specifies the file of the certificate authorities certificates
+(in PEM format) in order to verify the remote server TLS certificate when
+using DoT.
+                        </para>
+                        <para>
+                            Standard: Ingen (använd globalt certifikatlager)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option sets the certificate(s) file for authentication for the DoT
+transport to the remote server. The certificate chain file is expected to be
+in PEM format.
+                        </para>
+                        <para>
+                            The <emphasis>dyndns_dot_cert</emphasis> and
+<emphasis>dyndns_dot_key</emphasis> options must be both set to achieve
+mutual TLS authentication.
+                        </para>
+                        <para>
+                            Standard: Ingen (Använd inte TLS-autentisering)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option sets the key file for authenticated encryption for the DoT
+transport to the remote server. The private key file is expected to be in
+PEM format.
+                        </para>
+                        <para>
+                            Standard: Ingen (Använd inte TLS-autentisering)
                         </para>
                     </listitem>
                 </varlistentry>

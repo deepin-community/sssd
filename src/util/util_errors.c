@@ -131,6 +131,7 @@ struct err_string error_to_str[] = {
     { "Unsupported range type" }, /* ERR_UNSUPPORTED_RANGE_TYPE */
     { "proxy_child terminated by a signal" }, /* ERR_PROXY_CHILD_SIGNAL */
     { "PAC check failed" }, /* ERR_CHECK_PAC_FAILED */
+    { "Check next authentication type" }, /* ERR_CHECK_NEXT_AUTH_TYPE */
 
     /* DBUS Errors */
     { "Connection was killed on demand" }, /* ERR_SBUS_KILL_CONNECTION */
@@ -145,10 +146,11 @@ struct err_string error_to_str[] = {
     { "No reply was received" }, /* ERR_SBUS_NO_REPLY */
 
     /* ini parsing errors */
-    { "Failed to open configuration" }, /* ERR_INI_OPEN_FAILED */
+    { "Failed to open main config file" }, /* ERR_INI_OPEN_FAILED */
     { "File ownership and permissions check failed" }, /* ERR_INI_INVALID_PERMISSION */
     { "Error while parsing configuration file" }, /* ERR_INI_PARSE_FAILED */
     { "Failed to add configuration snippets" }, /* ERR_INI_ADD_SNIPPETS_FAILED */
+    { "Neither main config nor config snippets exist" }, /* ERR_INI_EMPTY_CONFIG */
 
     { "TLS handshake was interrupted"}, /* ERR_TLS_HANDSHAKE_INTERRUPTED */
 

@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_override</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_override</refname>
+        <refpurpose>crear anulaciones locales de atributos de usuario y grupo</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_override</command> <arg
+choice='plain'><replaceable>INSTRUCCIÓN</replaceable></arg> <arg
+choice='opt'> <replaceable>opciones</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            <command>sss_override</command> se habilita para crear una vista de lado
+cliente y concede cambiar valores seleccionados de usuario y grupos
+específico. Este cambio toma efecto sólo en máquina local.
+        </para>
+        <para>
+            Los datos de anulación se almacenan en la memoria caché SSSD. Si el caché es
+eliminado, todas los anulaciones locales se pierden. Tenga en cuenta que
+después de crear la primera anulación utilizando cualquiera de las
+instrucciones siguientes <emphasis>usuario-añadir</emphasis>,
+<emphasis>grupo-añadir</emphasis>, <emphasis>usuario-importación</emphasis>
+o <emphasis>grupo-importación</emphasis>. SSSD necesidades ser reiniciados
+para tomar efecto.  <emphasis>sss_override</emphasis> imprime mensaje cuando
+un reinicio es requerido.
+        </para>
+        <para>
+            <emphasis>NOTA:</emphasis> Las opciones proporcionadas en esta página man
+solo funciona con <quote>ldap</quote> y <quote>AD</quote> <quote>
+id_proveedor</quote>. Las anulaciones de IPA se pueden gestionar de forma
+centralizada en el servidor IPA.
+        </para>
+    </refsect1>
+
+    <refsect1 id='commands'>
+        <title>INSTRUCCIONES DISPONIBLES</title>
+        <para>
+            El argumento <emphasis>NOMBRE</emphasis> es el nombre de objeto original en
+todas las instrucciones. No es posible a anular <emphasis>uid</emphasis> o
+<emphasis>gid</emphasis> a 0.
+        </para>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>user-add</option> <emphasis>NAME</emphasis>
+<optional><option>-n,--name</option> NAME</optional>
+<optional><option>-u,--uid</option> UID</optional>
+<optional><option>-g,--gid</option> GID</optional>
+<optional><option>-h,--home</option> HOME</optional>
+<optional><option>-s,--shell</option> SHELL</optional>
+<optional><option>-c,--gecos</option> GECOS</optional>
+<optional><option>-x,--certificate</option> BASE64 ENCODED
+CERTIFICATE</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Anular atributos de un usuario. Tenga en cuenta que al llamar a esta
+instrucción se reemplazará cualquier anulación anterior para el usuario
+(NAMEd).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-del</option> <emphasis>NOMBRE</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Retira las modificaciones del usuario. Sin embargo, tenga en cuenta que los
+atributos modificados podrían recuperarse de la caché de memoria. Consulte
+la opción SSSD <emphasis>memcache_timeout</emphasis> para obtener más
+detalles.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-find</option> <optional><option>-d,--domain</option>
+DOMINIO</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Listado de todos los usuarios con anulaciones.  Si se ha definido el
+parámetro <emphasis>DOMAIN</emphasis>, solo se mostrarán los usuarios de ese
+dominio.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-show</option> <emphasis>NOMBRE</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Muestra anulaciones de usuario.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-import</option> <emphasis>ARCHIVO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Importe las modificaciones del usuario desde
+<emphasis>ARCHIVO</emphasis>. El formato de los datos es similar al de un
+archivo passwd estándar. El formato es:
+                    </para>
+                    <para>
+                        nombre_original:nombre:uid:gid:gecos:home:shell:base64_encoded_certificate
+                    </para>
+                    <para>
+                        donde `original_name` es el nombre original del usuario cuyos atributos
+serían modificados. El resto de los campos corresponden a los valores
+nuevos. Puede omitir un valor simplemente dejando el campo correspondiente
+vacío.
+                    </para>
+                    <para>
+                        Ejemplos:
+                    </para>
+                    <para>
+                        ckent:superman::::::
+                    </para>
+                    <para>
+                        ckent@krypton.com::501:501:Superman:/home/earth:/bin/bash:
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-export</option> <emphasis>ARCHIVO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Exporta todos los atributos modificados y guárdalos en
+<emphasis>FILE</emphasis>. Consulta <emphasis>importación de
+usuario</emphasis> para obtener información sobre el formato de datos.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-add</option> <emphasis>NOMBRE</emphasis>
+<optional><option>-n,--name</option> NOMBRE</optional>
+<optional><option>-g,--gid</option> GID</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Modifica los atributos de un grupo. Ten en cuenta que al invocar este
+comando reemplazará cualquier modificación anterior del grupo (NAMEd).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-del</option> <emphasis>NOMBRE</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Retira las anulaciones de grupo. Sin embargo, tenga en cuenta que los
+atributos anulados podrían recuperarse de la caché de memoria. Consulte la
+opción SSSD <emphasis>memcache_timeout</emphasis> para obtener más detalles.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-find</option> <optional><option>-d,--domain</option>
+DOMINIO</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Enumere todos los grupos con anulaciones establecidas.  Si el parámetro
+<emphasis>DOMINIO</emphasis> está establecido, solo los grupos desde el
+dominio son listados.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>muestra-grupo</option> <emphasis>NOMBRE</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Muestra anulaciones de grupo.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-import</option> <emphasis>ARCHIVO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Importar anulaciones de grupo desde <emphasis>ARCHIVO</emphasis>. Formato de
+datos es similar al archivo de grupo estándar. El formato es:
+                    </para>
+                    <para>
+                        nombre_original:nombre:gid
+                    </para>
+                    <para>
+                        donde el nombre_original es el nombre original del grupo cuyos atributos
+serían anulados. El resto de los campos correspondientes a valores
+nuevos. Puede omitir un valor simplemente abandonando el correspondiente
+campo vacío.
+                    </para>
+                    <para>
+                        Ejemplos:
+                    </para>
+                    <para>
+                        administrador:administradores:
+                    </para>
+                    <para>
+                        Usuarios de Dominio:Usuarios:501
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-export</option> <emphasis>ARCHIVO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Exporta todos los atributos anulados y los almacenarles en
+<emphasis>ARCHIVO</emphasis>. Consulte <emphasis>group-import</emphasis>
+para formato de datos.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPCIONES COMUNES</title>
+        <para>
+            Estas opciones están disponibles para todos los comandos.
+        </para>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>--debug</option> <replaceable>NIVEL</replaceable>
+                </term>
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/debug_levels_tools.xml" />
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

@@ -1,9 +1,9 @@
 Tests: ldap-user-group-ldap-auth
-Depends: @, slapd, ldap-utils, openssl, expect, lsb-release
+Depends: @, slapd, ldap-utils, openssl, expect, lsb-release, openssh-server
 Restrictions: isolation-container, needs-root, allow-stderr
 
 Tests: ldap-user-group-krb5-auth
-Depends: @, slapd, ldap-utils, openssl, expect, lsb-release, krb5-user, krb5-admin-server, krb5-kdc
+Depends: @, slapd, ldap-utils, openssl, expect, lsb-release, krb5-user, krb5-admin-server, krb5-kdc, openssh-server
 Restrictions: isolation-container, needs-root, allow-stderr
 
 Tests: sssd-softhism2-certificates-tests.sh
@@ -29,9 +29,9 @@ Depends: bash,
          passwd,
          softhsm2,
          sssd,
+         sssd-proxy,
          util-linux
 Restrictions: breaks-testbed,
               isolation-container,
               needs-root,
               allow-stderr
-

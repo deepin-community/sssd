@@ -1,17 +1,17 @@
 <refsect1 id='local'>
-    <title>THE LOCAL DOMAIN</title>
+    <title>O DOMÍNIO LOCAL</title>
     <para>
-        In order to function correctly, a domain with
-<quote>id_provider=local</quote> must be created and the SSSD must be
-running.
+        De modo a funcionar correctamente, tem de ser criado um domínio com
+<quote>id_provider=local</quote> e o SSSD tem de estar a correr.
     </para>
     <para>
-        The administrator might want to use the SSSD local users instead of
-traditional UNIX users in cases where the group nesting (see <citerefentry>
-<refentrytitle>sss_groupadd</refentrytitle> <manvolnum>8</manvolnum>
-</citerefentry>) is needed. The local users are also useful for testing and
-development of the SSSD without having to deploy a full remote server. The
-<command>sss_user*</command> and <command>sss_group*</command> tools use a
-local LDB storage to store users and groups.
+        O administrador pode querer usar os utilizadores locais do SSSD em vez dos
+utilizadores tradicionais UNIX em casos onde o aninhamento de grupos (veja
+<citerefentry> <refentrytitle>sss_groupadd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>) é necessário. Os utilizadores
+locais são também úteis para testes e desenvolvimento do SSSD sem se ter que
+implementar um servidor remoto completo. As ferramentas
+<command>sss_user*</command> e <command>sss_group*</command> usam um
+armazenamento LDB local para guardar utilizadores e grupos.
     </para>
 </refsect1>

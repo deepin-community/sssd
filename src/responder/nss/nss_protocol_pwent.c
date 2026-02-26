@@ -73,20 +73,15 @@ sss_nss_get_homedir_override(TALLOC_CTX *mem_ctx,
                                        dom->case_preserve, homedir_ctx);
     }
 
-    /* Here we skip the files provider as it should always return *only*
-     * what's in the files and nothing else.
+    /* Check whether we are unconditionally overriding the server
+     * for home directory locations.
      */
-    if (!is_files_provider(dom)) {
-        /* Check whether we are unconditionally overriding the server
-         * for home directory locations.
-         */
-        if (dom->override_homedir) {
-            return expand_homedir_template(mem_ctx, dom->override_homedir,
-                                           dom->case_preserve, homedir_ctx);
-        } else if (nctx->override_homedir) {
-            return expand_homedir_template(mem_ctx, nctx->override_homedir,
-                                           dom->case_preserve, homedir_ctx);
-        }
+    if (dom->override_homedir) {
+        return expand_homedir_template(mem_ctx, dom->override_homedir,
+                                       dom->case_preserve, homedir_ctx);
+    } else if (nctx->override_homedir) {
+        return expand_homedir_template(mem_ctx, nctx->override_homedir,
+                                       dom->case_preserve, homedir_ctx);
     }
 
     if (!homedir || *homedir == '\0') {
@@ -123,6 +118,7 @@ sss_nss_get_homedir(TALLOC_CTX *mem_ctx,
     hd_ctx.uid = uid;
     hd_ctx.domain = domain->name;
     hd_ctx.upn = upn;
+    hd_ctx.flatname = domain->flat_name;
 
     homedir = sss_nss_get_homedir_override(mem_ctx, msg, nss_ctx, domain, &hd_ctx);
     if (homedir == NULL) {

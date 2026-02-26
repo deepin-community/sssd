@@ -44,7 +44,12 @@
 
 #define SSS_PAC_PIPE_NAME "pac"
 #define DEFAULT_PAC_FD_LIMIT 8192
+
+#ifdef SSSD_NON_ROOT_USER
+#define DEFAULT_ALLOWED_UIDS "0, sssd"
+#else
 #define DEFAULT_ALLOWED_UIDS "0"
+#endif
 
 int pac_process_init(TALLOC_CTX *mem_ctx,
                      struct tevent_context *ev,
@@ -62,7 +67,7 @@ int pac_process_init(TALLOC_CTX *mem_ctx,
 
     ret = sss_process_init(mem_ctx, ev, cdb,
                            pac_cmds,
-                           SSS_PAC_SOCKET_NAME, -1, NULL, -1,
+                           SSS_PAC_SOCKET_NAME, SCKT_RSP_UMASK,
                            CONFDB_PAC_CONF_ENTRY,
                            SSS_BUS_PAC, PAC_SBUS_SERVICE_NAME,
                            sss_connection_setup,
@@ -143,13 +148,13 @@ int pac_process_init(TALLOC_CTX *mem_ctx,
     }
 
     /* The responder is initialized. Now tell it to the monitor. */
-    ret = sss_monitor_service_init(rctx, rctx->ev, SSS_BUS_PAC,
-                                   PAC_SBUS_SERVICE_NAME,
-                                   PAC_SBUS_SERVICE_VERSION,
-                                   MT_SVC_SERVICE,
-                                   &rctx->last_request_time, &rctx->mon_conn);
+    ret = sss_monitor_register_service(rctx, rctx->sbus_conn,
+                                       PAC_SBUS_SERVICE_NAME,
+                                       PAC_SBUS_SERVICE_VERSION,
+                                       MT_SVC_SERVICE);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "fatal error setting up message bus\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register to the monitor "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto fail;
     }
 
@@ -171,17 +176,14 @@ int main(int argc, const char *argv[])
 {
     int opt;
     poptContext pc;
-    char *opt_logger = NULL;
+    const char *opt_logger = NULL;
     struct main_context *main_ctx;
     int ret;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
         POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_DEBUG_OPTS
+        SSSD_LOGGER_OPTS(&opt_logger)
         SSSD_RESPONDER_OPTS
         POPT_TABLEEND
     };
@@ -208,7 +210,7 @@ int main(int argc, const char *argv[])
     debug_log_file = "sssd_pac";
     DEBUG_INIT(debug_level, opt_logger);
 
-    ret = server_setup("pac", true, 0, uid, gid,
+    ret = server_setup("pac", true, 0, CONFDB_FILE,
                        CONFDB_PAC_CONF_ENTRY, &main_ctx, true);
     if (ret != EOK) return 2;
 

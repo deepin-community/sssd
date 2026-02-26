@@ -29,8 +29,6 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-#include "sss_openssl.h"
-
 
 /* Define our magic string to mark salt for SHA512 "encryption" replacement. */
 const char sha512_salt_prefix[] = "$6$";
@@ -46,7 +44,7 @@ const char sha512_rounds_prefix[] = "rounds=";
 #define ROUNDS_MAX 999999999
 
 /* Table with characters for base64 transformation.  */
-const char b64t[64] =
+__attribute__ ((nonstring)) const char b64t[64] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 /* base64 conversion function */

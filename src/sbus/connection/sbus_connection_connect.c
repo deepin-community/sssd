@@ -218,11 +218,13 @@ sbus_connect_private(TALLOC_CTX *mem_ctx,
 
 struct sbus_connect_private_state {
     struct sbus_connection *conn;
+    const char *dbus_name;
+    int retry_count;
 };
 
 static void sbus_connect_private_done(struct tevent_req *subreq);
 
-struct tevent_req *
+static struct tevent_req *
 sbus_connect_private_send(TALLOC_CTX *mem_ctx,
                           struct tevent_context *ev,
                           const char *address,
@@ -241,6 +243,16 @@ sbus_connect_private_send(TALLOC_CTX *mem_ctx,
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create tevent request!\n");
         return NULL;
     }
+
+    if (dbus_name != NULL) {
+        state->dbus_name = talloc_strdup(state, dbus_name);
+        if (state->dbus_name == NULL) {
+            DEBUG(SSSDBG_OP_FAILURE, "talloc_strdup() failed.\n");
+            ret = ENOMEM;
+            goto done;
+        }
+    }
+    state->retry_count = 1;
 
     dbus_conn = sbus_dbus_connect_address(address, dbus_name, false);
     if (dbus_conn == NULL) {
@@ -289,6 +301,21 @@ static void sbus_connect_private_done(struct tevent_req *subreq)
 
     ret = sbus_connect_init_recv(subreq);
     talloc_zfree(subreq);
+    if (ret == ERR_SBUS_NO_REPLY && state->retry_count-- > 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO, "No Hello reply received, retrying.\n");
+
+        subreq = sbus_connect_init_send(state, state->conn, state->dbus_name);
+        if (subreq == NULL) {
+            DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create subrequest!\n");
+            tevent_req_error(req, ENOMEM);
+            return;
+        }
+
+        tevent_req_set_callback(subreq, sbus_connect_private_done, req);
+
+        return;
+    }
+
     if (ret != EOK) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to initialize connection "
               "[%d]: %s\n", ret, sss_strerror(ret));
@@ -318,9 +345,10 @@ static void sbus_connect_private_done(struct tevent_req *subreq)
     return;
 }
 
-errno_t sbus_connect_private_recv(TALLOC_CTX *mem_ctx,
-                                  struct tevent_req *req,
-                                  struct sbus_connection **_conn)
+static errno_t
+sbus_connect_private_recv(TALLOC_CTX *mem_ctx,
+                          struct tevent_req *req,
+                          struct sbus_connection **_conn)
 {
     struct sbus_connect_private_state *state;
     state = tevent_req_data(req, struct sbus_connect_private_state);
@@ -347,8 +375,6 @@ sbus_server_create_and_connect_send(TALLOC_CTX *mem_ctx,
                                     const char *address,
                                     bool use_symlink,
                                     uint32_t max_connections,
-                                    uid_t uid,
-                                    gid_t gid,
                                     sbus_server_on_connection_cb on_conn_cb,
                                     sbus_server_on_connection_data on_conn_data)
 {
@@ -364,8 +390,7 @@ sbus_server_create_and_connect_send(TALLOC_CTX *mem_ctx,
     }
 
     state->server = sbus_server_create(state, ev, address, use_symlink,
-                                       max_connections, uid, gid,
-                                       on_conn_cb, on_conn_data);
+                                       max_connections, on_conn_cb, on_conn_data);
     if (state->server == NULL) {
         ret = ENOMEM;
         goto done;

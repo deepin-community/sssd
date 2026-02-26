@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Сторінки підручника SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_knownhosts</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_knownhosts</refname>
+        <refpurpose>отримати відкриті ключі OpenSSH відомих вузлів</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_ssh_knownhosts</command> <arg choice='opt'>
+<replaceable>параметри</replaceable> </arg> <arg
+choice='plain'><replaceable>ВУЗОЛ</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>ОПИС</title>
+        <para>
+            <command>sss_ssh_knownhosts</command> отримує відкриті ключі SSH для вузла
+<replaceable>ВУЗОЛ</replaceable> і виводить їх у форматі ключа known_hosts
+OpenSSH (щоб дізнатися більше, див. розділ <quote>ФОРМАТ ФАЙЛІВ
+SSH_KNOWN_HOSTS</quote> на сторінці підручника (man) з
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>).
+        </para>
+        <para>
+            <citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> можна налаштувати на використання
+<command>sss_ssh_knownhosts</command> для розпізнавання вузлів за відкритими
+ключами з використанням параметра <quote>KnownHostsCommand</quote>. Будь
+ласка, зверніться до сторінки підручника <citerefentry>
+<refentrytitle>ssh_config</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry>, щоб дізнатися більше про цей
+параметр.
+        </para>
+        <para>
+            Для належної роботи цього інструменту потрібне вмикання служби ssh SSSD.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>ПАРАМЕТРИ</title>
+        

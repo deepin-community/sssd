@@ -77,8 +77,6 @@ class SSSDConfigTestValid(unittest.TestCase):
 
         self.assertTrue('domains' in service_opts)
 
-        self.assertTrue('reconnection_retries' in service_opts)
-
         del sssdconfig
         sssdconfig = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
                                            srcdir + "/etc/sssd.api.d")
@@ -92,9 +90,6 @@ class SSSDConfigTestValid(unittest.TestCase):
 
         self.assertTrue('command' in new_options)
         self.assertEqual(new_options['command'][0], str)
-
-        self.assertTrue('reconnection_retries' in new_options)
-        self.assertEqual(new_options['reconnection_retries'][0], int)
 
         self.assertTrue('services' in new_options)
         self.assertEqual(new_options['debug_level'][0], int)
@@ -185,8 +180,8 @@ class SSSDConfigTestValid(unittest.TestCase):
         mode = os.stat(of)[ST_MODE]
 
         # Output files should not be readable or writable by
-        # non-owners, and should not be executable by anyone
-        self.assertFalse(S_IMODE(mode) & 0o177)
+        # others, and should not be executable by anyone
+        self.assertFalse(S_IMODE(mode) & 0o137)
 
         # try to import saved configuration file
         config = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
@@ -236,8 +231,8 @@ class SSSDConfigTestValid(unittest.TestCase):
         mode = os.stat(of)[ST_MODE]
 
         # Output files should not be readable or writable by
-        # non-owners, and should not be executable by anyone
-        self.assertFalse(S_IMODE(mode) & 0o177)
+        # others, and should not be executable by anyone
+        self.assertFalse(S_IMODE(mode) & 0o137)
 
         # try to import saved configuration file
         config = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
@@ -324,7 +319,6 @@ class SSSDConfigTestSSSDService(unittest.TestCase):
 
         options = service.list_options()
         control_list = [
-            'config_file_version',
             'services',
             'domains',
             'timeout',
@@ -339,7 +333,6 @@ class SSSDConfigTestSSSDService(unittest.TestCase):
             'debug_microseconds',
             'debug_backtrace_enabled',
             'command',
-            'reconnection_retries',
             'fd_limit',
             'client_idle_timeout',
             'responder_idle_timeout',
@@ -371,22 +364,6 @@ class SSSDConfigTestSSSDService(unittest.TestCase):
             self.assertTrue(option in control_list,
                             'Option [%s] unexpectedly found' %
                             option)
-
-        self.assertTrue(type(options['reconnection_retries']) == tuple,
-                        "Option values should be a tuple")
-
-        self.assertTrue(options['reconnection_retries'][0] == int,
-                        "reconnection_retries should require an int. "
-                        "list_options is requiring a %s" %
-                        options['reconnection_retries'][0])
-
-        self.assertTrue(options['reconnection_retries'][1] is None,
-                        "reconnection_retries should not require a subtype. "
-                        "list_options is requiring a %s" %
-                        options['reconnection_retries'][1])
-
-        self.assertTrue(options['reconnection_retries'][3] is None,
-                        "reconnection_retries should have no default")
 
         self.assertTrue(type(options['services']) == tuple,
                         "Option values should be a tuple")
@@ -581,15 +558,19 @@ class SSSDConfigTestSSSDDomain(unittest.TestCase):
             'dns_discovery_domain',
             'failover_primary_timeout',
             'dyndns_update',
+            'dyndns_update_per_family',
             'dyndns_ttl',
             'dyndns_iface',
+            'dyndns_address',
             'dyndns_refresh_interval',
             'dyndns_refresh_interval_offset',
             'dyndns_update_ptr',
             'dyndns_force_tcp',
             'dyndns_auth',
             'dyndns_server',
-            'subdomain_enumerate',
+            'dyndns_dot_cacert',
+            'dyndns_dot_cert',
+            'dyndns_dot_key',
             'override_gid',
             'case_sensitive',
             'override_homedir',
@@ -942,14 +923,18 @@ class SSSDConfigTestSSSDDomain(unittest.TestCase):
             'dns_discovery_domain',
             'failover_primary_timeout',
             'dyndns_update',
+            'dyndns_update_per_family',
             'dyndns_ttl',
             'dyndns_iface',
+            'dyndns_address',
             'dyndns_refresh_interval',
             'dyndns_update_ptr',
             'dyndns_force_tcp',
             'dyndns_auth',
             'dyndns_server',
-            'subdomain_enumerate',
+            'dyndns_dot_cacert',
+            'dyndns_dot_cert',
+            'dyndns_dot_key',
             'override_gid',
             'case_sensitive',
             'override_homedir',
@@ -1006,12 +991,12 @@ class SSSDConfigTestSSSDDomain(unittest.TestCase):
                         "Option values should be a tuple")
 
         self.assertTrue(options['max_id'][0] == int,
-                        "config_file_version should require an int. "
+                        "max_id should require an int. "
                         "list_options is requiring a %s" %
                         options['max_id'][0])
 
         self.assertTrue(options['max_id'][1] is None,
-                        "config_file_version should not require a subtype. "
+                        "max_id should not require a subtype. "
                         "list_options is requiring a %s" %
                         options['max_id'][1])
 
@@ -1236,10 +1221,8 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         # Verify that all options were imported for a section
         control_list = [
             'services',
-            'reconnection_retries',
             'domains',
-            'debug_timestamps',
-            'config_file_version']
+            'debug_timestamps']
 
         for option in control_list:
             self.assertTrue(sssdconfig.has_option('sssd', option),
@@ -1263,13 +1246,6 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         sssdconfig = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
                                            srcdir + "/etc/sssd.api.d")
         self.assertRaises(SSSDConfig.ParsingError, sssdconfig.import_config, srcdir + "/testconfigs/sssd-invalid.conf")
-
-        # Negative Test - Invalid config file version
-        sssdconfig = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
-                                           srcdir + "/etc/sssd.api.d")
-        self.assertRaises(SSSDConfig.ParsingError,
-                          sssdconfig.import_config,
-                          srcdir + "/testconfigs/sssd-badversion.conf")
 
         # Negative Test - Already initialized
         sssdconfig = SSSDConfig.SSSDConfig(srcdir + "/etc/sssd.api.conf",
@@ -1301,7 +1277,6 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         service_list = sssd_service.get_option('services')
         self.assertTrue('nss' in service_list)
         self.assertTrue('pam' in service_list)
-        self.assertTrue('reconnection_retries' in service_opts)
 
         # Validate domain list
         domains = sssdconfig.list_domains()
@@ -1939,8 +1914,8 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         mode = os.stat(of)[ST_MODE]
 
         # Output files should not be readable or writable by
-        # non-owners, and should not be executable by anyone
-        self.assertFalse(S_IMODE(mode) & 0o177)
+        # others, and should not be executable by anyone
+        self.assertFalse(S_IMODE(mode) & 0o137)
 
         # Remove the output file
         os.unlink(of)
@@ -2030,14 +2005,19 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         with open(srcdir + "/testconfigs/sssd-test-parse.conf", "r") as f:
             data = sssdconfig.parse(f)
 
-        self.assertEqual(len(data), 4)
-        self.assertEqual(data[-1], {'type': "section",
+        self.assertEqual(len(data), 5)
+        self.assertEqual(data[-2], {'type': "section",
                                     'name': "nss",
                                     'value': [{'type': 'option',
                                                'name': 'debug_level',
                                                'value': '1'},
                                               {'type': 'empty',
                                                'name': 'empty'}]})
+        self.assertEqual(data[-1], {'type': "section",
+                                    'name': "pam",
+                                    'value': [{'type': 'empty',
+                                               'name': 'empty'}]})
+
 
         with open(srcdir + "/testconfigs/sssd-valid.conf", "r") as f:
             data = sssdconfig.parse(f)
@@ -2079,9 +2059,7 @@ class SSSDConfigTestSSSDConfig(unittest.TestCase):
         # Verify that all options were imported for [sssd] section
         control_list = [
             'services',
-            'reconnection_retries',
             'domains',
-            'config_file_version',
             'debug_timestamps']
 
         for option in control_list:

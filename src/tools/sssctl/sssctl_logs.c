@@ -37,7 +37,6 @@
 #include "tools/common/sss_tools.h"
 #include "tools/common/sss_process.h"
 #include "tools/sssctl/sssctl.h"
-#include "tools/tools_util.h"
 #include "confdb/confdb.h"
 #include "sss_iface/sss_iface_sync.h"
 #include "responder/ifp/ifp_iface/ifp_iface_sync.h"
@@ -110,7 +109,7 @@ static struct sbus_sync_connection *connect_to_sbus(TALLOC_CTX *mem_ctx)
 {
     struct sbus_sync_connection *conn;
 
-    conn = sbus_sync_connect_private(mem_ctx, SSS_MONITOR_ADDRESS, NULL);
+    conn = sbus_sync_connect_private(mem_ctx, SSS_BUS_ADDRESS, NULL);
     if (conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Failed to connect to the sbus monitor\n");
     }
@@ -135,7 +134,7 @@ static const char *get_busname(TALLOC_CTX *mem_ctx, struct confdb_ctx *confdb,
             goto done;
         }
 
-        busname = sss_iface_domain_bus(mem_ctx, domain);
+        busname = talloc_strdup(mem_ctx, domain->conn_name);
     } else {
         busname = talloc_asprintf(mem_ctx, "sssd.%s", component);
     }
@@ -419,8 +418,7 @@ int parse_debug_level(const char *strlevel)
 }
 
 errno_t sssctl_logs_remove(struct sss_cmdline *cmdline,
-                           struct sss_tool_ctx *tool_ctx,
-                           void *pvt)
+                           struct sss_tool_ctx *)
 {
     struct sssctl_logs_opts opts = {0};
     errno_t ret;
@@ -472,15 +470,14 @@ errno_t sssctl_logs_remove(struct sss_cmdline *cmdline,
 }
 
 errno_t sssctl_logs_fetch(struct sss_cmdline *cmdline,
-                          struct sss_tool_ctx *tool_ctx,
-                          void *pvt)
+                          struct sss_tool_ctx *)
 {
     const char *file = NULL;
     errno_t ret;
     glob_t globbuf;
 
     /* Parse command line. */
-    ret = sss_tool_popt_ex(cmdline, NULL, SSS_TOOL_OPT_OPTIONAL, NULL, NULL,
+    ret = sss_tool_popt_ex(cmdline, NULL, NULL, SSS_TOOL_OPT_OPTIONAL, NULL, NULL,
                            "FILE", "Output file", SSS_TOOL_OPT_REQUIRED,
                            &file, NULL);
     if (ret != EOK) {
@@ -513,8 +510,7 @@ done:
 }
 
 errno_t sssctl_debug_level(struct sss_cmdline *cmdline,
-                           struct sss_tool_ctx *tool_ctx,
-                           void *pvt)
+                           struct sss_tool_ctx *tool_ctx)
 {
     int ret;
     int pc_services = 0;
@@ -547,7 +543,7 @@ errno_t sssctl_debug_level(struct sss_cmdline *cmdline,
         goto fini;
     }
 
-    ret = sss_tool_popt_ex(cmdline, long_options, SSS_TOOL_OPT_OPTIONAL, NULL,
+    ret = sss_tool_popt_ex(cmdline, long_options, NULL, SSS_TOOL_OPT_OPTIONAL, NULL,
                            NULL, "DEBUG_LEVEL_TO_SET",
                            _("Specify debug level you want to set"),
                            SSS_TOOL_OPT_OPTIONAL, &debug_as_string, NULL);
@@ -555,8 +551,6 @@ errno_t sssctl_debug_level(struct sss_cmdline *cmdline,
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to parse command arguments\n");
         goto fini;
     }
-
-    CHECK_ROOT(ret, debug_prg_name);
 
     if (debug_as_string != NULL) {
         debug_to_set = (uint32_t) parse_debug_level(debug_as_string);
@@ -567,7 +561,7 @@ errno_t sssctl_debug_level(struct sss_cmdline *cmdline,
     targets = get_targets(ctx, pc_services, pc_domains);
     CHECK(targets == NULL, fini, "Could not allocate memory.");
 
-    ret = sss_tool_connect_to_confdb(ctx, &ctx->confdb);
+    ret = sss_tool_confdb_init(ctx, &ctx->confdb);
     CHECK(ret != EOK, fini, "Could not connect to configuration database.");
 
     ret = get_confdb_sections(ctx, ctx->confdb, &ctx->sections);
@@ -593,8 +587,7 @@ fini:
 }
 
 errno_t sssctl_analyze(struct sss_cmdline *cmdline,
-                       struct sss_tool_ctx *tool_ctx,
-                       void *pvt)
+                       struct sss_tool_ctx *)
 {
 #ifndef BUILD_CHAIN_ID
     PRINT("ERROR: Tevent chain ID support missing, log analyzer is unsupported.\n");
@@ -602,7 +595,7 @@ errno_t sssctl_analyze(struct sss_cmdline *cmdline,
 #endif
     errno_t ret;
 
-    ret = sssctl_wrap_command(SSS_ANALYZE, NULL, cmdline, tool_ctx, pvt);
+    ret = sssctl_wrap_command(SSS_ANALYZE, NULL, cmdline);
 
     return ret;
 }

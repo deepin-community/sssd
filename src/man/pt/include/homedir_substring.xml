@@ -2,16 +2,17 @@
     <term>homedir_substring (string)</term>
     <listitem>
         <para>
-            The value of this option will be used in the expansion of the
-<emphasis>override_homedir</emphasis> option if the template contains the
-format string <emphasis>%H</emphasis>. An LDAP directory entry can directly
-contain this template so that this option can be used to expand the home
-directory path for each client machine (or operating system). It can be set
-per-domain or globally in the [nss] section. A value specified in a domain
-section will override one set in the [nss] section.
+            O valor desta opção será usado na expansão da opção
+<emphasis>override_homedir</emphasis> se o modelo conter a string de formato
+<emphasis>%H</emphasis>. Uma entrada de directório LDAP pode conter
+directamente este modelo para que esta opção possa ser usada para expandir o
+caminho do directório home para cada máquina cliente (ou sistema
+operativo). Pode ser definida por-domínio ou globalmente na secção [nss]. Um
+valor especificado numa secção domain irá sobrepor aquele definido na secção
+[nss].
         </para>
         <para>
-            Default: /home
+            Predefinição: /home
         </para>
     </listitem>
 </varlistentry>

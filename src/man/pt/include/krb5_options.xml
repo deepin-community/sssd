@@ -1,38 +1,39 @@
 <variablelist>
     <varlistentry>
-        <term>krb5_auth_timeout (integer)</term>
+        <term>krb5_auth_timeout (inteiro)</term>
         <listitem>
             <para>
-                Timeout in seconds after an online authentication request or change password
-request is aborted. If possible, the authentication request is continued
-offline.
+                Tempo limite em segundos após um pedido de autenticação online ou pedido de
+mudança de palavra passe abortado. Se possível, o pedido de autenticação é
+continuado em offline.
             </para>
             <para>
-                Padrão: 6
+                Predefinição: 6
             </para>
         </listitem>
     </varlistentry>
 
     <varlistentry>
-        <term>krb5_validate (boolean)</term>
+        <term>krb5_validate (booleano)</term>
         <listitem>
             <para>
-                Verify with the help of krb5_keytab that the TGT obtained has not been
-spoofed. The keytab is checked for entries sequentially, and the first entry
-with a matching realm is used for validation. If no entry matches the realm,
-the last entry in the keytab is used. This process can be used to validate
-environments using cross-realm trust by placing the appropriate keytab entry
-as the last entry or the only entry in the keytab file.
+                Verifica com a ajuda de krb5_keytab que o TGT obtido não foi falsificado. A
+keytab é verificada por entradas sequencialmente, e a primeira entrada com
+um reino correspondente é usada para validação. Se nenhuma entrada
+corresponder ao reino, é usada a última entrada na keytab, Este processo
+pode ser usado para validar ambientes que usam confiança de reino-cruzada ao
+colocar a entrada keytab apropriada como a última entrada ou a única entrada
+no ficheiro keytab.
             </para>
             <para>
-                Default: false (IPA and AD provider: true)
+                Predefinição: false (Provedor IPA e AD: true)
             </para>
             <para>
-                Please note that the ticket validation is the first step when checking the
-PAC (see 'pac_check' in the <citerefentry>
+                Por favor note que a validação do bilhete é o primeiro passo quando se
+verifica o PAC (veja 'pac_check' no manual <citerefentry>
 <refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> manual page for details). If ticket validation is disabled
-the PAC checks will be skipped as well.
+</citerefentry> para detalhes). Se a validação de bilhete estiver desativada
+as verificações de PAC serão também saltadas.
             </para>
         </listitem>
     </varlistentry>
@@ -41,30 +42,30 @@ the PAC checks will be skipped as well.
         <term>krb5_renewable_lifetime (string)</term>
         <listitem>
             <para>
-                Request a renewable ticket with a total lifetime, given as an integer
-immediately followed by a time unit:
+                Requisita um bilhete renovável com um tempo de vida total, dado como um
+inteiro imediatamente seguido de uma unidade de tempo:
             </para>
             <para>
-                <emphasis>s</emphasis> for seconds
+                <emphasis>s</emphasis> para segundos
             </para>
             <para>
-                <emphasis>m</emphasis> for minutes
+                <emphasis>m</emphasis> para minutos
             </para>
             <para>
-                <emphasis>h</emphasis> for hours
+                <emphasis>h</emphasis> para horas
             </para>
             <para>
-                <emphasis>d</emphasis> for days.
+                <emphasis>d</emphasis> para dias.
             </para>
             <para>
-                If there is no unit given, <emphasis>s</emphasis> is assumed.
+                Se não existir nenhuma unidade dada, é assumido <emphasis>s</emphasis>.
             </para>
             <para>
-                NOTE: It is not possible to mix units.  To set the renewable lifetime to one
-and a half hours, use '90m' instead of '1h30m'.
+                NOTA: Não é possível misturar unidades.  Para definir um tempo de vida
+renovável de uma hora e meia, use '90m' em vez de '1h30m'.
             </para>
             <para>
-                Padrão: não definido, ou seja, o TGT não é renovável
+                Predefinição: não definido, ou seja, o TGT não é renovável
             </para>
         </listitem>
     </varlistentry>
@@ -73,30 +74,31 @@ and a half hours, use '90m' instead of '1h30m'.
         <term>krb5_lifetime (string)</term>
         <listitem>
             <para>
-                Request ticket with a lifetime, given as an integer immediately followed by
-a time unit:
+                Requisita um bilhete com um tempo de vida, dado como um inteiro
+imediatamente seguido de uma unidade de tempo:
             </para>
             <para>
-                <emphasis>s</emphasis> for seconds
+                <emphasis>s</emphasis> para segundos
             </para>
             <para>
-                <emphasis>m</emphasis> for minutes
+                <emphasis>m</emphasis> para minutos
             </para>
             <para>
-                <emphasis>h</emphasis> for hours
+                <emphasis>h</emphasis> para horas
             </para>
             <para>
-                <emphasis>d</emphasis> for days.
+                <emphasis>d</emphasis> para dias.
             </para>
             <para>
-                If there is no unit given <emphasis>s</emphasis> is assumed.
+                Se não existir nenhuma unidade dada é assumido <emphasis>s</emphasis>.
             </para>
             <para>
-                NOTE: It is not possible to mix units.  To set the lifetime to one and a
-half hours please use '90m' instead of '1h30m'.
+                NOTA: Não é possível misturar unidades.  Para definir um tempo de vida de
+uma hora e meia por favor use '90m' em vez de '1h30m'.
             </para>
             <para>
-                Default: not set, i.e. the default ticket lifetime configured on the KDC.
+                Predefinição: não definida, isto é, o tempo de vida de bilhete predefinido
+configurado no KDC.
             </para>
         </listitem>
     </varlistentry>
@@ -105,48 +107,49 @@ half hours please use '90m' instead of '1h30m'.
         <term>krb5_renew_interval (string)</term>
         <listitem>
             <para>
-                The time in seconds between two checks if the TGT should be renewed. TGTs
-are renewed if about half of their lifetime is exceeded, given as an integer
-immediately followed by a time unit:
+                O tempo em segundos entre duas verificações se o TGT deve ser renovado. Os
+TGTs são renovados se cerca de metade do seu tempo de vida for excedido,
+dado como um inteiro imediatamente seguido por uma unidade de tempo:
             </para>
             <para>
-                <emphasis>s</emphasis> for seconds
+                <emphasis>s</emphasis> para segundos
             </para>
             <para>
-                <emphasis>m</emphasis> for minutes
+                <emphasis>m</emphasis> para minutos
             </para>
             <para>
-                <emphasis>h</emphasis> for hours
+                <emphasis>h</emphasis> para horas
             </para>
             <para>
-                <emphasis>d</emphasis> for days.
+                <emphasis>d</emphasis> para dias.
             </para>
             <para>
-                If there is no unit given, <emphasis>s</emphasis> is assumed.
+                Se não existir nenhuma unidade dada, é assumido <emphasis>s</emphasis>.
             </para>
             <para>
-                NOTE: It is not possible to mix units.  To set the renewable lifetime to one
-and a half hours, use '90m' instead of '1h30m'.
+                NOTA: Não é possível misturar unidades.  Para definir um tempo de vida
+renovável de uma hora e meia, use '90m' em vez de '1h30m'.
             </para>
             <para>
-                 If this option is not set or is 0 the automatic renewal is disabled.
+                 Se esta opção não for definida ou for 0 a renovação automática é
+desactivada.
             </para>
             <para>
-                Default: not set
+                Predefinição: não definida
             </para>
         </listitem>
     </varlistentry>
 
     <varlistentry>
-        <term>krb5_canonicalize (boolean)</term>
+        <term>krb5_canonicalize (booleano)</term>
         <listitem>
             <para>
-                Specifies if the host and user principal should be canonicalized. This
-feature is available with MIT Kerberos 1.7 and later versions.
+                Especifica se a máquina e o principal utilizador devem ser canonizados. Esta
+funcionalidade está disponível com o MIT Kerberos 1.7 e versões posteriores.
             </para>
 
             <para>
-                Padrão: false
+                Predefinição: false
             </para>
         </listitem>
     </varlistentry>

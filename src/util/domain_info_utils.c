@@ -72,31 +72,6 @@ struct sss_domain_info *get_next_domain(struct sss_domain_info *domain,
     return dom;
 }
 
-bool subdomain_enumerates(struct sss_domain_info *parent,
-                          const char *sd_name)
-{
-    if (parent->sd_enumerate == NULL
-            || parent->sd_enumerate[0] == NULL) {
-        DEBUG(SSSDBG_MINOR_FAILURE,
-              "Subdomain_enumerate not set\n");
-        return false;
-    }
-
-    if (strcasecmp(parent->sd_enumerate[0], "all") == 0) {
-        return true;
-    } else if (strcasecmp(parent->sd_enumerate[0], "none") == 0) {
-        return false;
-    } else {
-        for (int i=0; parent->sd_enumerate[i]; i++) {
-            if (strcasecmp(parent->sd_enumerate[i], sd_name) == 0) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 struct sss_domain_info *find_domain_by_name_ex(struct sss_domain_info *domain,
                                                 const char *name,
                                                 bool match_any,
@@ -269,7 +244,7 @@ errno_t sssd_domain_init(TALLOC_CTX *mem_ctx,
     return EOK;
 }
 
-static errno_t
+static void
 sss_krb5_touch_config(void)
 {
     const char *config = NULL;
@@ -283,12 +258,10 @@ sss_krb5_touch_config(void)
     ret = utime(config, NULL);
     if (ret == -1) {
         ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "Unable to change mtime of \"%s\" "
-                                    "[%d]: %s\n", config, ret, strerror(ret));
-        return ret;
+        DEBUG(ret == EACCES ? SSSDBG_MINOR_FAILURE : SSSDBG_CRIT_FAILURE,
+              "Unable to change mtime of \"%s\" [%d]: %s\n",
+              config, ret, strerror(ret));
     }
-
-    return EOK;
 }
 
 errno_t sss_get_domain_mappings_content(TALLOC_CTX *mem_ctx,
@@ -491,10 +464,10 @@ sss_write_domain_mappings(struct sss_domain_info *domain)
     fd = mkstemp(tmp_file);
     umask(old_mode);
     if (fd < 0) {
+        ret = errno;
         DEBUG(SSSDBG_OP_FAILURE,
               "creating the temp file [%s] for domain-realm mappings "
-              "failed.\n", tmp_file);
-        ret = EIO;
+              "failed [%d]: %s\n", tmp_file, ret, strerror(ret));
         talloc_zfree(tmp_ctx);
         goto done;
     }
@@ -551,11 +524,8 @@ sss_write_domain_mappings(struct sss_domain_info *domain)
 
     ret = EOK;
 done:
-    err = sss_krb5_touch_config();
-    if (err != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Unable to change last modification time "
-              "of krb5.conf. Created mappings may not be loaded.\n");
-        /* Ignore */
+    if (ret == EOK) {
+        sss_krb5_touch_config();
     }
 
     if (fstream) {
@@ -692,9 +662,10 @@ static errno_t sss_write_krb5_snippet_common(const char *file_name,
     fd = mkstemp(tmp_file);
     umask(old_mode);
     if (fd < 0) {
+        ret = errno;
         DEBUG(SSSDBG_OP_FAILURE, "creating the temp file [%s] for "
-                                 "krb5 config snippet failed.\n", tmp_file);
-        ret = EIO;
+                                 "krb5 config snippet failed [%d]: %s\n",
+                                 tmp_file, ret, strerror(ret));
         talloc_zfree(tmp_ctx);
         goto done;
     }
@@ -751,6 +722,7 @@ done:
 #define LOCALAUTH_PLUGIN_CONFIG \
 "[plugins]\n" \
 " localauth = {\n" \
+"  disable = an2ln\n" \
 "  module = sssd:"APP_MODULES_PATH"/sssd_krb5_localauth_plugin.so\n" \
 " }\n"
 
@@ -865,7 +837,6 @@ errno_t sss_write_krb5_conf_snippet(const char *path, bool canonicalize,
                                     bool udp_limit)
 {
     errno_t ret;
-    errno_t err;
 
     if (path != NULL && (*path == '\0' || strcasecmp(path, "none") == 0)) {
         DEBUG(SSSDBG_TRACE_FUNC, "Empty path, nothing to do.\n");
@@ -893,11 +864,8 @@ errno_t sss_write_krb5_conf_snippet(const char *path, bool canonicalize,
     ret = EOK;
 
 done:
-    err = sss_krb5_touch_config();
-    if (err != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Unable to change last modification time "
-              "of krb5.conf. Created mappings may not be loaded.\n");
-        /* Ignore */
+    if (ret == EOK) {
+        sss_krb5_touch_config();
     }
 
     return ret;
@@ -912,16 +880,14 @@ static const char *domain_state_str(struct sss_domain_info *dom)
         return "Disabled";
     case DOM_INACTIVE:
         return "Inactive";
-    case DOM_INCONSISTENT:
-        return "Inconsistent";
     }
     return "Unknown";
 }
 
 enum sss_domain_state sss_domain_get_state(struct sss_domain_info *dom)
 {
-    DEBUG(SSSDBG_TRACE_LIBS,
-          "Domain %s is %s\n", dom->name, domain_state_str(dom));
+    DEBUG_CONDITIONAL(SSSDBG_TRACE_INTERNAL,
+                      "Domain %s is %s\n", dom->name, domain_state_str(dom));
     return dom->state;
 }
 
@@ -932,13 +898,6 @@ void sss_domain_set_state(struct sss_domain_info *dom,
     DEBUG(SSSDBG_TRACE_LIBS,
           "Domain %s is %s\n", dom->name, domain_state_str(dom));
 }
-
-#ifdef BUILD_FILES_PROVIDER
-bool sss_domain_fallback_to_nss(struct sss_domain_info *dom)
-{
-    return dom->fallback_to_nss;
-}
-#endif
 
 bool sss_domain_is_forest_root(struct sss_domain_info *dom)
 {

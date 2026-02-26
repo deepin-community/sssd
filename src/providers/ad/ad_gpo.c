@@ -45,6 +45,7 @@
 #include "providers/ad/ad_common.h"
 #include "providers/ad/ad_domain_info.h"
 #include "providers/ad/ad_gpo.h"
+#include "providers/ad/ad_opts.h"
 #include "providers/ldap/sdap_access.h"
 #include "providers/ldap/sdap_async.h"
 #include "providers/ldap/sdap.h"
@@ -56,6 +57,7 @@
 
 /* == gpo-ldap constants =================================================== */
 
+#define AD_AT_DISPLAY_NAME "displayName"
 #define AD_AT_DN "distinguishedName"
 #define AD_AT_UAC "userAccountControl"
 #define AD_AT_SAMACCOUNTNAME "sAMAccountName"
@@ -125,6 +127,7 @@ struct gp_gplink {
 struct gp_gpo {
     struct security_descriptor *gpo_sd;
     const char *gpo_dn;
+    const char *gpo_dpname;
     const char *gpo_guid;
     const char *smb_server;
     const char *smb_share;
@@ -177,12 +180,14 @@ struct tevent_req *ad_gpo_process_cse_send(TALLOC_CTX *mem_ctx,
                                            bool send_to_child,
                                            struct sss_domain_info *domain,
                                            const char *gpo_guid,
+                                           const char *gpo_dpname,
                                            const char *smb_server,
                                            const char *smb_share,
                                            const char *smb_path,
                                            const char *smb_cse_suffix,
                                            int cached_gpt_version,
-                                           int gpo_timeout_option);
+                                           int gpo_timeout_option,
+                                           int timeout);
 
 int ad_gpo_process_cse_recv(struct tevent_req *req);
 
@@ -711,7 +716,7 @@ ad_gpo_get_sids(TALLOC_CTX *mem_ctx,
     }
     group_sids[i++] = talloc_strdup(group_sids, AD_AUTHENTICATED_USERS_SID);
     if (orig_gid_sid != NULL) {
-        group_sids[i++] = orig_gid_sid;
+        group_sids[i++] = talloc_steal(group_sids, orig_gid_sid);
     }
     group_sids[i] = NULL;
 
@@ -2238,6 +2243,16 @@ ad_gpo_connect_done(struct tevent_req *subreq)
               "trying with user search base.");
     }
 
+    if (state->access_ctx->host_attr_map == NULL) {
+        ret = sdap_copy_map(state->access_ctx,
+                            ad_2008r2_user_map, SDAP_OPTS_USER,
+                            &state->access_ctx->host_attr_map);
+        if (ret != EOK) {
+            DEBUG(SSSDBG_OP_FAILURE, "Failed to copy user map.\n");
+            goto done;
+        }
+    }
+
     subreq = groups_by_user_send(state, state->ev,
                                  state->access_ctx->ad_id_ctx->sdap_id_ctx,
                                  sdom, state->conn,
@@ -2245,6 +2260,8 @@ ad_gpo_connect_done(struct tevent_req *subreq)
                                  state->host_fqdn,
                                  BE_FILTER_NAME,
                                  NULL,
+                                 state->access_ctx->host_attr_map,
+                                 SDAP_OPTS_USER,
                                  true,
                                  true);
     tevent_req_set_callback(subreq, ad_gpo_target_dn_retrieval_done, req);
@@ -2468,7 +2485,6 @@ ad_gpo_process_gpo_done(struct tevent_req *subreq)
     struct gp_gpo **candidate_gpos = NULL;
     int num_candidate_gpos = 0;
     int i = 0;
-    const char **cse_filtered_gpo_guids;
 
     req = tevent_req_callback_data(subreq, struct tevent_req);
     state = tevent_req_data(req, struct ad_gpo_access_state);
@@ -2602,23 +2618,9 @@ ad_gpo_process_gpo_done(struct tevent_req *subreq)
         goto done;
     }
 
-    /* we create and populate an array of applicable gpo-guids */
-    cse_filtered_gpo_guids =
-        talloc_array(state, const char *, state->num_cse_filtered_gpos);
-    if (cse_filtered_gpo_guids == NULL) {
-        ret = ENOMEM;
-        goto done;
-    }
-
     for (i = 0; i < state->num_cse_filtered_gpos; i++) {
         DEBUG(SSSDBG_TRACE_FUNC, "cse_filtered_gpos[%d]->gpo_guid is %s\n", i,
                                   state->cse_filtered_gpos[i]->gpo_guid);
-        cse_filtered_gpo_guids[i] = talloc_steal(cse_filtered_gpo_guids,
-                                                 state->cse_filtered_gpos[i]->gpo_guid);
-        if (cse_filtered_gpo_guids[i] == NULL) {
-            ret = ENOMEM;
-            goto done;
-        }
     }
 
     DEBUG(SSSDBG_TRACE_FUNC, "num_cse_filtered_gpos: %d\n",
@@ -2745,12 +2747,14 @@ ad_gpo_cse_step(struct tevent_req *req)
                                      send_to_child,
                                      state->host_domain,
                                      cse_filtered_gpo->gpo_guid,
+                                     cse_filtered_gpo->gpo_dpname,
                                      cse_filtered_gpo->smb_server,
                                      cse_filtered_gpo->smb_share,
                                      cse_filtered_gpo->smb_path,
                                      GP_EXT_GUID_SECURITY_SUFFIX,
                                      cached_gpt_version,
-                                     state->gpo_timeout_option);
+                                     state->gpo_timeout_option,
+                                     state->timeout);
 
     tevent_req_set_callback(subreq, ad_gpo_cse_done, req);
     return EAGAIN;
@@ -2815,8 +2819,10 @@ ad_gpo_cse_done(struct tevent_req *subreq)
         state->cse_filtered_gpos[state->cse_gpo_index];
 
     const char *gpo_guid = cse_filtered_gpo->gpo_guid;
+    const char *gpo_dpname = cse_filtered_gpo->gpo_dpname;
 
-    DEBUG(SSSDBG_TRACE_FUNC, "gpo_guid: %s\n", gpo_guid);
+    DEBUG(SSSDBG_TRACE_FUNC, "gpo_guid: %s, display name: %s\n",
+          gpo_guid, gpo_dpname);
 
     ret = ad_gpo_process_cse_recv(subreq);
 
@@ -4362,23 +4368,25 @@ ad_gpo_missing_or_unreadable_attr(struct ad_gpo_process_gpo_state *state,
               "Group Policy Container with DN [%s] is unreadable or has "
               "unreadable or missing attributes. In order to fix this "
               "make sure that this AD object has following attributes "
-              "readable: nTSecurityDescriptor, cn, gPCFileSysPath, "
+              "readable: %s, nTSecurityDescriptor, cn, gPCFileSysPath, "
               "gPCMachineExtensionNames, gPCFunctionalityVersion, flags. "
               "Alternatively if you do not have access to the server or can "
               "not change permissions on this object, you can use option "
               "ad_gpo_ignore_unreadable = True which will skip this GPO. "
               "See ad_gpo_ignore_unreadable in 'man sssd-ad' for details.\n",
+              AD_AT_DISPLAY_NAME,
               state->candidate_gpos[state->gpo_index]->gpo_dn);
         sss_log(SSS_LOG_ERR,
                 "Group Policy Container with DN [%s] is unreadable or has "
                 "unreadable or missing attributes. In order to fix this "
                 "make sure that this AD object has following attributes "
-                "readable: nTSecurityDescriptor, cn, gPCFileSysPath, "
+                "readable: %s, nTSecurityDescriptor, cn, gPCFileSysPath, "
                 "gPCMachineExtensionNames, gPCFunctionalityVersion, flags. "
                 "Alternatively if you do not have access to the server or can "
                 "not change permissions on this object, you can use option "
                 "ad_gpo_ignore_unreadable = True which will skip this GPO. "
                 "See ad_gpo_ignore_unreadable in 'man sssd-ad' for details.\n",
+                AD_AT_DISPLAY_NAME,
                 state->candidate_gpos[state->gpo_index]->gpo_dn);
         return EFAULT;
     }
@@ -4393,6 +4401,7 @@ ad_gpo_sd_process_attrs(struct tevent_req *req,
     struct gp_gpo *gp_gpo;
     int ret;
     struct ldb_message_element *el = NULL;
+    const char *gpo_dpname = NULL;
     const char *gpo_guid = NULL;
     const char *raw_file_sys_path = NULL;
     char *file_sys_path = NULL;
@@ -4400,6 +4409,24 @@ ad_gpo_sd_process_attrs(struct tevent_req *req,
 
     state = tevent_req_data(req, struct ad_gpo_process_gpo_state);
     gp_gpo = state->candidate_gpos[state->gpo_index];
+
+    /* retrieve AD_AT_DISPLAY_NAME */
+    ret = sysdb_attrs_get_string(result, AD_AT_DISPLAY_NAME, &gpo_dpname);
+    if (ret == ENOENT) {
+        ret = ad_gpo_missing_or_unreadable_attr(state, req);
+        goto done;
+    } else if (ret != EOK) {
+        DEBUG(SSSDBG_OP_FAILURE,
+              "sysdb_attrs_get_string failed: [%d](%s)\n",
+              ret, sss_strerror(ret));
+        goto done;
+    }
+
+    gp_gpo->gpo_dpname = talloc_steal(gp_gpo, gpo_dpname);
+    if (gp_gpo->gpo_dpname == NULL) {
+        ret = ENOMEM;
+        goto done;
+    }
 
     /* retrieve AD_AT_CN */
     ret = sysdb_attrs_get_string(result, AD_AT_CN, &gpo_guid);
@@ -4661,16 +4688,16 @@ struct ad_gpo_process_cse_state {
     struct tevent_context *ev;
     struct sss_domain_info *domain;
     int gpo_timeout_option;
+    const char *gpo_dpname;
     const char *gpo_guid;
     const char *smb_path;
     const char *smb_cse_suffix;
-    pid_t child_pid;
+    const char *gpo_cache_path;
     uint8_t *buf;
     ssize_t len;
     struct child_io_fds *io;
 };
 
-static errno_t gpo_fork_child(struct tevent_req *req);
 static void gpo_cse_step(struct tevent_req *subreq);
 static void gpo_cse_done(struct tevent_req *subreq);
 
@@ -4687,12 +4714,14 @@ ad_gpo_process_cse_send(TALLOC_CTX *mem_ctx,
                         bool send_to_child,
                         struct sss_domain_info *domain,
                         const char *gpo_guid,
+                        const char *gpo_dpname,
                         const char *smb_server,
                         const char *smb_share,
                         const char *smb_path,
                         const char *smb_cse_suffix,
                         int cached_gpt_version,
-                        int gpo_timeout_option)
+                        int gpo_timeout_option,
+                        int timeout)
 {
     struct tevent_req *req;
     struct tevent_req *subreq;
@@ -4721,18 +4750,16 @@ ad_gpo_process_cse_send(TALLOC_CTX *mem_ctx,
     state->domain = domain;
     state->gpo_timeout_option = gpo_timeout_option;
     state->gpo_guid = gpo_guid;
+    state->gpo_dpname = gpo_dpname;
     state->smb_path = smb_path;
     state->smb_cse_suffix = smb_cse_suffix;
-    state->io = talloc(state, struct child_io_fds);
-    if (state->io == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "talloc failed.\n");
+
+    state->gpo_cache_path =
+        talloc_asprintf(state, "%s%s", GPO_CACHE_PATH, state->smb_path);
+    if (state->gpo_cache_path == NULL) {
         ret = ENOMEM;
         goto immediately;
     }
-
-    state->io->write_to_child_fd = -1;
-    state->io->read_from_child_fd = -1;
-    talloc_set_destructor((void *) state->io, child_io_destructor);
 
     /* prepare the data to pass to child */
     ret = create_cse_send_buffer(state, smb_server, smb_share, smb_path,
@@ -4742,9 +4769,19 @@ ad_gpo_process_cse_send(TALLOC_CTX *mem_ctx,
         goto immediately;
     }
 
-    ret = gpo_fork_child(req);
+    ret = sss_child_start(state, ev, GPO_CHILD, NULL, false,
+                          GPO_CHILD_LOG_FILE, AD_GPO_CHILD_OUT_FILENO,
+                          /* no SIGCHLD cb */ NULL, NULL,
+                          timeout,
+                          sss_child_handle_timeout,
+                          sss_child_create_timeout_cb_pvt(req, EFAULT),
+                          true,
+                          &(state->io));
+    /* Note that timeout timer is allocated on 'state' context, so once
+     * request is completed and state is freed, timer is also cancelled
+     */
     if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "gpo_fork_child failed.\n");
+        DEBUG(SSSDBG_CRIT_FAILURE, "sss_child_start() failed.\n");
         goto immediately;
     }
 
@@ -4787,7 +4824,7 @@ static void gpo_cse_step(struct tevent_req *subreq)
         return;
     }
 
-    PIPE_FD_CLOSE(state->io->write_to_child_fd);
+    FD_CLOSE(state->io->write_to_child_fd);
 
     subreq = read_pipe_send(state, state->ev, state->io->read_from_child_fd);
 
@@ -4817,7 +4854,7 @@ static void gpo_cse_done(struct tevent_req *subreq)
         return;
     }
 
-    PIPE_FD_CLOSE(state->io->read_from_child_fd);
+    FD_CLOSE(state->io->read_from_child_fd);
 
     ret = ad_gpo_parse_gpo_child_response(state->buf, state->len,
                                           &sysvol_gpt_version, &child_result);
@@ -4846,7 +4883,8 @@ static void gpo_cse_done(struct tevent_req *subreq)
 
     now = time(NULL);
     DEBUG(SSSDBG_TRACE_FUNC, "sysvol_gpt_version: %d\n", sysvol_gpt_version);
-    ret = sysdb_gpo_store_gpo(state->domain, state->gpo_guid, sysvol_gpt_version,
+    ret = sysdb_gpo_store_gpo(state->domain, state->gpo_dpname, state->gpo_guid,
+                              state->gpo_cache_path, sysvol_gpt_version,
                               state->gpo_timeout_option, now);
     if (ret != EOK) {
         DEBUG(SSSDBG_OP_FAILURE, "Unable to store gpo cache entry: [%d](%s}\n",
@@ -4863,87 +4901,6 @@ int ad_gpo_process_cse_recv(struct tevent_req *req)
 {
     TEVENT_REQ_RETURN_ON_ERROR(req);
     return EOK;
-}
-
-static errno_t
-gpo_fork_child(struct tevent_req *req)
-{
-    int pipefd_to_child[2] = PIPE_INIT;
-    int pipefd_from_child[2] = PIPE_INIT;
-    pid_t pid;
-    errno_t ret;
-    const char **extra_args;
-    int c = 0;
-    struct ad_gpo_process_cse_state *state;
-
-    state = tevent_req_data(req, struct ad_gpo_process_cse_state);
-
-    extra_args = talloc_array(state, const char *, 2);
-
-    extra_args[c] = talloc_asprintf(extra_args, "--chain-id=%lu",
-                                    sss_chain_id_get());
-    if (extra_args[c] == NULL) {
-        DEBUG(SSSDBG_OP_FAILURE, "talloc_asprintf failed.\n");
-        ret = ENOMEM;
-        goto fail;
-    }
-    c++;
-
-    extra_args[c] = NULL;
-
-    ret = pipe(pipefd_from_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (from) failed [%d][%s].\n", errno, strerror(errno));
-        goto fail;
-    }
-    ret = pipe(pipefd_to_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (to) failed [%d][%s].\n", errno, strerror(errno));
-        goto fail;
-    }
-
-    pid = fork();
-
-    if (pid == 0) { /* child */
-        exec_child_ex(state,
-                      pipefd_to_child, pipefd_from_child,
-                      GPO_CHILD, GPO_CHILD_LOG_FILE, extra_args, false,
-                      STDIN_FILENO, AD_GPO_CHILD_OUT_FILENO);
-
-        /* We should never get here */
-        DEBUG(SSSDBG_CRIT_FAILURE, "BUG: Could not exec gpo_child:\n");
-    } else if (pid > 0) { /* parent */
-        state->child_pid = pid;
-        state->io->read_from_child_fd = pipefd_from_child[0];
-        PIPE_FD_CLOSE(pipefd_from_child[1]);
-        state->io->write_to_child_fd = pipefd_to_child[1];
-        PIPE_FD_CLOSE(pipefd_to_child[0]);
-        sss_fd_nonblocking(state->io->read_from_child_fd);
-        sss_fd_nonblocking(state->io->write_to_child_fd);
-
-        ret = child_handler_setup(state->ev, pid, NULL, NULL, NULL);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "Could not set up child signal handler\n");
-            goto fail;
-        }
-    } else { /* error */
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "fork failed [%d][%s].\n", errno, strerror(errno));
-        goto fail;
-    }
-
-    return EOK;
-
-fail:
-    PIPE_CLOSE(pipefd_from_child);
-    PIPE_CLOSE(pipefd_to_child);
-    return ret;
 }
 
 struct ad_gpo_get_sd_referral_state {
@@ -5035,25 +4992,6 @@ ad_gpo_get_sd_referral_send(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    /* Get the hostname we're going to connect to.
-     * We'll need this later for performing the samba
-     * connection.
-     */
-    ret = ldap_url_parse(state->conn->service->uri, &lud);
-    if (ret != LDAP_SUCCESS) {
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "Failed to parse service URI (%s)!\n", referral);
-        ret = EINVAL;
-        goto done;
-    }
-
-    state->smb_host = talloc_strdup(state, lud->lud_host);
-    ldap_free_urldesc(lud);
-    if (!state->smb_host) {
-        ret = ENOMEM;
-        goto done;
-    }
-
     /* Start an ID operation for the referral */
     state->ref_op = sdap_id_op_create(state, state->conn->conn_cache);
     if (!state->ref_op) {
@@ -5089,6 +5027,7 @@ ad_gpo_get_sd_referral_conn_done(struct tevent_req *subreq)
     errno_t ret;
     int dp_error;
     const char *attrs[] = AD_GPO_ATTRS;
+    LDAPURLDesc *lud = NULL;
 
     struct tevent_req *req =
             tevent_req_callback_data(subreq, struct tevent_req);
@@ -5109,6 +5048,26 @@ ad_gpo_get_sd_referral_conn_done(struct tevent_req *subreq)
                    ret, sss_strerror(ret));
             tevent_req_error(req, ret);
         }
+        return;
+    }
+
+    /*
+     * Save the hostname we have connected to. We'll need this later for
+     * performing the smb connection. The GPO referral URL can't be directly used
+     * because the user might have forced the DC to use (ad_server option)
+     */
+    ret = ldap_url_parse(state->conn->service->uri, &lud);
+    if (ret != LDAP_SUCCESS) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Failed to parse service URI (%s)!\n",
+              state->conn->service->uri);
+        tevent_req_error(req, EINVAL);
+        return;
+    }
+
+    state->smb_host = talloc_strdup(state, lud->lud_host);
+    ldap_free_urldesc(lud);
+    lud = NULL;
+    if (tevent_req_nomem(state->smb_host, req)) {
         return;
     }
 

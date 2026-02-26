@@ -698,9 +698,19 @@ static errno_t gssapi_get_creds(const char *keytab,
         }
     }
 
+    ret = sss_set_cap_effective(CAP_DAC_READ_SEARCH, true);
+    if (ret != 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO,
+              "Failed to elevate CAP_DAC_READ_SEARCH to effective set\n");
+    }
     major = gss_acquire_cred_from(&minor, name, GSS_C_INDEFINITE,
                                   GSS_C_NO_OID_SET, GSS_C_ACCEPT, &cstore,
                                   _creds, NULL, NULL);
+    ret = sss_set_cap_effective(CAP_DAC_READ_SEARCH, false);
+    if (ret != 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO,
+              "Failed to drop CAP_DAC_READ_SEARCH from effective set\n");
+    }
     if (GSS_ERROR(major)) {
         DEBUG(SSSDBG_OP_FAILURE, "Unable to read credentials from [%s] "
               "[maj:0x%x, min:0x%x]\n", keytab ? keytab : "default",
@@ -731,7 +741,7 @@ gssapi_handshake(struct gssapi_state *state,
     OM_uint32 flags = GSS_C_MUTUAL_FLAG;
     gss_buffer_desc output = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc input;
-    gss_name_t client_name;
+    gss_name_t client_name = GSS_C_NO_NAME;
     gss_cred_id_t creds;
     OM_uint32 ret_flags;
     gss_OID mech_type;
@@ -747,9 +757,19 @@ gssapi_handshake(struct gssapi_state *state,
         return ret;
     }
 
+    ret = sss_set_cap_effective(CAP_DAC_READ_SEARCH, true);
+    if (ret != 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO,
+              "Failed to elevate CAP_DAC_READ_SEARCH to effective set\n");
+    }
     major = gss_accept_sec_context(&minor, &state->ctx, creds,
                                    &input, NULL, &client_name, &mech_type,
                                    &output, &ret_flags, NULL, NULL);
+    ret = sss_set_cap_effective(CAP_DAC_READ_SEARCH, false);
+    if (ret != 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO,
+              "Failed to drop CAP_DAC_READ_SEARCH from effective set\n");
+    }
     if (major == GSS_S_CONTINUE_NEEDED || output.length > 0) {
         ret = sss_packet_set_body(pctx->creq->out, output.value, output.length);
         if (ret != EOK) {
@@ -802,6 +822,7 @@ gssapi_handshake(struct gssapi_state *state,
 done:
     gss_release_cred(&minor, &creds);
     gss_release_buffer(&minor, &output);
+    gss_release_name(&minor, &client_name);
 
     return ret;
 }

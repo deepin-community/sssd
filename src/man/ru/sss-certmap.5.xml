@@ -631,7 +631,7 @@ directoryName SAN.
     <refsect3 id='map_ldapu1'>
         <title>Расширение LDAPU1</title>
         <para>
-            При использовании расширения «LDAPU1» доступны следующие шаблоны:
+            The following templates are available when using the 'LDAPU1' extension:
         </para>
         <para>
             <variablelist>
@@ -709,13 +709,13 @@ directoryName SAN.
 значением является самый специфический компонент.
                     </para>
                     <para>
-                        Другой компонент может быть выбран по имени атрибута, например,
-{subject_dn_component.uid} или по позиции, например,
-{subject_dn_component.[2]}, где положительные числа означают отсчет от
-наиболее специфичного компонента, а отрицательные числа — от наименее
-специфичного компонента. Название атрибута и позиция могут быть объединены,
-например, {subject_dn_component.uid[2]} означает, что имя второго компонента
-должно быть «uid».
+                        A different component can be selected by either attribute name,
+e.g. {subject_dn_component.uid} or by position,
+e.g. {subject_dn_component.[2]} where positive numbers start counting from
+the most specific component and negative numbers start counting from the
+least specific component. Attribute name and the position can be combined as
+e.g.  {subject_dn_component.uid[2]} which means that the name of the second
+component must be 'uid'.
                     </para>
                     <para>
                         Пример: LDAPU1:(uid={subject_dn_component.uid})

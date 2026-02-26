@@ -60,6 +60,7 @@ struct sss_ini* sss_ini_new(TALLOC_CTX *tmp_ctx);
  *  - ERR_INI_INVALID_PERMISSION - access check failed
  *  - ERR_INI_PARSE_FAILED - failed to parse configuration file
  *  - ERR_INI_ADD_SNIPPETS_FAILED - failed to add configuration snippets
+ *  - ERR_INI_EMPTY_CONFIG - neither main config nor config snippets exist
  */
 int sss_ini_read_sssd_conf(struct sss_ini *self,
                            const char *config_file,
@@ -78,30 +79,6 @@ int sss_ini_read_sssd_conf(struct sss_ini *self,
 int sss_ini_open(struct sss_ini *self,
                  const char *config_file,
                  const char *fallback_cfg);
-
-/**
- * @brief Check whether sss_ini_open() reported that ini file is
- *        not present
- *
- * @param[in] self  pointer to sss_ini structure
- *
- * @return
- *   - true   we are using ini file
- *   - false  file was not found
- */
-bool sss_ini_exists(struct sss_ini *self);
-
-/**
- * @brief get Cstat structure of the ini file
- */
-int sss_ini_get_stat(struct sss_ini *self);
-
-/**
- * @brief Get mtime of the ini file
- */
-int sss_ini_get_mtime(struct sss_ini *self,
-                      size_t timestr_len,
-                      char *timestr);
 
 /**
  * @brief Get pointer to list of snippet parsing errors
@@ -135,14 +112,14 @@ int sss_ini_get_int_config_value(struct sss_ini *self,
 /**
  * @brief Get string value
  */
-const char *sss_ini_get_string_config_value(struct sss_ini *self,
-                                            int *error);
+char *sss_ini_get_string_config_value(struct sss_ini *self,
+                                      int *error);
 
 /**
  * @brief Create LDIF
  */
 int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
-                           struct sss_ini *self,
+                           const struct sss_ini *self,
                            const char *only_section,
                            const char **config_ldif);
 

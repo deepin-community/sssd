@@ -36,9 +36,8 @@ KCM называется <quote>сервером KCM</quote>. Клиент и с
 данными с помощью сокета UNIX.
         </para>
         <para>
-            Сервер KCM следит за всеми владельцами кэшей учётных данных и осуществляет
-управление проверками прав доступа на основе UID и GID клиента
-KCM. Пользователь root имеет доступ ко всем кэшам учётных данных.
+            The KCM server keeps track of each credential caches's owner and performs
+access check control based on the UID and GID of the KCM client.
         </para>
         <para>
             Кэш учётных данных KCM обладает несколькими интересными свойствами:

@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
 "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
 <reference>
-<title>Páginas de manual de SSSD</title>
+<title>Páginas del manual de SSSD</title>
 <refentry>
     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
 
@@ -13,7 +13,7 @@
 
     <refnamediv id='name'>
         <refname>sss_obfuscate</refname>
-        <refpurpose>oscurecer un password en texto claro</refpurpose>
+        <refpurpose>ofusca una contraseña en texto claro</refpurpose>
     </refnamediv>
 
     <refsynopsisdiv id='synopsis'>
@@ -24,25 +24,25 @@ choice='plain'><replaceable>[CONTRASEÑA]</replaceable></arg></cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1 id='description'>
-        <title>DESCRIPCION</title>
+        <title>DESCRIPCIÓN</title>
         <para>
             <command>sss_obfuscate</command> convierte una contraseña dada en un formato
-no legible y la sitúa en la sección apropiada del dominio del fichero de
-configuración SSSD.
+no legible y la sitúa en la sección apropiada del dominio del archivo de
+configuración de SSSD.
         </para>
         <para>
             La contraseña en texto claro es leída desde la entrada estándar e
 introducida interactivamente. La contraseña ofuscada se pone en el parámetro
 <quote>ldap_default_authtok</quote> de un dominio SSSD dado y el parámetro
 <quote>ldap_default_authtok_type</quote> se fija a
-<quote>obfuscated_password</quote>. Vea <citerefentry>
+<quote>obfuscated_password</quote>. Consulte <citerefentry>
 <refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry> para más detalles sobre estos parámetros.
         </para>
         <para>
-            Por favor advierta que oscurecer la contraseña <emphasis>no suministra un
+            Por favor advierta que ofuscar la contraseña no proporciona <emphasis>ningún
 beneficio real de seguridad</emphasis> y es posible para un atacante
-mediante ingeniería inversa volver atrás la contraseña. Se recomienda
+mediante ingeniería inversa devolver la contraseña. Se recomienda
 <emphasis>firmemente</emphasis> el uso de mejores mecanismos de
 autenticación como certificados en el lado cliente o GSSAPI.
         </para>
@@ -58,7 +58,7 @@ autenticación como certificados en el lado cliente o GSSAPI.
                 </term>
                 <listitem>
                     <para>
-                        La contraseña a oscurecer será leída desde la entrada estándar.
+                        La contraseña a ofuscar será leída desde la entrada estándar.
                     </para>
                 </listitem>
             </varlistentry>
@@ -69,8 +69,8 @@ autenticación como certificados en el lado cliente o GSSAPI.
                 </term>
                 <listitem>
                     <para>
-                        El dominio SSSD en el que usar la contraseña. El nombre por defecto es
-<quote>default</quote>.
+                        El dominio SSSD en el que usar la contraseña. El nombre por defecto está
+<quote>predeterminado</quote>.
                     </para>
                 </listitem>
             </varlistentry>

@@ -3,10 +3,11 @@
         <term>ldap_autofs_map_object_class (string)</term>
         <listitem>
             <para>
-                The object class of an automount map entry in LDAP.
+                A classe de objecto de uma entrada automount map no LDAP.
             </para>
             <para>
-                Default: nisMap (rfc2307, autofs_provider=ad), otherwise automountMap
+                Predefinição: nisMap (rfc2307, autofs_provider=ad), caso contrário
+automountMap
             </para>
         </listitem>
     </varlistentry>
@@ -15,10 +16,10 @@
         <term>ldap_autofs_map_name (string)</term>
         <listitem>
             <para>
-                The name of an automount map entry in LDAP.
+                O nome de uma entrada automount map no LDAP.
             </para>
             <para>
-                Default: nisMapName (rfc2307, autofs_provider=ad), otherwise
+                Predefinição: nisMapName (rfc2307, autofs_provider=ad), caso contrário
 automountMapName
             </para>
         </listitem>
@@ -28,11 +29,12 @@ automountMapName
         <term>ldap_autofs_entry_object_class (string)</term>
         <listitem>
             <para>
-                The object class of an automount entry in LDAP. The entry usually
-corresponds to a mount point.
+                A classe objecto de uma entrada automount no LDAP.. A entrada geralmente
+corresponde a um ponto de montagem.
             </para>
             <para>
-                Default: nisObject (rfc2307, autofs_provider=ad), otherwise automount
+                Predefinição: nisObject (rfc2307, autofs_provider=ad), caso contrário
+automount
             </para>
         </listitem>
     </varlistentry>
@@ -41,11 +43,11 @@ corresponds to a mount point.
         <term>ldap_autofs_entry_key (string)</term>
         <listitem>
             <para>
-                The key of an automount entry in LDAP. The entry usually corresponds to a
-mount point.
+                A chave de uma entrada automount no LDAP. A entrada geralmente corresponde a
+um ponto de montagem.
             </para>
             <para>
-                Default: cn (rfc2307, autofs_provider=ad), otherwise automountKey
+                Predefinição: cn (rfc2307, autofs_provider=ad), caso contrário automountKey
             </para>
         </listitem>
     </varlistentry>
@@ -54,11 +56,11 @@ mount point.
         <term>ldap_autofs_entry_value (string)</term>
         <listitem>
             <para>
-                The key of an automount entry in LDAP. The entry usually corresponds to a
-mount point.
+                A chave de uma entrada automount no LDAP. A entrada geralmente corresponde a
+um ponto de montagem.
             </para>
             <para>
-                Default: nisMapEntry (rfc2307, autofs_provider=ad), otherwise
+                Predefinição: nisMapEntry (rfc2307, autofs_provider=ad), caso contrário
 automountInformation
             </para>
         </listitem>

@@ -2,8 +2,8 @@
 <term>override_homedir (string)</term>
 <listitem>
     <para>
-        Override the user's home directory. You can either provide an absolute value
-or a template. In the template, the following sequences are substituted:
+        Sobrepõe o directório home do utilizador. Você pode ou fornecer um valor
+absoluto ou um modelo. No modelo, as seguintes sequências são substituídas:
 <variablelist>
             <varlistentry>
                 <term>%u</term>
@@ -19,33 +19,44 @@ or a template. In the template, the following sequences are substituted:
             </varlistentry>
             <varlistentry>
                 <term>%f</term>
-                <listitem><para>nome totalmente qualificado do utilizador (utilizador@domínio)</para></listitem>
+                <listitem><para>nome do utilizador totalmente qualificado (utilizador@domínio)</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%l</term>
-                <listitem><para>The first letter of the login name.</para></listitem>
+                <listitem><para>A primeira letra do nome de login.</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%P</term>
-                <listitem><para>UPN - User Principal Name (name@REALM)</para></listitem>
+                <listitem><para>UPN - Nome Principal de Utilizador (nome@REINO)</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%o</term>
-                <listitem><para>
-                    The original home directory retrieved from the identity provider.
-                    </para></listitem>
+                <listitem>
+                    <para>
+                        O valor homedir que é definido no directório do provedor de identidade.
+                    </para>
+                    <para>
+                        Esta substituição foi desenhada para ser usada num cenário de confiança
+IPA-AD. Se esta substituição for usada para a opção
+<emphasis>subdomain_homedir</emphasis>, vai propagar o valor do directório
+home do domínio AD para os clientes IPA. Neste cenário, a opção tem de ser
+definida na configuração SSSD no servidor IPA onde o SSSD está a correr em
+modo servidor.
+                    </para>
+                </listitem>
             </varlistentry>
             <varlistentry>
                 <term>%h</term>
                 <listitem><para>
-                    The original home directory retrieved from the identity provider, but in
-lower case.
+                    O caminho definido para o atributo de directório homedir do provedor de
+identidade, mas em minúsculas.  Para detalhes do uso, veja
+<emphasis>%o</emphasis>.
                     </para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%H</term>
                 <listitem><para>
-                    The value of configure option <emphasis>homedir_substring</emphasis>.
+                    O valor da opção de configuração <emphasis>homedir_substring</emphasis>.
                     </para></listitem>
             </varlistentry>
             <varlistentry>
@@ -56,23 +67,23 @@ lower case.
         </variablelist>
     </para>
     <para>
-        This option can also be set per-domain.
+        Esta opção também pode ser definida por-domínio.
     </para>
     <para>
-        example: <programlisting>
+        exemplo: <programlisting>
 override_homedir = /home/%u
         </programlisting>
     </para>
     <para>
-        Default: Not set (SSSD will use the value retrieved from LDAP)
+        Predefinição: Não definida (o SSSD irá usar o valor obtido de LDAP)
     </para>
     <para>
-        Please note, the home directory from a specific override for the user,
-either locally (see
+        Por favor note, o directório home duma sobreposição específica para o
+utilizador, seja localmente (veja
 <citerefentry><refentrytitle>sss_override</refentrytitle>
-<manvolnum>8</manvolnum></citerefentry>) or centrally managed IPA
-id-overrides, has a higher precedence and will be used instead of the value
-given by override_homedir.
+<manvolnum>8</manvolnum></citerefentry>) ou centralmente gerida por
+id-overrides de IPA , tem uma precedência mais alta e será usada em vez do
+valor dado por override_homedir.
     </para>
 </listitem>
 </varlistentry>

@@ -51,10 +51,15 @@
 розділу.
         </para>
 
-        <para>
+        <para condition="without_non_root_user_support">
             <filename>sssd.conf</filename> має бути звичайним файлом, власником якого є
-користувач root. Права на читання та запис до цього файла повинен мати лише
-користувач root.
+користувач root. Права на читання та запис до цього файла також повинен мати
+лише користувач root.
+        </para>
+        <para condition="with_non_root_user_support">
+            <filename>sssd.conf</filename> має бути звичайним файлом, доступ до якого
+здійснюється користувачем, якого використано для запуску служби SSSD, або
+root.
         </para>
     </refsect1>
 
@@ -63,9 +68,7 @@
 
         <para>
             До файла налаштувань <filename>sssd.conf</filename> буде включено фрагменти
-налаштувань з каталогу <filename>conf.d</filename>. Цією можливістю можна
-буде скористатися, якщо SSSD було зібрано із бібліотекою libini версії 1.3.0
-або новішою.
+налаштувань з каталогу <filename>conf.d</filename>.
         </para>
 
         <para>
@@ -89,8 +92,7 @@
 
         <para>
             Файли фрагментів мають належати одному користувачеві і мати однакові права
-доступу із файлом <filename>sssd.conf</filename>. Типовим власником є
-root:root, а типовими правами доступу — 0600.
+доступу із файлом <filename>sssd.conf</filename>.
         </para>
     </refsect1>
 
@@ -208,15 +210,6 @@ journald, цей параметр буде проігноровано.
 профілів.  <variablelist>
                     <title>Параметри розділу</title>
                     <varlistentry>
-                        <term>config_file_version (ціле число)</term>
-                        <listitem>
-                            <para>
-                                Визначає версію синтаксичних конструкцій файла налаштування. Для версій SSSD
-0.6.0 та пізніших слід використовувати версію 2.
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
                         <term>services</term>
                         <listitem>
                             <para>
@@ -226,28 +219,15 @@ condition="have_systemd">Список служб є необов'язковим 
 допомогою сокетів або D-Bus.</phrase>
                             </para>
                             <para>
-                                Підтримувані служби: nss, pam <phrase condition="with_sudo">, sudo</phrase>
-<phrase condition="with_autofs">, autofs</phrase> <phrase
+                                Підтримувані служби: nss, pam, ifp <phrase condition="with_sudo">,
+sudo</phrase> <phrase condition="with_autofs">, autofs</phrase> <phrase
 condition="with_ssh">, ssh</phrase> <phrase condition="with_pac_responder">,
-pac</phrase> <phrase condition="with_ifp">, ifp</phrase>
+pac</phrase>
                             </para>
                             <para>
                                 <phrase condition="have_systemd">Типово усі служби вимкнено. Адміністратор
 має увімкнути дозволені до використання служби за допомогою такої команди:
 "systemctl enable sssd-@service@.socket".  </phrase>
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
-                        <term>reconnection_retries (ціле число)</term>
-                        <listitem>
-                            <para>
-                                Кількість повторних спроб встановлення зв’язку зі службами або їх
-перезапуску у разі аварійного завершення роботи інструменту надання даних до
-визнання подальших спроб безнадійними.
-                            </para>
-                            <para>
-                                Типове значення: 3
                             </para>
                         </listitem>
                     </varlistentry>
@@ -373,31 +353,13 @@ Kerberos.
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry condition="with_non_root_user_support">
-                        <term>user (рядок)</term>
-                        <listitem>
-                            <para>
-                                The user to drop the privileges to where appropriate to avoid running as the
-root user.  Currently the only supported value is '&sssd_user_name;'.
-                            </para>
-
-                            <para condition="have_systemd">
-                                This option does not work when running socket-activated services, as the
-user set up to run the processes is set up during compilation time.  The way
-to override the systemd unit files is by creating the appropriate files in
-/etc/systemd/system/.  Keep in mind that any change in the socket user,
-group or permissions may result in a non-usable SSSD. The same may occur in
-case of changes of the user running the NSS responder.
-                            </para>
-
-                            <para>
-                                Типове значення: не встановлено, процес буде запущено від імені root
-                            </para>
-                        </listitem>
-                    </varlistentry>
                     <varlistentry>
                         <term>default_domain_suffix (рядок)</term>
                         <listitem>
+                            <para>
+                                Будь ласка, зауважте, що цей параметр застарів, і слід використовувати
+замість нього domain_resolution_order.
+                            </para>
                             <para>
                                 Цей рядок буде використано як типову назву домену для всіх назв без
 компонента назви домену. Основним призначенням використання цього рядка є
@@ -407,15 +369,12 @@ case of changes of the user running the NSS responder.
 лише імені користувача без додавання до нього назви домену.
                             </para>
                             <para>
-                                Please note that if this option is set all users from the primary domain
-have to use their fully qualified name, e.g. user@domain.name, to log
-in. Setting this option changes default of use_fully_qualified_names to
-True. It is not allowed to use this option together with
-use_fully_qualified_names set to False.  <phrase
-condition="with_files_provider"> One exception from this rule are domains
-with <quote>id_provider=files</quote> that always try to match the behaviour
-of nss_files and therefore their output is not qualified even when the
-default_domain_suffix option is used.  </phrase>
+                                Будь ласка, зауважте, що якщо встановлено цей параметр, для входу до системи
+усім користувачам із основного домену доведеться використовувати повне ім'я
+користувача — користувач@назва.домену. Встановлення цього параметра змінює
+типове значення параметра use_fully_qualified_names на True. Цей параметр не
+можна використовувати у поєднанні із встановленням для параметра
+use_fully_qualified_names значення False.
                             </para>
                             <para>
                                 Типове значення: not set
@@ -532,7 +491,8 @@ Status Protocol або OCSP). Це може знадобитися, якщо с�
                                         Якщо строк дії списку відкликання сертифікатів (CRL) вичерпано, перевірки
 CRL для відповідних сертифікатів буде проігноровано. Цим параметром слід
 користуватися для уможливлення розпізнавання у системах, які працюють у
-автономному режимі, коли оновлення CRL є неможливим.</para>
+автономному режимі, коли оновлення CRL є неможливим.
+                                        </para>
                                     </listitem>
                                 </varlistentry>
                                 </variablelist>
@@ -547,7 +507,7 @@ CRL для відповідних сертифікатів буде проігн
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry>
+                    <varlistentry condition="have_libnl">
                         <term>disable_netlink (булеве значення)</term>
                         <listitem>
                             <para>
@@ -560,18 +520,6 @@ CRL для відповідних сертифікатів буде проігн
                             </para>
                             <para>
                                 Типове значення: false (виявлення змін у netlink)
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry condition="with_files_provider">
-                        <term>enable_files_domain (булеве значення)</term>
-                        <listitem>
-                            <para>
-                                Якщо цю можливість увімкнено, SSSD дописуватиме неявний домен із
-<quote>id_provider=files</quote> до усіх явним чином налаштованих доменів.
-                            </para>
-                            <para>
-                                Типове значення: false
                             </para>
                         </listitem>
                     </varlistentry>
@@ -588,19 +536,19 @@ CRL для відповідних сертифікатів буде проігн
 кожного батьківського домену.
                             </para>
                             <para>
-                                Please, note that when this option is set the output format of all commands
-is always fully-qualified even when using short names for input <phrase
-condition="with_files_provider"> , for all users but the ones managed by the
-files provider </phrase>.  In case the administrator wants the output not
-fully-qualified, the full_name_format option can be used as shown below:
-<quote>full_name_format=%1$s</quote> However, keep in mind that during
-login, login applications often canonicalize the username by calling
-<citerefentry> <refentrytitle>getpwnam</refentrytitle>
-<manvolnum>3</manvolnum> </citerefentry> which, if a shortname is returned
-for a qualified input (while trying to reach a user which exists in multiple
-domains) might re-route the login attempt into the domain which uses
-shortnames, making this workaround totally not recommended in cases where
-usernames may overlap between domains.
+                                Будь ласка, зауважте, що якщо встановлено цей параметр, для виведення даних
+усіма командами використовуватиметься повний формат, навіть якщо у вхідних
+даних були скорочені назви для усіх користувачів. Якщо адміністратору
+потрібні скорочені дані у виведенні, параметр full_name_format можна
+використати так: <quote>full_name_format=%1$s</quote> Втім, слід пам'ятати,
+що під час входу до облікового запису програми часто перетворюють ім'я
+користувача до канонічної форми, викликаючи програму <citerefentry>
+<refentrytitle>getpwnam</refentrytitle> <manvolnum>3</manvolnum>
+</citerefentry>, яка, якщо повернуто скорочену назву для повних вхідних
+даних (під час спроби обробки даних користувача, запис якого існує у
+декількох доменах) може переспрямувати спробу входу до домену, де
+використовуються скорочені назви, і знівелює цей обхідний маневр, якщо імена
+користувачів у різних доменах можуть бути однаковими.
                             </para>
                             <para>
                                 Типове значення: не встановлено
@@ -627,8 +575,14 @@ usernames may overlap between domains.
                                 Цим параметром можна скористатися для загального забезпечення стійкості
 системи: встановлення значення «false» забороняє дампи ядра для усіх
 процесів SSSD з метою уникнення витоку паролів у форматі нешифрованого
-тексту. Див. сторінку підручника щодо prctl:PR_SET_DUMPABLE, щоб дізнатися
-більше.
+тексту. Див. сторінку підручника щодо prctl:PR_SET_DUMPABLE у Linux або
+procctl:PROC_TRACE_CTL у FreeBSD, щоб дізнатися більше.
+                            </para>
+                            <para>
+                                Зверніть увагу, що цей параметр не впливає на «ldap_child», «krb5_child» та
+«sssd_pam», оскільки ці привілейовані бінарні файли можуть містити копію
+даних таблиці ключів вузла у пам'яті, і їхня поведінка в цьому сенсі
+визначається системним параметром /proc/sys/fs/suid_dumpable.
                             </para>
                             <para>
                                 Типове значення: true
@@ -636,21 +590,22 @@ usernames may overlap between domains.
                         </listitem>
                     </varlistentry>
                     <varlistentry condition="build_passkey">
-                        <term>passkey_verification (string)</term>
+                        <term>passkey_verification (рядок)</term>
                         <listitem>
                             <para>
-                                With this parameter the passkey verification can be tuned with a comma
-separated list of options. Supported options are: <variablelist>
+                                За допомогою цього параметра можна виконати тонке налаштовування перевірки
+ключа на основі списку параметрів, відокремлених комами. Підтримувані
+параметри: <variablelist>
                                 <varlistentry>
-                                    <term>user_verification (boolean)</term>
+                                    <term>user_verification (булеве значення)</term>
                                     <listitem>
-                                        <para> Enable or disable the user verification (i.e. PIN, fingerprint)  during
-authentication. If enabled, the PIN will always be requested.
+                                        <para> Увімкнути або вимкнути перевірку користувачів (тобто PIN, відбиток) під час
+розпізнавання. Якщо увімкнено, програма завжди надсилатиме запит щодо PIN.
                                         </para>
                                         <para>
-                                        The default is that the key settings decide what to do. In the IPA or
-kerberos pre-authentication case, this value will be overwritten by the
-server.
+                                        Типовою є ситуація, коли поведінка визначається параметрами ключів. У
+випадку попереднього розпізнавання IPA або kerberos, це значення буде
+перезаписано сервером.
                                         </para>
                                     </listitem>
                                 </varlistentry>
@@ -679,19 +634,6 @@ server.
                 Цими параметрами можна скористатися для налаштування будь-яких служб.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>reconnection_retries (ціле число)</term>
-                    <listitem>
-                        <para>
-                            Кількість повторних спроб встановлення зв’язку зі службами або їх
-перезапуску у разі аварійного завершення роботи інструменту надання даних до
-визнання подальших спроб безнадійними.
-                        </para>
-                        <para>
-                            Типове значення: 3
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>fd_limit</term>
                     <listitem>
@@ -836,10 +778,7 @@ D-Bus.
                             Цей параметр визначає, чи слід відповідачеві опитати усі кеші до надсилання
 запису до модулів засобів надання даних.
                         </para>
-                        <para condition="with_files_provider">
-                            Типове значення: false
-                        </para>
-                        <para condition="without_files_provider">
+                        <para>
                             Типове значення: true
                         </para>
                     </listitem>
@@ -903,20 +842,6 @@ nowait до значення, меншого за 10 секунд. Визнач�
                         </para>
                         <para>
                             Типове значення: 15
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>local_negative_timeout (ціле число)</term>
-                    <listitem>
-                        <para>
-                            Визначає кількість секунд, протягом яких nss_sss має зберігати негативні
-результати пошуку у кеші користувачів і груп, перші ніж намагатися знову
-шукати їх за допомогою модуля надання даних. Встановлення значення 0 вимикає
-цю можливість.
-                        </para>
-                        <para>
-                            Типове значення: 14400 (4 години)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1230,10 +1155,8 @@ initgroups.
 розділі [nss].
                         </para>
                         <para>
-                            Default: <quote>not set</quote> (remote domains), <phrase
-condition="with_files_provider"> <quote>x</quote> (the files domain),
-</phrase> <quote>x</quote> (proxy domain with nss_files and sssd-shadowutils
-target)
+                            Типове значення: <quote>не встановлено</quote> (віддалені домени),
+<quote>x</quote> (проміжний домен із цілі nss_files і sssd-shadowutils)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1509,10 +1432,10 @@ pam_account_locked_message = Account locked, please contact help desk.
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>pam_passkey_auth (bool)</term>
+                    <term>pam_passkey_auth (булеве значення)</term>
                     <listitem>
                         <para>
-                            Enable passkey device based authentication.
+                            Увімкнути розпізнавання на основі пристрою ключа.
                         </para>
                         <para>
                             Типове значення: True
@@ -1520,10 +1443,10 @@ pam_account_locked_message = Account locked, please contact help desk.
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>passkey_debug_libfido2 (bool)</term>
+                    <term>passkey_debug_libfido2 (булеве значення)</term>
                     <listitem>
                         <para>
-                            Enable libfido2 library debug messages.
+                            Увімкнути діагностичні повідомлення бібліотеки libfido2.
                         </para>
                         <para>
                             Типове значення: False
@@ -1595,10 +1518,11 @@ p11_child.
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>passkey_child_timeout (integer)</term>
+                    <term>passkey_child_timeout (ціле число)</term>
                     <listitem>
                         <para>
-                            How many seconds will the PAM responder wait for passkey_child to finish.
+                            Час у секундах, протягом якого відповідач PAM очікуватиме на завершення
+роботи passkey_child.
                         </para>
                         <para>
                             Типове значення: 15
@@ -1618,7 +1542,7 @@ p11_child.
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>pam_p11_allowed_services (string)</term>
+                    <term>pam_p11_allowed_services (рядок)</term>
                     <listitem>
                         <para>
                             Список назв служб PAM, відокремлених комами, для яких буде дозволено
@@ -1660,6 +1584,11 @@ pam_p11_allowed_services = +my_pam_service, -login
                                 <listitem>
                                     <para>
                                         gdm-password
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-switchable-auth
                                     </para>
                                 </listitem>
                                 <listitem>
@@ -1874,6 +1803,30 @@ pam_gssapi_indicators_map = sudo:pkinit, sudo-i:pkinit
                         </para>
                     </listitem>
                 </varlistentry>
+                <varlistentry condition="build_json_pam">
+                    <term>pam_json_services (string)</term>
+                    <listitem>
+                        <para>
+                            Comma separated list of PAM services which can handle the JSON protocol for
+selecting authentication mechanisms
+                        </para>
+                        <para>
+                            To disable JSON protocol, set this option to <quote>-</quote> (dash).
+                        </para>
+                        <para>
+                            Приклад: <programlisting>
+pam_json_services = gdm-switchable-auth
+                            </programlisting>
+                        </para>
+                        <para>
+                            Default: - (JSON protocol is disabled)
+                        </para>
+                        <para>
+                           Note: 2-Factor Authentication (2FA) is not supported. If 2FA is required, do
+not activate the JSON protocol.
+                        </para>
+                    </listitem>
+                </varlistentry>
             </variablelist>
         </refsect2>
 
@@ -1951,29 +1904,6 @@ refresh</quote>. Якщо порогове значення перевищено
                 Цими параметрами можна скористатися для налаштування служби SSH.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>ssh_hash_known_hosts (булеве значення)</term>
-                    <listitem>
-                        <para>
-                            Чи слід хешувати назви та адреси вузлів у керованому файлі known_hosts.
-                        </para>
-                        <para>
-                            Типове значення: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>ssh_known_hosts_timeout (ціле число)</term>
-                    <listitem>
-                        <para>
-                            Кількість секунд, протягом яких запису вузла зберігатиметься у керованому
-файлі known_hosts після надсилання запиту щодо ключів вузла.
-                        </para>
-                        <para>
-                            Типове значення: 180
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>ssh_use_certificate_keys (булеве значення)</term>
                     <listitem>
@@ -2081,11 +2011,22 @@ sssd_pac_plugin.so зі складу MIT Kerberos та засобу наданн
 комами. Користувачам з цього списку буде дозволено доступ до відповідача
 PAC. UID за іменами користувачів визначатимуться під час запуску.
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            Типове значення: 0, &sssd_user_name; (доступ до відповідача PAC мають лише
+root і користувачі служб SSSD)
+                        </para>
+                        <para condition="without_non_root_user_support">
                             Типове значення: 0 (доступ до відповідача PAC має лише адміністративний
 користувач (root))
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            Будь ласка, зауважте, що типове значення буде перевизначено на основі цього
+параметра. Якщо ви хочете надати адміністративному користувачеві (root)
+і/або користувачеві «&sssd_user_name;» доступ до відповідача PAC, що може
+бути типовим варіантом, вам слід додати до списку UID з правами доступу
+відповідні записи явно.
+                        </para>
+                        <para condition="without_non_root_user_support">
                             Будь ласка, зауважте, що хоча типово використовується UID 0, значення UID
 буде перевизначено на основі цього параметра. Якщо ви хочете надати
 адміністративному користувачеві (root) доступ до відповідача PAC, що може
@@ -2116,6 +2057,11 @@ PAC. UID за іменами користувачів визначатимуть
 перевірити PAC, тобто для параметра krb5_validate має бути встановлено
 значення «True», яке є типовим для надавачів даних IPA і AD. Якщо для
 krb5_validate встановлено значення «False», перевірки PAC буде пропущено.
+			</para>
+			<para>
+                            Please note that the checks listed below only apply to PACs issued by Active
+Directory or recent versions of FreeIPA. PACs issued e.g. by a plain MIT
+Kerberos KDC will not contain the needed PAC data buffers to run the checks.
 			</para>
                         <para>
 			    Вказаними нижче параметрами можна скористатися окремо або у форматі списку
@@ -2413,13 +2359,17 @@ GID. Запис користувача не буде повернуто до NSS
                             Нумерування домену потребує від SSSD отримання і зберігання усіх записів
 користувачів і груп із віддаленого сервера.
                         </para>
+                        <para condition="without_ext_enumeration">
+                            Підтримку можливості передбачено лише для доменів з id_provider = ldap або
+id_provider = proxy.
+                        </para>
                         <para>
-                            Зауваження: вмикання нумерації помірно знизить швидкодію SSSD на час
-виконання нумерації. Нумерація може тривати до декількох хвилин після
-запуску SSSD. Протягом виконання нумерації окремі запити щодо даних буде
-надіслано безпосередньо до LDAP, хоча і з уповільненням через навантаження
-системи виконанням нумерації. Збереження великої кількості записів до кешу
-після завершення нумерації може також значно навантажити процесор, оскільки
+                            Зауваження: вмикання нумерації дуже знизить швидкодію SSSD на час виконання
+нумерації. Нумерація може тривати до декількох хвилин після запуску
+SSSD. Протягом виконання нумерації окремі запити щодо даних буде надіслано
+безпосередньо до LDAP, хоча і з уповільненням через навантаження системи
+виконанням нумерації. Збереження великої кількості записів до кешу після
+завершення нумерації може також значно навантажити процесор, оскільки
 повторне визначення параметрів участі також іноді є складним завданням. Це
 може призвести до проблем із отриманням відповіді від процесу
 <quote>sssd_be</quote> або навіть перезапуску усього засобу стеження.
@@ -2440,29 +2390,11 @@ GID. Запис користувача не буде повернуто до NSS
                             З вказаних вище причин не рекомендуємо вам вмикати нумерацію, особливо у
 об’ємних середовищах.
                         </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>subdomain_enumerate (рядок)</term>
-                    <listitem>
                         <para>
-                            Визначає, чи слід нумерувати усі автоматично виявлені надійні (довірені)
-домени. Підтримувані значення: <variablelist>
-                                <varlistentry>
-                                    <term>all</term>
-                                    <listitem><para>Усі виявлені надійні домени буде пронумеровано</para></listitem>
-                                </varlistentry>
-                                <varlistentry>
-                                    <term>none</term>
-                                    <listitem><para>Нумерація виявлених надійних доменів не виконуватиметься</para></listitem>
-                                </varlistentry>
-                            </variablelist>
-Якщо потрібно, можна вказати список з однієї або декількох назв надійних
-доменів, для яких буде увімкнено нумерацію.
-                        </para>
-                        <para>
-                            Типове значення: none
+                            Зауваження: надавач даних проксі було перевірено з модулями із відкритим
+кодом, подібними до «libnss_files» і «libnss_ldap». Для сторонніх модулів
+мають виконуватися документовані вимоги до поведінки модулів nss, які буде
+використано у цій конфігурації.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2648,18 +2580,18 @@ GID. Запис користувача не буде повернуто до NSS
                     <term>cache_credentials (булеве значення)</term>
                     <listitem>
                         <para>
-                            Determines if user credentials are also cached in the local LDB cache. The
-cached credentials refer to passwords, which includes the first (long term)
-factor of two-factor authentication, not other authentication
-mechanisms. Passkey and Smartcard authentications are expected to work
-offline as long as a successful online authentication is recorded in the
-cache without additional configuration.
+                            Визначає, чи слід кешувати реєстраційні дані користувачів і у кеші
+LDB. Кешування реєстраційних даних стосується паролів, до яких включають
+перший (довготривалий) фактор двофакторного розпізнавання, а не інші
+механізми розпізнавання. Вважається, що розпізнавання за ключем або карткою
+пам'яті працює в автономному режимі без додаткового налаштовування, якщо
+успішне мережеве розпізнавання було записано до кешу.
                         </para>
                         <para>
-                            Take a note that while credentials are stored as a salted SHA512 hash, this
-still potentially poses some security risk in case an attacker manages to
-get access to a cache file (normally requires privileged access) and to
-break a password using brute force attack.
+                            Зауважте, що хоча реєстраційні дані зберігаються у форматі додатково
+шифрованого хешу SHA512, це потенційний ризик порушення захисту, якщо
+нападнику вдасться отримати доступ до файла кешу (зазвичай, це потребує
+додаткових прав доступу) і визначить пароль за допомогою простого перебору.
                         </para>
                         <para>
                             Типове значення: FALSE
@@ -2735,13 +2667,6 @@ offline_credentials_expiration.
                         <para>
                             «proxy»: підтримка застарілого модуля надання даних NSS.
                         </para>
-                        <para condition="with_files_provider">
-                            <quote>files</quote>: засіб надання даних FILES. Докладніше про те, як
-працює віддзеркалення локальних користувачів і груп у SSSD, можна дізнатися
-зі сторінки підручника <citerefentry>
-<refentrytitle>sssd-files</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry>.
-                        </para>
                         <para>
                             <quote>ldap</quote>: засіб LDAP. Докладніше про налаштовування LDAP можна
 дізнатися з довідки до <citerefentry>
@@ -2749,16 +2674,22 @@ offline_credentials_expiration.
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: засіб FreeIPA та керування профілями Red Hat. Докладніші
+відомості щодо налаштовування IPA викладено у довіднику з <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum></manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: засіб Active Directory. Докладніші відомості щодо
 налаштовування Active Directory викладено у довіднику з <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry>.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: надавач даних для заснованих на OAuth 2.0/OIDC надавачів
+даних профілів (IdP). Див. <citerefentry>
+<refentrytitle>sssd-idp</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>, щоб дізнатися більше.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2773,9 +2704,10 @@ NSS.
                         </para>
                         <para>
                             Якщо встановлено значення TRUE, всі запити до цього домену мають
-використовувати повні назви. Наприклад, якщо використано домен LOCAL, який
+використовувати повні назви. Наприклад, якщо використано домен EXAMPLE, який
 містить запис користувача «test» user, <command>getent passwd test</command>
-не покаже користувача, а <command>getent passwd test@LOCAL</command> покаже.
+не покаже користувача, а <command>getent passwd test@EXAMPLE</command>
+покаже.
                         </para>
                         <para>
                             ЗАУВАЖЕННЯ: цей параметр не впливатиме на пошук у мережевих групах через
@@ -2837,16 +2769,21 @@ $groupname</quote> поверне запитану групу так, наче �
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: засіб FreeIPA та керування профілями Red Hat. Докладніші
+відомості щодо налаштовування IPA викладено у довіднику з <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum></manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: засіб Active Directory. Докладніші відомості щодо
 налаштовування Active Directory викладено у довіднику з <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry>.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: надавач даних для заснованого на OAuth 20/OIDC
+розпізнавання. Див. <citerefentry> <refentrytitle>sssd-idp</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>, щоб дізнатися більше.
                         </para>
                         <para>
                             <quote>proxy</quote> — трансльоване розпізнавання у іншій системі PAM.
@@ -2869,8 +2806,7 @@ FreeIPA.
 серверів). Вбудованими програмами є:
                         </para>
                         <para>
-                            <quote>permit</quote> дозволяти доступ завжди. Єдиний дозволений засіб
-доступу для локального домену.
+                            <quote>permit</quote> завжди дозволяти доступ.
                         </para>
                         <para>
                             <quote>deny</quote> — завжди забороняти доступ.
@@ -2882,10 +2818,10 @@ FreeIPA.
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: засіб FreeIPA та керування профілями Red Hat. Докладніші
+відомості щодо налаштовування IPA викладено у довіднику з <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum></manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: засіб Active Directory. Докладніші відомості щодо
@@ -2935,10 +2871,10 @@ LDAP. Докладніші відомості щодо налаштовуван�
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: засіб FreeIPA та керування профілями Red Hat. Докладніші
+відомості щодо налаштовування IPA викладено у довіднику з <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum></manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: засіб Active Directory. Докладніші відомості щодо
@@ -2984,8 +2920,8 @@ SUDO:
                             <quote>none</quote> явним чином вимикає SUDO.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено.
+                            Типове значення: буде використано значення <quote>id_provider</quote>, якщо
+його встановлено, і можлива обробка запитів щодо sudo.
                         </para>
                         <para>
                             З докладними настановами щодо налаштовування sudo_provider можна
@@ -3054,8 +2990,8 @@ Directory. Див. <citerefentry> <refentrytitle>sssd-ad</refentrytitle>
                             <quote>none</quote> забороняє ячним чином отримання даних піддоменів.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено.
+                            Типове значення: буде використано значення <quote>id_provider</quote>, якщо
+його встановлено, і можлива обробка запитів щодо піддоменів.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3077,13 +3013,7 @@ Directory. Див. <citerefentry> <refentrytitle>sssd-ad</refentrytitle>
 користувачів завдань.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено і дозволено виконувати пов'язані із сеансами завдання.
-                        </para>
-                        <para>
-                            <emphasis>Зауваження:</emphasis> щоб ця можливість працювала як слід, SSSD
-має бути запущено від імені користувача root, а не якогось іншого
-непривілейованого користувача.
+                            Default: <quote>none</quote>.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3117,8 +3047,8 @@ AD. Див. <citerefentry> <refentrytitle>sssd-ad</refentrytitle>
                             <quote>none</quote> вимикає autofs повністю.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено.
+                            Типове значення: буде використано значення <quote>id_provider</quote>, якщо
+його встановлено, і можлива обробка запитів щодо autofs.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3140,8 +3070,8 @@ IPA. Докладніші відомості щодо налаштовуванн
                             <quote>none</quote> вимикає hostid повністю.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено.
+                            Типове значення: буде використано значення <quote>id_provider</quote>, якщо
+його встановлено, і можлива обробка запитів щодо hostid.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3173,8 +3103,8 @@ LDAP. Докладніше про налаштовування LDAP можна �
                             <quote>none</quote> забороняє ячним чином отримання даних вузлів і мереж.
                         </para>
                         <para>
-                            Типове значення: використовується значення <quote>id_provider</quote>, якщо
-його встановлено.
+                            Типове значення: буде використано значення <quote>id_provider</quote>, якщо
+його встановлено, і можлива обробка запитів щодо розв'язувача.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3189,9 +3119,9 @@ LDAP. Докладніше про налаштовування LDAP можна �
 IPA та доменів Active Directory, простій назві (NetBIOS) домену.
                         </para>
                         <para>
-                            Default:
-<quote>^((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]*)|(?P&lt;name&gt;[^@]+))$</quote>
-which allows two different styles for user names:
+                            Типове значення:
+<quote>^((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]*)|(?P&lt;name&gt;[^@]+))$</quote>,
+що дозволяє два різних стилі імен користувачів:
                             <itemizedlist>
                                 <listitem>
                                     <para>користувач</para>
@@ -3202,9 +3132,9 @@ which allows two different styles for user names:
                            </itemizedlist>
                         </para>
                         <para>
-                            Default for the AD and IPA provider:
+                            Типовий для засобів надання AD і IPA:
 <quote>^(((?P&lt;domain&gt;[^\\]+)\\(?P&lt;name&gt;.+))|((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]+))|((?P&lt;name&gt;[^@\\]+)))$</quote>
-which allows three different styles for user names:
+За його допомогою можна визначати три різні стилі запису імен користувачів:
                             <itemizedlist>
                                 <listitem>
                                     <para>користувач</para>
@@ -3220,11 +3150,11 @@ which allows three different styles for user names:
 того, щоб полегшити інтеграцію користувачів з доменів Windows.
                         </para>
                         <para>
-                            The default re_expression uses the <quote>@</quote> character as a separator
-between the name and the domain. As a result of this setting the default
-does not accept the <quote>@</quote> character in short names (as it is
-allowed in Windows group names). If a user wishes to use short names with
-<quote>@</quote> they must create their own re_expression.
+                            У типовому re_expression використано символ <quote>@</quote> як роздільник
+між іменем і доменом. У результаті використання цього параметра типово
+неможливо використовувати символ <quote>@</quote> у коротких іменах (як це
+дозволено у назвах груп Windows). Якщо користувач хоче використати коротке
+ім'я з <quote>@</quote>, йому слід скорити власний re_expression.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3390,18 +3320,18 @@ Directory, налаштованих та автоматично виявлени
                 </varlistentry>
 
                 <varlistentry>
-                    <term>failover_primary_timeout (integer)</term>
+                    <term>failover_primary_timeout (ціле число)</term>
                     <listitem>
                         <para>
-                            When no primary server is currently available, SSSD fail overs to a backup
-server. This option defines the amount of time (in seconds) to wait before
-SSSD tries to reconnect to a primary server again.
+                            Якщо основний сервер є недоступним, SSSD звертається до резервного
+сервера. Цей параметр визначає кількість секунд очікування SSSD на повторну
+спробу встановити з'єднання із основним сервером.
                         </para>
                         <para>
-                            Note: The minimum value is 31.
+                            Зауваження: мінімальним значенням є 31.
                         </para>
                         <para>
-                            Default: 31
+                            Типове значення: 31
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3484,12 +3414,6 @@ SSSD tries to reconnect to a primary server again.
                             ldap_offline_timeout
                         </para>
                         <para>
-                            ldap_enumeration_refresh_timeout
-                        </para>
-                        <para>
-                            ldap_enumeration_refresh_offset
-                        </para>
-                        <para>
                             ldap_purge_cache_timeout
                         </para>
                         <para>
@@ -3501,9 +3425,6 @@ ldap_krb5_keytab не встановлено явним чином)
                         </para>
                         <para>
                             ldap_krb5_ticket_lifetime
-                        </para>
-                        <para>
-                            ldap_enumeration_search_timeout
                         </para>
                         <para>
                             ldap_connection_expire_timeout
@@ -3605,31 +3526,34 @@ subdomain_inherit = ldap_purge_cache_timeout
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>local_auth_policy (string)</term>
+                    <term>local_auth_policy (рядок)</term>
                     <listitem>
                         <para>
-                            Local authentication methods policy. Some backends (i.e. LDAP, proxy
-provider) only support a password based authentication, while others can
-handle PKINIT based Smartcard authentication (AD, IPA), two-factor
-authentication (IPA), or other methods against a central instance. By
-default in such cases authentication is only performed with the methods
-supported by the backend. With this option additional methods can be enabled
-which are evaluated and checked locally.
+                            Правила щодо методів локального розпізнавання. Для деяких модулів обробки
+(тобто LDAP, засобу надання даних проксі) передбачено підтримку лише
+розпізнавання за допомогою пароля, а для інших можливе розпізнавання на
+основі смарт-карток PKINIT (AD, IPA), двофакторне розпізнавання (IPA) або
+інші методи із центральним екземпляром засобу. Типово, у таких випадках
+розпізнавання буде виконано лише з використанням методів, підтримку яких
+передбачено модулем обробки. З цим параметром можна вмикати додаткові
+методи, обробка і перевірка у яких відбуватиметься локально.
                         </para>
                         <para>
-                            There are three possible values for this option: match, only,
-enable. <quote>match</quote> is used to match offline and online states for
-Kerberos methods. <quote>only</quote> ignores the online methods and only
-offer the local ones. enable allows explicitly defining the methods for
-local authentication. As an example, <quote>enable:passkey</quote>, only
-enables passkey for local authentication. Multiple enable values should be
-comma-separated, such as <quote>enable:passkey, enable:smartcard</quote>
+                            Для цього параметра передбачено три можливих значення: match, only,
+enable. <quote>match</quote> використовують для встановлення відповідності
+між автономним та мережевим станами для методів
+Kerberos. <quote>only</quote> — ігнорувати мережеві методи і пропонувати
+лише локальні. enable надає змогу явним чином визначити методи для
+локального розпізнавання. Наприклад, <quote>enable:passkey</quote>, вмикає
+для локального розпізнавання лише ключ-пароль. Декілька значень enable слід
+відокремлювати комами. Приклад: <quote>enable:passkey,
+enable:smartcard</quote>
                         </para>
 
                         <para>
-                            The following table shows which authentication methods, if configured
-properly, are currently enabled or disabled for each backend, with the
-default local_auth_policy: <quote>match</quote>
+                            У наведеній нижче таблиці показано, які методи розпізнавання, якщо їх
+правильно налаштовано, увімкнено і вимкнено для кожного з модулів обробки
+при типовому значенні local_auth_policy: <quote>match</quote>
                         </para>
                         <informaltable frame='all'>
                         <tgroup cols='3'>
@@ -3639,30 +3563,32 @@ default local_auth_policy: <quote>match</quote>
 
                         <thead>
                         <row><entry namest='c1' nameend='c3' align='center'>
-                            local_auth_policy = match (default)</entry></row>
-                        <row><entry></entry><entry>Passkey</entry>
-                            <entry>Smartcard</entry></row>
+                            local_auth_policy = match (типове значення)</entry></row>
+                        <row><entry></entry><entry>Ключ</entry>
+                            <entry>Картка пам'яті</entry></row>
                         </thead>
                         <tbody>
                         <row><entry>IPA</entry><entry>enabled</entry>
                             <entry><para>enabled</para>
                             </entry></row>
-                        <row><entry>AD</entry><entry>disabled</entry>
+                        <row><entry>AD</entry><entry>вимкнено</entry>
                             <entry><para>enabled</para></entry>
                             </row>
-                        <row><entry>LDAP</entry><entry>disabled</entry>
-                            <entry><para>disabled</para></entry>
+                        <row><entry>LDAP</entry><entry>вимкнено</entry>
+                            <entry><para>вимкнено</para></entry>
                             </row>
                         </tbody></tgroup></informaltable>
                         <para>
-                            Please note that if local Smartcard authentication is enabled and a
-Smartcard is present, Smartcard authentication will be preferred over the
-authentication methods supported by the backend.  I.e. there will be a PIN
-prompt instead of e.g. a password prompt.
+                            Будь ласка, зауважте, що якщо увімкнено локальне розпізнавання за карткою
+пам'яті і використано картку пам'яті, розпізнавання за карткою пам'яті
+матиме вищий пріоритет за методи розпізнавання, підтримку яких передбачено у
+модулі обробки. Інакше кажучи, буде надіслано запит щодо PIN-коду, замість,
+наприклад, запиту щодо пароля.
                         </para>
                         <para>
-                            The following configuration example allows local users to authenticate
-locally using any enabled method (i.e. smartcard, passkey).  <programlisting>
+                            У наведеному нижче зразку налаштувань локальним користувачам дозволено
+проходити розпізнавання за допомогою будь-якого з увімкнених методів (тобто
+smartcard, passkey).  <programlisting>
 [domain/shadowutils]
 id_provider = proxy
 proxy_lib_name = files
@@ -3670,12 +3596,8 @@ auth_provider = none
 local_auth_policy = only
 </programlisting>
                         </para>
-                        <para condition="with_files_provider">
-                            It is expected that the <quote>files</quote> provider ignores the
-local_auth_policy option and supports Smartcard authentication by default.
-                        </para>
                         <para>
-                            Default: match
+                            Типове значення: match
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3732,6 +3654,13 @@ local_auth_policy option and supports Smartcard authentication by default.
                             </variablelist>
                         </para>
                         <para>
+                            Для надавачів ідентифікаторів на основі LDAP (LDAP, IPA та AD) типовим
+значенням для налаштованого домену зазвичай є False, оскільки у джерелах є
+концепція первинної групи. <phrase condition="with_idp_provider">Надавач
+ідентифікаторів IdP використовує значення True, оскільки у IdP зазвичай
+немає первинних груп.</phrase>
+                        </para>
+                        <para>
                             Для піддоменів типовим значенням є False для тих піддоменів, які пов'язано
 із ідентифікаторами POSIX, і True для тих піддоменів, для яких
 використовується автоматична прив'язка до ідентифікаторів.
@@ -3762,9 +3691,10 @@ auto_private_groups = false
                             Комп’ютер, для якого виконує проксі-сервер PAM.
                         </para>
                         <para>
-                            Default: not set by default, you have to take an existing pam configuration
-or create a new one and add the service name here. As an alternative you can
-enable local authentication with the local_auth_policy option.
+                            Типове значення: типово не встановлено, вам слід скористатися вже створеними
+налаштуваннями pam або створити нові і тут додати назву служби. Крім того,
+ви можете увімкнути локальне розпізнавання за допомогою параметра
+local_auth_policy.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3975,9 +3905,10 @@ Extended Key Usage (розширене використання ключа) до
                                 <para>LDAP:(userCertificate;binary={cert!bin})  для заснованих на LDAP надавачів
 даних, зокрема <quote>ldap</quote>, <quote>AD</quote> та <quote>ipa</quote>.</para>
                             </listitem>
-                            <listitem condition="with_files_provider">
-                                <para>RULE_NAME для надавача даних <quote>files</quote>, який намагається знайти
-запис користувача і такою самою назвою.</para>
+                            <listitem>
+                                <para>Якщо не встановлено maprule і надавачем даних є <quote>proxy</quote>,
+припускається, що значенням RULE_NAME є назва відповідного облікового запису
+користувача.</para>
                             </listitem>
                         </itemizedlist>
                     </para>
@@ -4011,33 +3942,6 @@ sssd.conf. Якщо для надавача даних передбачено п
                 </listitem>
             </varlistentry>
         </variablelist>
-        <para condition="with_files_provider">
-            Щоб спростити налаштовування із зменшити кількість параметрів
-налаштовування, у надавачі даних <quote>files</quote> передбачено декілька
-спеціальних властивостей:
-            <itemizedlist>
-                <listitem>
-                    <para>
-                        якщо не встановлено maprule, припускається, що значенням RULE_NAME є назва
-відповідного облікового запису користувача
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        якщо maprule використовує обидва, назву облікового запису окремого
-користувача або шаблон, подібний до
-<quote>{назва_об'єкта_rfc822.коротка_назва}</quote>, слід брати у дужки,
-наприклад <quote>(користувач)</quote> або
-<quote>({назва_об'єкта_rfc822.коротка_назва})</quote>
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        параметр <quote>domains</quote> буде проігноровано
-                    </para>
-                </listitem>
-            </itemizedlist>
-        </para>
     </refsect1>
 
     <refsect1 id='prompting_configuration'>
@@ -4058,8 +3962,9 @@ PAM SSSD pam_sss надсилатиме запит до SSSD для визнач
 випадках мають забезпечити описані нижче параметри.
         </para>
         <para>
-            Each supported authentication method has its own configuration subsection
-under <quote>[prompting/...]</quote>. Currently there are: <variablelist>
+            У кожного з підтримуваних способів розпізнавання є власний підрозділ
+налаштувань у <quote>[prompting/...]</quote>. У поточній версії це:
+<variablelist>
             <varlistentry>
                 <term>[prompting/password]</term>
                 <listitem>
@@ -4089,43 +3994,50 @@ under <quote>[prompting/...]</quote>. Currently there are: <variablelist>
 фактор є необов'язковим і має бути збережено можливість входу або лише за
 паролем, або за двома факторами, має бути використано двокроковий запит.
                     </para>
+                    <para>
+                    Деякі клієнти, зокрема SSH з «PasswordAuthentication yes», створюють власні
+запити і не використовують запити, які надає SSSD або інші модулі PAM. Крім
+того, для SSH з PasswordAuthentication, якщо доступне двофакторне
+розпізнавання, SSSD очікує, що реєстраційні дані, які введено користувачем
+до запиту пароля SSH завжди будуть двома факторами в одному рядку, навіть
+якщо двофакторне розпізнавання не є обов'язковим.
+                    </para>
                 </listitem>
             </varlistentry>
-        </variablelist>
-<variablelist>
+        </variablelist><variablelist>
             <varlistentry condition="build_passkey">
                 <term>[prompting/passkey]</term>
                 <listitem>
-                    <para>to configure passkey authentication prompting, allowed options are:
+                    <para>для налаштовування запиту щодо розпізнавання за ключем; дозволені параметри:
 <variablelist>
                     <varlistentry>
                         <term>interactive</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message and wait before testing the presence
-of a passkey device.  Recommended if your device doesn’t have a tactile
-trigger.
+                            <para>булеве значення, якщо True, надіслати запит і зачекати, перш ніж перевірити
+наявність пристрою ключа. Рекомендовано, якщо ваш пристрій не має
+тактильного перемикача.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>interactive_prompt</term>
                         <listitem>
-                            <para>to change the message of the interactive prompt.
+                            <para>для зміни повідомлення інтерактивного запиту.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message to remind the user to touch the
-device.
+                            <para>булеве значення, якщо True, надіслати повідомлення для нагадування
+користувачеві щодо потреби торкнутися пристрою.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch_prompt</term>
                         <listitem>
-                            <para>to change the message of the touch prompt.
+                            <para>для зміни повідомлення запиту щодо торкання.
                             </para>
                         </listitem>
                         </varlistentry>
@@ -4151,7 +4063,6 @@ device.
 [sssd]
 domains = LDAP
 services = nss, pam
-config_file_version = 2
 
 [nss]
 filter_groups = root
@@ -4185,10 +4096,11 @@ use_fully_qualified_names = false
 </programlisting>
         </para>
         <para>
-            3. The following example shows the configuration of a certificate mapping
-rule. It is valid for the configured domain <quote>my.domain</quote> and
-additionally for the subdomains <quote>your.domain</quote> and uses the full
-certificate in the search filter.  <programlisting>
+            3. У наведеному нижче прикладі показано налаштування правила пов'язування
+сертифікатів. Воно є чинним для налаштованого домену
+<quote>my.domain</quote> і, додатково, для піддоменів
+<quote>your.domain</quote> і використовує повний сертифікат у фільтрі
+пошуку.<programlisting>
 [certmap/my.domain/rule_name]
 matchrule = &lt;ISSUER&gt;^CN=My-CA,DC=MY,DC=DOMAIN$
 maprule = (userCertificate;binary={cert!bin})

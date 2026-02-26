@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <libintl.h>
 
 #include "util/util_errors.h"
 
@@ -68,7 +69,8 @@ extern const char *debug_log_file;   /* only file name, excluding path */
     DEBUG_INIT(dbg_lvl, sss_logger_str[STDERR_LOGGER]); \
 } while (0)
 
-void sss_debug_backtrace_enable(bool enable);
+void sss_set_debug_backtrace_enable(bool enable);
+bool sss_get_debug_backtrace_enable(void);
 
 /* debug_convert_old_level() converts "old" style decimal notation
  * to bitmask composed of SSSDBG_*
@@ -88,9 +90,6 @@ errno_t set_debug_file_from_fd(const int fd);
  * (e.g. nsupdate, ipa_get_keytab)
  */
 int get_fd_from_debug_file(void);
-
-/* chown_debug_file() uses 'debug_log_file' in case 'filename == NULL' */
-int chown_debug_file(const char *filename, uid_t uid, gid_t gid);
 
 /* open_debug_file_ex() is used to open log file for *_child processes */
 int open_debug_file_ex(const char *filename, FILE **filep, bool want_cloexec);
@@ -143,8 +142,8 @@ int rotate_debug_files(void);
 
 
 /* SSSD_*_OPTS are used as 'poptOption' entries */
-#define SSSD_LOGGER_OPTS \
-        {"logger", '\0', POPT_ARG_STRING, &opt_logger, 0, \
+#define SSSD_LOGGER_OPTS(ptr) \
+        {"logger", '\0', POPT_ARG_STRING, (ptr), 0, \
          _("Set logger"), "stderr|files|journald"},
 
 #define SSSD_DEBUG_OPTS \
@@ -195,6 +194,18 @@ void sss_debug_fn(const char *file,
                             (debug_level == SSSDBG_UNRESOLVED && \
                                             (level & (SSSDBG_FATAL_FAILURE | \
                                                       SSSDBG_CRIT_FAILURE))))
+
+/* The same as DEBUG but does nothing if requested debug level isn't set,
+ * thus avoiding logging to the backtrace in this case.
+ * Meant to be used in hot (performance sensitive) code paths only.
+ */
+#define DEBUG_CONDITIONAL(level, format, ...) do { \
+    if (DEBUG_IS_SET(level)) { \
+        sss_debug_fn(__FILE__, __LINE__, __FUNCTION__, \
+                     level, \
+                     format, ##__VA_ARGS__); \
+    } \
+} while (0)
 
 
 /* not to be used explictly, use 'DEBUG_INIT' instead */

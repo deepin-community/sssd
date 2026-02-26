@@ -1,0 +1,4049 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+[
+<!ENTITY sssd_user_name SYSTEM "sssd_user_name.include">
+]>
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd.conf</refname>
+        <refpurpose>o ficheiro de configuração para SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='file-format'>
+        <title>FORMATO DO FICHEIRO</title>
+
+        <para>
+            O ficheiro tem uma sintaxe estilo-ini e consiste de secções e
+parâmetros. Uma secção começa com o nome da secção em parênteses rectos e
+continua até que a próxima secção comece. Um exemplo de secção com
+parâmetros singulares e de multi-valores: <programlisting>
+<replaceable>[secção]</replaceable>
+<replaceable>chave</replaceable> = <replaceable>valor</replaceable>
+<replaceable>chave2</replaceable> = <replaceable>valor2,valor3</replaceable>
+            </programlisting>
+        </para>
+
+        <para>
+            Os tipos de dados usados são cadeia de caracteres (sem aspas necessárias),
+inteiro e booleano (com valores de <quote>TRUE/FALSE</quote>).
+        </para>
+
+        <para>
+            Uma linha de comentário começa com o cardinal (<quote>#</quote>) ou com um
+ponto-e-vírgula (<quote>;</quote>).   Não são suportados comentários em
+linhas.
+        </para>
+
+        <para>
+            Todas as secções podem ter um parâmetro opcional
+<replaceable>descrição</replaceable>. A sua função é apenas ser uma etiqueta
+para a secção.
+        </para>
+
+        <para condition="without_non_root_user_support">
+            <filename>sssd.conf</filename> deve ser um ficheiro regular em que o 'root'
+é dono, e só ele pode ler e escrever.
+        </para>
+        <para condition="with_non_root_user_support">
+            <filename>sssd.conf</filename> deve ser um ficheiro regular que é acessível
+apenas pelo utilizador usado para correr o serviço SSSD ou o root.
+        </para>
+    </refsect1>
+
+    <refsect1 id='config-snippets'>
+        <title>TRECHOS DE CONFIGURAÇÃO DO DIRETÓRIO INCLUDE</title>
+
+        <para>
+            O ficheiro de configuração <filename>sssd.conf</filename> irá incluir
+trechos de configuração usando o directório de inclusão
+<filename>conf.d</filename>.
+        </para>
+
+        <para>
+            Qualquer ficheiro colocado em <filename>conf.d</filename> que termine em
+<quote><filename>.conf</filename></quote> e não comece com um ponto
+(<quote>.</quote>) será usado juntamente com <filename>sssd.conf</filename>
+para configurar o SSSD.
+        </para>
+
+        <para>
+            Os trechos de configuração de <filename>conf.d</filename> têm prioridade
+mais alta que <filename>sssd.conf</filename> e irão sobrepor o
+<filename>sssd.conf</filename> quando ocorrerem conflitos. Se vários trechos
+estiverem presentes em <filename>conf.d</filename>, então eles são incluídos
+por ordem alfabética (baseada no locale).  Os ficheiros incluídos mais tarde
+têm prioridade mais alta. Prefixos numéricos
+(<filename>01_snippet.conf</filename>, <filename>02_snippet.conf</filename>
+etc.) podem ajudar a visualizar a prioridade (número mais alto significa
+prioridade mais alta).
+        </para>
+
+        <para>
+            Os ficheiros de trechos requerem o mesmo dono e permissões que o
+<filename>sssd.conf</filename>.
+        </para>
+    </refsect1>
+
+    <refsect1 id='general-options'>
+        <title>OPÇÕES GERAIS</title>
+        <para>
+            As seguinte opções são utilizáveis em mais do que uma secção de
+configuração.
+        </para>
+        <refsect2 id='all-section-options'>
+            <title>Opções utilizáveis em todas as secções</title>
+            <para>
+              <variablelist>
+                <varlistentry>
+                    <term>debug_level (inteiro)</term>
+                    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/debug_levels.xml" />
+                </varlistentry>
+                <varlistentry>
+                    <term>debug (inteiro)</term>
+                    <listitem>
+                        <para>
+                            SSSD 1.14 e posterior também inclui o alias <replaceable>debug</replaceable>
+para <replaceable>debug_level</replaceable> como uma funcionalidade de
+conveniência. Se ambos forem especificados, será usado o valor de
+<replaceable>debug_level</replaceable>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>debug_timestamps (booleano)</term>
+                    <listitem>
+                        <para>
+                            Adiciona uma marca temporal às mensagens de depuração. Se journald estiver
+ativo para registos de depuração do SSSD esta opção é ignorada.
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>debug_microseconds (booleano)</term>
+                    <listitem>
+                        <para>
+                            Adiciona micro-segundos à marca temporal nas mensagens de depuração.   Se
+journald estiver activo para registos de depuração do SSSD esta opção é
+ignorada.
+                        </para>
+                        <para>
+                            Predefinição: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>debug_microseconds (booleano)</term>
+                    <listitem>
+                        <para>
+                            Activa o seguimento de depuração.
+                        </para>
+                        <para>
+                            No caso do SSSD correr com debug_level menor que 9, tudo é registado para um
+anel buffer na memória e despejado para um ficheiro log em qualquer erro até
+e incluindo `min(0x0040, debug_level)` (isto é, se debug_level for
+explicitamente definido para 0 ou 1 então apenas esses níveis de erro irão
+despoletar os registos, caso contrário até ao 2).
+                        </para>
+                        <para>
+                            Funcionalidade é apenas suportada para `logger == files` (isto é, a
+definição não tem efeito para outros tipos de relatório).
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+              </variablelist>
+            </para>
+        </refsect2>
+
+        <refsect2 id='services-and-domains-section-options'>
+            <title>Opções utilizáveis nas secções SERVICE e DOMAIN</title>
+            <para>
+              <variablelist>
+                <varlistentry>
+                    <term>tempo limite (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tempo limite em segundos entre batimentos do serviço. Isto é usado para
+assegurar que o processo está vivo e capaz de responder a pedidos. Note que
+após três batimentos em falta o processo irá terminar por ele próprio.
+                        </para>
+                        <para>
+                            Predefinido: 10
+                        </para>
+                    </listitem>
+                </varlistentry>
+              </variablelist>
+            </para>
+        </refsect2>
+    </refsect1>
+
+    <refsect1 id='special-sections'>
+        <title>SECÇÕES ESPECIAIS</title>
+
+        <refsect2 id='services'>
+            <title>A secção [sssd]</title>
+            <para>
+                Peças individuais da funcionalidade do SSSD são fornecidas por serviços SSSD
+especiais que são arrancados e parados juntamente com o SSSD.   Os serviços
+são geridos por um serviço especial frequentemente chamado
+<quote>monitor</quote>. A secção <quote>[sssd]</quote> é usada para
+configurar o monitor assim como outras opções importantes como os domínios
+de identidade. <variablelist>
+                    <title>Parâmetros de secção</title>
+                    <varlistentry>
+                        <term>serviços</term>
+                        <listitem>
+                            <para>
+                                Lista de serviços separados por vírgulas que são iniciados quando o próprio
+sssd arranca. <phrase condition="have_systemd"> A lista de serviços é
+opcional em plataformas onde o systemd é suportado, pois eles irão ser
+ativados via socket ou D-Bus quando necessário. </phrase>
+                            </para>
+                            <para>
+                                Serviços suportados: nss, pam ifp <phrase condition="with_sudo">,
+sudo</phrase> <phrase condition="with_autofs">, autofs</phrase> <phrase
+condition="with_ssh">, ssh</phrase> <phrase condition="with_pac_responder">,
+pac</phrase>
+                            </para>
+                            <para>
+                                <phrase condition="have_systemd"> Por predefinição, todos os serviços são
+desativados e o administrador tem de activar os que permite serem usados ao
+executar: "systemctl enable sssd-@service@.socket".  </phrase>
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>domínios</term>
+                        <listitem>
+                            <para>
+                                Um domínio é uma base de dados que contém informação de utilizador. O SSSD
+pode usar mais domínios ao mesmo tempo, mas pelo menos um tem de ser
+configurado ou o SSSD não arranca.  Este parâmetro descreve a lista de
+domínios pela ordem que você deseja que eles sejam questionados.  Um nome de
+domínio é recomendado conter apenas caracteres ASCII alfanuméricos, traços,
+pontos e underscores. O caractere '/' é proibido.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>re_expression (string)</term>
+                        <listitem>
+                            <para>
+                                Expressão regular predefinida que descreve como converter a string que
+contém o nome de utilizador e domínio nestes componentes.
+                            </para>
+                            <para>
+                                Cada domínio pode ter uma expressão regular individual configurada. Para
+alguns provedores de ID há também expressões regulares predefinidas. Veja
+SECÇÕES DE DOMÍNIO para mais informação sobre essas expressões regulares.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>full_name_format (string)</term>
+                        <listitem>
+                            <para>
+                                Um formato <citerefentry> <refentrytitle>printf</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry>-compatível que descreve como compor
+um nome totalmente qualificado a partir dos componentes nome de utilizador e
+nome de domínio.
+                            </para>
+                            <para>
+                                São suportadas as seguintes expansões: <variablelist>
+                                    <varlistentry>
+                                        <term>%1$s</term>
+                                        <listitem><para>nome de utilizador</para></listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term>%2$s</term>
+                                        <listitem>
+                                            <para>
+                                                nome de domínio como especificado no ficheiro de configuração do SSSD.
+                                            </para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term>%3$s</term>
+                                        <listitem>
+                                            <para>
+                                                nome de domínio liso. Muito usado para domínios Active Directory, ambos
+diretamente configurados ou descobertos via confianças de IPA.
+                                            </para>
+                                        </listitem>
+                                    </varlistentry>
+                                </variablelist>
+                            </para>
+                            <para>
+                                Cada domínio pode ter um formato individual de string configurado.  Veja
+SECÇÕES DE DOMÍNIO para mais informação desta opção.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>monitor_resolv_conf (booleano)</term>
+                        <listitem>
+                            <para>
+                                Controla se o SSSD deve monitorizar o estado de resolv.conf para identificar
+quando precisa de atualizar o seu resolver de DNS interno.
+                            </para>
+                            <para>
+                                Predefinição: true
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>try_inotify (booleano)</term>
+                        <listitem>
+                            <para condition="have_inotify">
+                                Por predefinição, o SSSD irá tentar usar inotify para monitorizar alterações
+nos ficheiros de configuração e irá apoiar-se no polling a cada 5 segundos
+se o inotify não puder ser usado.
+                            </para>
+                            <para condition="have_inotify">
+                                Existem algumas situações limitadas onde é preferível devermos até tentar
+mesmo não usar o inotify. Nestes raros casos, esta opção deve ser definida
+para 'false'
+                            </para>
+                            <para condition="have_inotify">
+                                Predefinição: true em plataformas onde inotify é suportado. False nas outras
+plataformas.
+                            </para>
+                            <para>
+                                Nota: esta opção não terá efeito em plataformas onde inotify não está
+disponível. Nestas plataformas será sempre usado polling.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>krb5_rcache_dir (string)</term>
+                        <listitem>
+                            <para>
+                                Directório no sistema de ficheiros onde o SSSD deve armazenar os ficheiros
+de cache de repetição do Kerberos.
+                            </para>
+                            <para>
+                                Esta opção aceita um valor especial __LIBKRB5_DEFAULTS__ que irá instruir o
+SSSD a deixar libkrb5 decidir a localização apropriada para a cache de
+repetição.
+                            </para>
+                            <para>
+                                Predefinição: Específica da distribuição e especificada durante a
+compilação. (__LIBKRB5_DEFAULTS__ se não configurada)
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>default_domain_suffix (string)</term>
+                        <listitem>
+                            <para>
+                                Por favor note que esta opção está descontinuada e deve ser usada
+domain_resolution_order.
+                            </para>
+                            <para>
+                                Esta string irá ser usada como o nome de domínio predefinido para todos os
+nomes sem um componente de nome de domínio. O principal caso de utilização é
+ambientes onde o domínio principal destina-se a gestão de políticas de
+máquinas e todos os utilizadores estão localizados num domínio de
+confiança.   Esta opção permite a esses utilizadores fazerem login apenas
+com os seus nomes de utilizador sem terem de também fornecer um nome de
+domínio.
+                            </para>
+                            <para>
+                                Por favor note que se esta opção for definida, todos os utilizadores do
+domínio principal têm de usar os seus nomes totalmente qualificados,
+ex. utilizador@nome-domínio, para login. Definir esta opção muda a
+predefinição de use_fully_qualified_names para True. Não é permitido usar
+esta opção em conjunto com use_fully_qualified_names definido para False.
+                            </para>
+                            <para>
+                                Predefinição: não definida
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>override_space (string)</term>
+                        <listitem>
+                            <para>
+                                Este parâmetro irá substituir os espaços (barra de espaços) pelo caractere
+fornecido para nomes de utilizador e grupo. Ex. (_). O nome de utilizador
+&quot;john doe&quot; irá ficar &quot;john_doe&quot; Esta funcionalidade foi
+adicionada para ajudar na compatibilidade com scripts de shell que têm
+dificuldade a lidar com espaços, devido ao separador de campo predefinido na
+shell.
+                            </para>
+                            <para>
+                                Por favor note que é um erro de configuração usar um caractere substituto
+que possa ser usado em nomes de utilizador ou grupo. Se um nome conter o
+caractere de substituição, o SSSD tenta retornar o nome não modificado mas
+no geral o resultado duma procura é indefinido.
+                            </para>
+                            <para>
+                                Predefinição: não definida (os espaços não serão substituídos)
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>certificate_verification (string)</term>
+                        <listitem>
+                            <para>
+                                Com este parâmetro a verificação de certificado pode ser afinada com uma
+lista de opções separadas por vírgulas. As opções suportadas são:
+<variablelist>
+                                <varlistentry>
+                                    <term>no_ocsp</term>
+                                    <listitem>
+                                        <para>Desactiva as verificações Online Certificate Status Protocol (OCSP). Isto
+pode ser necessário se os servidores OCSP definidos no certificado não forem
+alcançáveis a partir do cliente.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>soft_ocsp</term>
+                                    <listitem>
+                                        <para> Se uma ligação não puder ser estabelecida com um respondedor OCSP a
+verificação OCSP é saltada.  Esta opção deve ser usada para permitir a
+autenticação quando o sistema está offline e o respondedor OCSP não pode ser
+alcançado.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>ocsp_dgst</term>
+                                    <listitem>
+                                        <para>Função de digestão (hash) usada para criar o ID de certificado para o pedido
+OCSP. Os valores permitidos são:
+                                        <itemizedlist>
+                                          <listitem><para>sha1</para></listitem>
+                                          <listitem><para>sha256</para></listitem>
+                                          <listitem><para>sha384</para></listitem>
+                                          <listitem><para>sha512</para></listitem>
+                                        </itemizedlist></para>
+                                        <para>
+                                            Predefinição: sha1 (para permitir compatibilidade com respondedor
+RFC5019-compatível)
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>no_verification</term>
+                                    <listitem>
+                                        <para>Desactiva completamente a verificação.   Esta opção só deve ser usada para
+testes.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>partial_chain</term>
+                                    <listitem>
+                                        <para>Permite que a verificação tenha sucesso mesmo que não possa ser compilada
+uma cadeia <replaceable>completa</replaceable> a uma ancora de confiança
+auto-assinada, desde que seja possível construir uma cadeia a um certificado
+de confiança que pode não ser auto-assinado.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>ocsp_default_responder=URL</term>
+                                    <listitem>
+                                        <para>Define o respondedor predefinido do OCSP o qual deve ser usado em vez do
+mencionado no certificado. URL tem de ser substituído pelo URL do
+respondedor predefinido do OCSP ex. http://exemplo.com:80/ocsp.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>
+                                    ocsp_default_responder_signing_cert=NOME</term>
+                                    <listitem>
+                                        <para>Esta opção é presentemente ignorada. Todos os certificados necessários têm
+de estar disponíveis no ficheiro PEM dado por pam_cert_db_path.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>crl_file=/CAMINHO/PARA/FICHEIRO/CRL</term>
+                                    <listitem>
+                                        <para>Usa a Certificate Revocation List (CRL) a partir do ficheiro dado durante a
+verificação do certificado. O CRL tem de ser dado em formato PEM, veja
+<citerefentry> <refentrytitle>crl</refentrytitle>
+<manvolnum>1ssl</manvolnum> </citerefentry> para detalhes.</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>soft_crl</term>
+                                    <listitem>
+                                        <para>
+                                        Se uma Certificate Revocation List (CRL)  expirou ignora a validade do CRL e
+verifica os certificados relacionados com o CRL expirado. Esta opção deve
+ser usada para permitir autenticação quando o sistema está offline e a CRL
+não pode ser renovada.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                </variablelist>
+                            </para>
+                            <para>
+                                As opções desconhecidas são reportadas mas ignoradas.
+                            </para>
+                            <para>
+                                Predefinição: não definida, isto é, não restringe a verificação de
+certificados
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry condition="have_libnl">
+                        <term>disable_netlink (booleano)</term>
+                        <listitem>
+                            <para>
+                                SSSD vincula-se à interface netlink para monitorizar alterações a rotas,
+endereços, ligações e despoleta certas acções.
+                            </para>
+                            <para>
+                                As alterações de estado do SSSD causadas pelos eventos netlink podem ser
+indesejáveis e podem ser desativados ao definir esta opção para 'true'
+                            </para>
+                            <para>
+                                Predefinição: false (alterações netlink são detetadas)
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>domain_resolution_order</term>
+                        <listitem>
+                            <para>
+                                Lista separada por vírgulas de domínios e subdomínios que representa a ordem
+de procura que será seguida.  A lista não tem de incluir todos os domínios
+possíveis pois os domínios em falta serão vistos com base na ordem que foram
+apresentados na opção de configuração <quote>domains</quote>.  Os
+subdomínios que não estão listados como parte de <quote>lookup_order</quote>
+irão ser vistos numa ordem aleatória para cada domínio pai.
+                            </para>
+                            <para>
+                                Por favor, note que quando esta opção está definida o formato de saída de
+todos os comandos é sempre totalmente-qualificado mesmo quando se usa nomes
+curtos para a entrada. No caso do administrador querer os resultados não
+totalmente-qualificados, a opção full_name_format pode ser usada como
+mostrado em baixo: <quote>full_name_format=%1$s</quote> No entanto, lembre
+que durante o login, as aplicações de login muitas vezes canonizam o nome de
+utilizador ao chamarem <citerefentry>
+<refentrytitle>getpwnam</refentrytitle> <manvolnum>3</manvolnum>
+</citerefentry> o qual, se um nome curto for retornado para uma entrada
+qualificada (enquanto se tenta alcançar um utilizador que existe em
+múltiplos domínios) pode re-rotear a tentativa de login para o domínio que
+usa nomes curtos, tornando este contorno totalmente não recomendado nos
+casos onde os nomes de utilizadores podem sobrepor-se entre domínios.
+                            </para>
+                            <para>
+                                Predefinição: Não definida
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>implicit_pac_responder (booleano)</term>
+                        <listitem>
+                            <para>
+                                O respondedor PAC é activado automaticamente para o provedor IPA e AD para
+avaliar e verificar o PAC. Se isso tiver de ser desactivado defina esta
+opção para 'false'.
+                            </para>
+                            <para>
+                                Predefinição: true
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>core_dumpable (booleano)</term>
+                        <listitem>
+                            <para>
+                                Esta opção pode ser usada para endurecimento geral do sistema: definindo-a
+para 'false' proíbe despejos do núcleo para todos os processos do SSSD para
+evitar fugas de palavras passe em texto simples. Veja o manual
+prctl:PR_SET_DUMPABLE em Linux ou procctl:PROC_TRACE_CTL em FreeBSD para
+detalhes.
+                            </para>
+                            <para>
+                                Note que esta definição não tem efeito para 'ldap_child', 'krb5_child' e
+'sssd_pam' pois esses binários privilegiados podem ter uma cópia dos dados
+keytab da máquina na memória e o seu comportamento para estes assuntos é
+governado pela definição de sistema /proc/sys/fs/suid_dumpable.
+                            </para>
+                            <para>
+                                Predefinição: true
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry condition="build_passkey">
+                        <term>passkey_verification (string)</term>
+                        <listitem>
+                            <para>
+                                Com este parâmetro a verificação passkey pode ser afinada com uma lista de
+opções separadas por vírgulas. As opções suportadas são: <variablelist>
+                                <varlistentry>
+                                    <term>user_verification (boolean)</term>
+                                    <listitem>
+                                        <para> Ativa ou desativa a verificação de utilizador (isto é, PIN, impressão
+digital)  durante a autenticação. Se ativo, o PIN será sempre pedido.
+                                        </para>
+                                        <para>
+                                        A predefinição é que as definições da chave decidem o que fazer. No caso de
+pré-autenticação IPA ou kerberos, este valor irá ser sobreposto pelo
+servidor.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                </variablelist>
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </para>
+        </refsect2>
+
+    </refsect1>
+
+    <refsect1 id='services-sections'>
+        <title>SECÇÕES DE SERVIÇOS</title>
+        <para>
+            As definições que podem ser usadas para configurar os diferentes serviços
+são descritas nesta secção. Elas devem residir na secção
+[<replaceable>$NOME</replaceable>], por exemplo, para o serviço NSS, a
+secção será <quote>[nss]</quote>
+        </para>
+
+        <refsect2 id='general'>
+            <title>Opções de configuração de serviços gerais</title>
+            <para>
+                Estas opções podem ser usadas para configurar qualquer serviço.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>fd_limit</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica o número máximo de descritores de ficheiro que podem
+ser abertos de uma vez por estes processos do SSSD. Em sistemas onde o SSSD
+tem garantida a capacidade CAP_SYS_RESOURCE, isto será uma definição
+absoluta. Em sistema sem esta capacidade, o valor resultante irá ser o menor
+valor disto ou limite "hard" do limits.conf.
+                        </para>
+                        <para>
+                            Predefinição: 8192 (ou limite "hard" de limits.conf)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>client_idle_timeout</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica o número de segundos que um cliente de um processo
+SSSD pode esperar por um descritor de ficheiro sem comunicar nele. Este
+valor é limitado de modo a evitar a exaustão de recursos do sistema. O tempo
+limite não pode ser mais curto que 10 segundos. Se for configurado um valor
+menor, será ajustado para 10 segundos.
+                        </para>
+                        <para>
+                            Predefinição: 60, KCM: 300
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>offline_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quando o SSSD comuta para modo offline a quantidade de tempo antes de tentar
+voltar online irá aumentar com base no tempo que passou desligado.   Por
+predefinição o SSSD usa comportamento incremental para calcular o atraso
+entre tentativas.   Assim, o tempo de espera para uma dada tentativa será
+maior que o tempo de espera das anteriores.   Após cada tentativa sem
+sucesso de ir online, o novo intervalo é recalculado pelo seguinte:
+                        </para>
+                        <para>
+                             new_delay = Minimum(old_delay * 2, offline_timeout_max) +
+random[0...offline_timeout_random_offset]
+                        </para>
+                        <para>
+                            O valor predefinido de offline_timeout é 60.  O valor predefinido de
+offline_timeout_max é 3600. O valor predefinido de
+offline_timeout_random_offset é 30.   O resultado final é a quantidade de
+segundos antes da próxima tentativa.
+                        </para>
+                        <para>
+                            Note que a duração máxima de cada intervalo é definida por
+offline_timeout_max (à parte da parte aleatória).
+                        </para>
+                        <para>
+                            Predefinição: 60
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>offline_timeout_max (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Controla quanto o tempo entre tentativas de ir online pode ser incrementado
+a seguir a tentativas de ir online sem sucesso.
+                        </para>
+                        <para>
+                            Um valor de 0 desactiva o comportamento incremental.
+                        </para>
+                        <para>
+                            O valor deste parâmetro deve ser definido em correlação com o valor do
+parâmetro offline_timeout.
+                        </para>
+                        <para>
+                            Com offline_timeout definido para 60 (valor predefinido) não faz sentido
+definir offline_timeout_max para menos de 120 pois isso iria saturar
+instantaneamente. Geralmente a regra aqui deverá ser definir
+offline_timeout_max para pelo menos 4 vezes o offline_timeout.
+                        </para>
+                        <para>
+                            Apesar de poder ser especificado um valor entre 0 e offline_timeout, isso
+tem o efeito de sobrepor o valor offline_timeout, assim tem pouca utilidade.
+                        </para>
+                        <para>
+                            Predefinição: 3600
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>offline_timeout_random_offset (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quando o SSSD está em modo offline continua a fazer provas a servidores
+backend em intervalos de tempo especificados:
+                        </para>
+                        <para>
+                            new_delay = Minimum(old_delay * 2, offline_timeout_max) +
+random[0...offline_timeout_random_offset]
+                        </para>
+                        <para>
+                            Este parâmetro controla o valor do desvio aleatório usado para a equação em
+cima. O valor random_offset final será um número aleatório dentro da gama:
+                        </para>
+                        <para>
+                            [0 - offline_timeout_random_offset]
+                        </para>
+                        <para>
+                            Um valor de 0 desactiva a adição de desvio aleatório.
+                        </para>
+                        <para>
+                            Predefinição: 30
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>responder_idle_timeout</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica o número de segundos que um processo respondedor do
+SSSD pode estar activo sem ser usado. Este valor é limitado para evitar a
+exaustão de recursos do sistema.   O valor mínimo aceitável para esta opção
+é 60 segundos.   Definir esta opção para 0 (zero) significa que nenhum tempo
+limite será definido para o respondedor.   Esta opção apenas tem efeito
+quando o SSSD é compilado com suporte a systemd e quando os serviços são
+activados ou em socket ou em D-Bus.
+                        </para>
+                        <para>
+                            Predefinição: 300
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>cache_first</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica se o respondedor deve questionar todas as caches antes
+de questionar os Provedores de Dados.
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+        <refsect2 id='NSS'>
+            <title>Opções de configuração do NSS</title>
+            <para>
+                Estas opções podem ser usadas para configurar o serviço Name Service Switch
+(NSS).
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>enum_cache_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quantos segundos deve nss_sss manter em cache enumerações (pedidos de
+informação sobre todos os utilizadores)
+                        </para>
+                        <para>
+                            Predefinição: 120
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>entry_cache_nowait_percentage (inteiro)</term>
+                    <listitem>
+                        <para>
+                            A cache de entrada pode ser definida para actualizar automaticamente as
+entradas em segundo plano se elas forem requisitadas para lá duma
+percentagem do valor entry_cache_timeout do domínio.
+                        </para>
+                        <para>
+                            Por exemplo, se entry_cache_timeout do domínio for definido para 30s e
+entry_cache_nowait_percentage for definido para 50 (porcento), as entradas
+que cheguem após 15 segundos após a última actualização da cache serão
+retornadas imediatamente, mas o SSSD irá continuar e actualizar a cache por
+si, para que pedidos futuros não precisem de bloquear à espera de uma
+actualização à cache.
+                        </para>
+                        <para>
+                            Valores válidos para esta opção são 0-99 e representam um percentagem de
+entry_cache_timeout para cada domínio. Por razões de performance, esta
+percentagem nunca irá reduzir o tempo limite nowait para menos de 10
+segundos.   (0 desactiva esta funcionalidade)
+                        </para>
+                        <para>
+                            Predefinição: 50
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>entry_negative_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica durante quantos segundos deve o nss_sss manter em cache entradas
+de cache negativas (isto é, consultas por entradas inválidas na base de
+dados, como as não existentes)   antes de perguntar de novo ao backend.
+                        </para>
+                        <para>
+                            Predefinição: 15
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>filter_users, filter_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Exclui certos utilizadores ou grupos de serem obtidos a partir da base de
+dados sss do NSS. Isto é particularmente útil para contas do sistema. Esta
+opção pode também ser definida por-domínio ou incluir nomes totalmente
+qualificados para filtrar apenas utilizadores de um domínio particular ou
+por um nome principal de utilizador (UPN).
+                        </para>
+                        <para>
+                            NOTA: A opção filter_groups não afeta a herança de membros de grupo
+aninhados, pois a filtragem acontece apos eles serem propagados para
+retornar via NSS. Ex. um grupo a ter um membro do grupo filtrado irão ainda
+ter os utilizadores membros na listagem posterior.
+                        </para>
+                        <para>
+                            Predefinição: root
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>filter_users_in_groups (booleano)</term>
+                    <listitem>
+                        <para>
+                            Se você deseja que o utilizador filtrado ainda seja membro de grupo defina
+esta opção para false.
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/override_homedir.xml" />
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/homedir_substring.xml" />
+                <varlistentry>
+                    <term>fallback_homedir (string)</term>
+                    <listitem>
+                        <para>
+                            Define um modelo predefinido para o directório home do utilizador se nenhum
+foi especificado explicitamente pelo provedor de dados do domínio.
+                        </para>
+                        <para>
+                            Os valores disponíveis para esta opção são os mesmos que para
+override_homedir.
+                        </para>
+                        <para>
+                            exemplo: <programlisting>
+fallback_homedir = /home/%u
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: não definida (nenhum substituição para directórios home não
+definidos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>override_shell (string)</term>
+                    <listitem>
+                        <para>
+                            Sobrepõe a shell de login para todos os utilizadores. Esta opção suplanta
+quaisquer outras opções de shell se tomar efeito e pode ser definida ou na
+secção [nss] ou por-domínio.
+                        </para>
+                        <para>
+                            Predefinição: não definida (o SSSD irá usar o valor obtido de LDAP)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>allowed_shells (string)</term>
+                    <listitem>
+                        <para>
+                            Restringe a shell de utilizador para um dos valores listados. A ordem de
+avaliação é:
+                        </para>
+                        <para>
+                            1. Se a shell está presente em <quote>/etc/shells</quote>, é usada.
+                        </para>
+                        <para>
+                            2. Se a shell está na lista allowed_shells mas não em
+<quote>/etc/shells</quote>, usa o valor do parâmetro shell_fallback.
+                        </para>
+                        <para>
+                            3. Se a shell não está na lista allowed_shells e também não em
+<quote>/etc/shells</quote>, é usada uma shell nologin.
+                        </para>
+                        <para>
+                            O asterisco (*) pode ser usado para permitir qualquer shell.
+                        </para>
+                        <para>
+                            O (*) é útil se você desejar usar shell_fallback no caso da shell do
+utilizador não esteja em <quote>/etc/shells</quote> e mantendo a lista de
+todas as shells permitidas em allowed_shells seria grande sobrecarga.
+                        </para>
+                        <para>
+                            Uma string vazia para shell é passada como está ao libc.
+                        </para>
+                        <para>
+                            O <quote>/etc/shells</quote> apenas é lido no arranque do SSSD, o que
+significa que é necessário um reinicio do SSSD no caso de uma nova shell ser
+instalada.
+                        </para>
+                        <para>
+                            Predefinição: Não definida. A shell do utilizador é automaticamente usada.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>vetoed_shells (string)</term>
+                    <listitem>
+                        <para>
+                            Substitui qualquer instância destas shells por shell_fallback
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>shell_fallback (string)</term>
+                    <listitem>
+                        <para>
+                            A shell predefinida a usar se uma shell permitida não estiver instalada na
+máquina.
+                        </para>
+                        <para>
+                            Predefinição: /bin/sh
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>default_shell</term>
+                    <listitem>
+                        <para>
+                            A shell predefinida a usar se o provedor não retornar uma durante a
+pesquisa. Esta opção pode ser especificada globalmente na secção [nss] ou
+por-domínio.
+                        </para>
+                        <para>
+                            Predefinição: não definida (Retorna NULL se nenhuma shell for especificada e
+confia em libc para substituir algo sensível quando necessário, geralmente
+/bin/sh)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>get_domains_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica o tempo em segundos no qual a lista de subdomínios será
+considerada válida.
+                        </para>
+                        <para>
+                            Predefinição: 60
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>memcache_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica o tempo em segundos no qual os registos na cache em-memória sejam
+válidos. Definir esta opção para zero irá desactivar a cache em-memória.
+                        </para>
+                        <para>
+                            Predefinição: 300
+                        </para>
+                        <para>
+                            AVISO: Desactivar a cache em-memória irá ter um impacto negativo
+significante na performance do SSSD e apenas deve ser usado para testes.
+                        </para>
+                        <para>
+                            NOTA: Se a variável de ambiente SSS_NSS_USE_MEMCACHE for definida para "NO",
+as aplicações do cliente não irão usar a rápida cache em-memória.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>memcache_size_passwd (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tamanho (em megabytes) da tabela de dados alocada dentro da cache em-memória
+rápida para pedidos de passwd.  Definir o tamanho para 0 irá desactivar a
+cache em-memória de passwd.
+                        </para>
+                        <para>
+                            Predefinição: 8
+                        </para>
+                        <para>
+                            AVISO: A cache em-memória desactivada ou muito pequena pode ter impacto
+negativo significante na performance do SSSD.
+                        </para>
+                        <para>
+                            NOTA: Se a variável de ambiente SSS_NSS_USE_MEMCACHE for definida para "NO",
+as aplicações do cliente não irão usar a rápida cache em-memória.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>memcache_size_group (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tamanho (em megabytes) da tabela de dados alocada dentro da cache em-memória
+rápida para pedidos de grupo.  Definir o tamanho para 0 irá desactivar a
+cache em-memória de grupo.
+                        </para>
+                        <para>
+                            Predefinição: 6
+                        </para>
+                        <para>
+                            AVISO: A cache em-memória desactivada ou muito pequena pode ter impacto
+negativo significante na performance do SSSD.
+                        </para>
+                        <para>
+                            NOTA: Se a variável de ambiente SSS_NSS_USE_MEMCACHE for definida para "NO",
+as aplicações do cliente não irão usar a rápida cache em-memória.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>memcache_size_initgroups (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tamanho (em megabytes) da tabela de dados alocada dentro da cache em-memória
+rápida para pedidos de initgroups.  Definir o tamanho para 0 irá desactivar
+a cache em-memória de initgroups.
+                        </para>
+                        <para>
+                            Predefinido: 10
+                        </para>
+                        <para>
+                            AVISO: A cache em-memória desactivada ou muito pequena pode ter impacto
+negativo significante na performance do SSSD.
+                        </para>
+                        <para>
+                            NOTA: Se a variável de ambiente SSS_NSS_USE_MEMCACHE for definida para "NO",
+as aplicações do cliente não irão usar a rápida cache em-memória.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>memcache_size_sid (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tamanho (em megabytes) da tabela de dados alocada dentro da cache em-memória
+rápida para pedidos relacionados com SID.  Apenas pedidos SID-by-ID e
+ID-by-SID são actualmente postos em cache na cache em-memória
+rápida. Definir o tamanho para 0 irá desactivar a cache em-memória de SID.
+                        </para>
+                        <para>
+                            Predefinição: 6
+                        </para>
+                        <para>
+                            AVISO: A cache em-memória desactivada ou muito pequena pode ter impacto
+negativo significante na performance do SSSD.
+                        </para>
+                        <para>
+                            NOTA: Se a variável de ambiente SSS_NSS_USE_MEMCACHE for definida para "NO",
+as aplicações do cliente não irão usar a rápida cache em-memória.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>user_attributes (string)</term>
+                    <listitem>
+                        <para>
+                            Alguns dos pedidos adicionais do respondedor NSS podem retornar mais
+atributos que apenas os POSIX definidos pela interface do NSS. A lista de
+atributos é controlada por esta opção. É lidada do mesmo modo que a opção
+<quote>user_attributes</quote> do respondedor InfoPipe (veja <citerefentry>
+<refentrytitle>sssd-ifp</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para detalhes) mas sem valores predefinidos.
+                        </para>
+                        <para>
+                            Para facilitar a configuração o respondedor NSS irá verificar a opção
+InfoPipe se não está definida para o respondedor NSS.
+                        </para>
+                        <para>
+                            Predefinição: não definida, cai para a opção InfoPipe
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pwfield (string)</term>
+                    <listitem>
+                        <para>
+                            O valor que as operações NSS que retornam utilizadores ou grupos irá
+retornar para o campo <quote>password</quote>.
+                        </para>
+                        <para>
+                            Predefinição: <quote>*</quote>
+                        </para>
+                        <para>
+                            Nota: Esta opção também pode ser definida por-domínio o que sobrepõe o valor
+na secção [nss].
+                        </para>
+                        <para>
+                            Predefinição: <quote>não definida</quote> (domínios remotos),
+<quote>x</quote> (domínios proxy com nss_files e alvo sssd-shadowutils)
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+        <refsect2 id='PAM'>
+            <title>Opções de configuração do PAM</title>
+            <para>
+                Estas opções podem ser usadas para configurar o serviço Pluggable
+Authentication Module (PAM).
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>offline_credentials_expiration (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Se o provedor de autenticação estiver offline, durante quanto tempo devemos
+permitir logins em cache (em dias desde o último login online com sucesso).
+                        </para>
+                        <para>
+                            Predefinição: 0 (Sem Limite)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>offline_failed_login_attempts (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Se o provedor de autenticação estiver offline, quantas tentativas de login
+falhadas são permitidas.
+                        </para>
+                        <para>
+                            Predefinição: 0 (Sem Limite)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>offline_failed_login_delay (inteiro)</term>
+                    <listitem>
+                        <para>
+                            O tempo em segundos que tem de passar após ser atingido
+offline_failed_login_attempts e antes de ser possível nova tentativa de
+login.
+                        </para>
+                        <para>
+                            Se definido para 0 o utilizador não se pode autenticar offline se for
+atingido offline_failed_login_attempts. Apenas uma autenticação online com
+sucesso pode activar a autenticação offline outra vez.
+                        </para>
+                        <para>
+                            Predefinição: 5
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>pam_verbosity (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Contra que tipo de mensagens são mostradas ao utilizador durante a
+autenticação. Quanto mais alto o número mais mensagens são mostradas.
+                        </para>
+                        <para>
+                             Actualmente o sssd suporta os seguintes valores:
+                        </para>
+                        <para>
+                             <emphasis>0</emphasis>: não mostra nenhuma mensagem
+                        </para>
+                        <para>
+                             <emphasis>1</emphasis>: mostra apenas mensagens importantes
+                        </para>
+                        <para>
+                             <emphasis>2</emphasis>: mostra mensagens informativas
+                        </para>
+                        <para>
+                             <emphasis>3</emphasis>: mostra todas as mensagens e informação de depuração
+                        </para>
+                        <para>
+                            Predefinição: 1
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>pam_response_filter (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de strings separadas por vírgulas que permite remover (filtrar)
+dados enviados pelo respondedor PAM ao módulo pam_sss do PAM. Existem
+diferentes tipos de respostas enviadas ao pam_sss ex. mensagens mostradas ao
+utilizador ou variáveis de ambiente que devem ser definidas pelo pam_sss.
+                        </para>
+                        <para>
+                            Apesar das mensagens já poderem ser controladas com a ajuda da opção
+pam_verbosity, esta opção permite filtrar também outro tipo de respostas.
+                        </para>
+                        <para>
+                            Actualmente os seguintes filtros são suportados: <variablelist>
+                                <varlistentry><term>ENV</term>
+                                    <listitem><para>Não envia nenhumas variáveis de ambiente para nenhum serviço.</para></listitem>
+                                </varlistentry>
+                                <varlistentry><term>ENV:var_name</term>
+                                    <listitem><para>Não envia a variável de ambiente var_name para nenhum serviço.</para></listitem>
+                                </varlistentry>
+                                <varlistentry><term>ENV:var_name:service</term>
+                                    <listitem><para>Não envia a variável de ambiente var_name para o serviço.</para></listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            A lista de strings pode ou ser a lista de filtros o que iria definir esta
+lista de filtros e sobrepor as predefinições, Ou cada elemento da lista pode
+ser prefixado com um caractere '+' ou '-' o que irá adicionar ou remover o
+filtro à predefinição existente. Por favor note que ou todos os membros da
+lista têm de ter um prefixo '+' ou '-' ou nenhum pode. É considerado um erro
+misturar ambos os estilos.
+                        </para>
+                        <para>
+                            Predefinição: ENV:KRB5CCNAME:sudo, ENV:KRB5CCNAME:sudo-i
+                        </para>
+                        <para>
+                            Exemplo: -ENV:KRB5CCNAME:sudo-i irá remover o filtro da lista predefinida
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                  <term>pam_id_timeout (inteiro)</term>
+                  <listitem>
+                    <para>
+                      Para qualquer pedido PAM enquanto o SSSD está online, o SSSD irá tentar
+actualizar imediatamente a informação de identidade em cache para o
+utilizador de modo a assegurar que a autenticação tem lugar com a informação
+mais recente.
+                    </para>
+                    <para>
+                      Uma conversação PAM pode executar múltiplos pedidos PAM, tais como gestão de
+conta e abertura de sessão. Esta opção controla (numa base
+por-aplicação-de-cliente) quanto tempo (em segundos) podemos manter em cache
+a informação de identificação para evitar viagens de ida-e-volta excessivas
+do provedor de identidade.
+                    </para>
+                    <para>
+                      Predefinição: 5
+                    </para>
+                  </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                  <term>pam_pwd_expiration_warning (inteiro)</term>
+                  <listitem>
+                    <para>
+                      Mostra um aviso N dias antes da palavra passe expirar.
+                    </para>
+                    <para>
+                      Por favor note que o servidor backend tem de fornecer informação acerca do
+tempo de expiração da palavra passe.  Se esta informação estiver em falta, o
+sssd não pode mostrar um aviso.
+                    </para>
+                    <para>
+                      Se zero for definido, então este filtro não é aplicado, isto é, se o aviso
+de expiração foi recebido do servidor backend, será mostrado
+automaticamente.
+                    </para>
+                    <para>
+                      Esta definição pode ser sobreposta ao definir
+<emphasis>pwd_expiration_warning</emphasis> para um domínio particular.
+                    </para>
+                    <para>
+                      Predefinição: 0
+                    </para>
+                  </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>get_domains_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica o tempo em segundos no qual a lista de subdomínios será
+considerada válida.
+                        </para>
+                        <para>
+                            Predefinição: 60
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_trusted_users (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica uma lista valores UID ou nomes de utilizadores separados por
+vírgulas que têm permissão de correr conversações PAM contra domínios de
+confiança.  Os utilizadores não incluídos nesta lista só podem aceder a
+domínios marcados como públicos com <quote>pam_public_domains</quote>.  Os
+nomes de utilizadores são resolvidos em UIDs no arranque.
+                        </para>
+                        <para>
+                            Predefinição: Todos os utilizadores são considerados de confiança por
+predefinição
+                        </para>
+                        <para>
+                            Por favor note que o UID 0 tem sempre permissão de acesso ao respondedor PAM
+mesmo no caso de não estar na lista pam_trusted_users.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_public_domains (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica a lista de nomes de domínio separados por vírgulas que estão
+acessíveis até para utilizadores não de confiança.
+                        </para>
+                        <para>
+                            Dois valores especiais para a opção pam_public_domains são definidos:
+                        </para>
+                        <para>
+                            all (Utilizadores não de confiança têm permissão de acesso a todos os
+domínios no respondedor PAM.)
+                        </para>
+                        <para>
+                            none (Utilizadores não de confiança não têm permissão de acesso a nenhum
+domínio PAM no respondedor.)
+                        </para>
+                        <para>
+                            Predefinição: none
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_account_expired_message (string)</term>
+                    <listitem>
+                        <para>
+                           Permite que se defina uma mensagem de expiração personalizada, substituindo
+a mensagem "Permissão negada" predefinida.
+                        </para>
+                        <para>
+                            Nota: Por favor tenha atenção que a mensagem é apenas escrita para o serviço
+SSH a menos que pam_verbosity seja definido para 3 (mostrar todas as
+mensagens e informação de depuração).
+                        </para>
+                        <para>
+                            exemplo: <programlisting>
+pam_account_expired_message = Account expired, please contact help desk.
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: none
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_account_locked_message (string)</term>
+                    <listitem>
+                        <para>
+                           Permite que se defina uma mensagem de bloqueio personalizada, substituindo a
+mensagem "Permissão negada" predefinida.
+                        </para>
+                        <para>
+                            exemplo: <programlisting>
+pam_account_locked_message = Account locked, please contact help desk.
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: none
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry condition="build_passkey">
+                    <term>pam_passkey_auth (booleano)</term>
+                    <listitem>
+                        <para>
+                            Activar autenticação baseada em dispositivo passkey.
+                        </para>
+                        <para>
+                            Predefinição: TRUE
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry condition="build_passkey">
+                    <term>passkey_debug_libfido2 (booleano)</term>
+                    <listitem>
+                        <para>
+                            Ativa mensagens de depuração da biblioteca libfido2.
+                        </para>
+                        <para>
+                            Predefinição: False
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_cert_auth (booleano)</term>
+                    <listitem>
+                        <para>
+                            Activa a certificação baseada em autenticação Smartcard.  Como isto requer
+comunicação adicional com a Smartcard o que vai atrasar o processo de
+autenticação, esta opção vem desactivada por predefinição.
+                        </para>
+                        <para>
+                            Predefinição: False
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_cert_db_path (string)</term>
+                    <listitem>
+                        <para>
+                            O caminho para a base de dados de certificados.
+                        </para>
+                        <para>
+                            Predefinição:
+                            <itemizedlist>
+                                <listitem><para>/etc/sssd/pki/sssd_auth_ca_db.pem (caminho para um ficheiro com certificados
+CA de confiança em formato PEM)
+                                          </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_cert_verification (string)</term>
+                    <listitem>
+                        <para>
+                            Com este parâmetro a verificação de certificado PAM pode ser afinada com uma
+lista separada por vírgulas de opções que sobrepõem o valor
+<quote>certificate_verification</quote> na secção <quote>[sssd]</quote>.
+As opções suportadas são as mesmas de
+<quote>certificate_verification</quote>.
+                        </para>
+                        <para>
+                            exemplo: <programlisting>
+pam_cert_verification = partial_chain
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: não definida, isto é, usa opção predefinida
+<quote>certificate_verification</quote> definida na secção
+<quote>[sssd]</quote>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>p11_child_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quantos segundos irá o pam_sss esperar por p11_child terminar.
+                        </para>
+                        <para>
+                            Predefinido: 10
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry condition="build_passkey">
+                    <term>passkey_child_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quantos segundos irá o respondedor PAM esperar que a passkey_child termine.
+                        </para>
+                        <para>
+                            Predefinição: 15
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_app_services (string)</term>
+                    <listitem>
+                        <para>
+                            Quais serviços PAM têm permissão de contactar domínios do tipo
+<quote>application</quote>
+                        </para>
+                        <para>
+                            Predefinição: Não definida
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_p11_allowed_services (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de nomes de serviços PAM separados por vírgulas para os quais será
+permitido usarem Smartcards.
+                        </para>
+                        <para>
+                            É possível adicionar outro nome de serviço PAM ao conjunto predefinido ao
+usar <quote>+service_name</quote> ou removendo explicitamente um nome de
+serviço PAM do conjunto predefinido ao usar
+<quote>-service_name</quote>. Por exemplo, de modo a substituir um nome de
+serviço PAM predefinido para autenticação com Smartcards
+(ex. <quote>login</quote>) por um nome de serviço PAM personalizado
+(ex. <quote>my_pam_service</quote>), você deverá usar a seguinte
+configuração: <programlisting>
+pam_p11_allowed_services = +my_pam_service, -login
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: o conjunto predefinido de nomes de serviços do PAM inclui:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        login
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        su
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        su-l
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-smartcard
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-password
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-switchable-auth
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        kdm
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        sudo
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        sudo-i
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gnome-screensaver
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>p11_wait_for_card_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Se for requerida autenticação Smartcard quantos segundos extra adicionais a
+p11_child_timeout deve o respondedor PAM esperar até que uma Smartcard seja
+inserida.
+                        </para>
+                        <para>
+                            Predefinição: 60
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>p11_uri (string)</term>
+                    <listitem>
+                        <para>
+                            URI PKCS#11 (veja RFC-7512 para detalhes) que pode ser usado para restringir
+a selecção de dispositivos usados para autenticação Smartcard. Por
+predefinição o p11_child do SSSD irá procurar por uma slot PKCS#11 (leitor)
+onde a bandeira 'removable' está definida e ler os certificados a partir do
+token inserido a partir da primeira slot encontrada. Se estiverem ligados
+múltiplos leitores. o p11_uri pode ser usado para dizer ao p11_child para
+usar um leitor específico.
+                        </para>
+                        <para>
+                            Exemplo: <programlisting>
+p11_uri = pkcs11:slot-description=My%20Smartcard%20Reader
+                            </programlisting> ou <programlisting>
+p11_uri = pkcs11:library-description=OpenSC%20smartcard%20framework;slot-id=2
+                            </programlisting> Para encontrar URI apropriado por favor
+verifique o resultado de depuração de p11_child. Como alternativa o
+utilitário GnuTLS 'p11tool' com ex. '--list-all' irá também mostrar URIs
+PKCS#11.
+                        </para>
+                        <para>
+                            Predefinição: none
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_initgroups_scheme</term>
+                    <listitem>
+                        <para>
+                            O respondedor PAM pode forçar uma pesquisa online para obter os membros do
+grupo actual do utilizador que tenta fazer login. Esta opção controla quando
+isto deve ser feito e os seguintes valores são permitidos: <variablelist>
+                            <varlistentry><term>always</term>
+                                <listitem><para>Faz sempre uma busca online, por favor note que pam_id_timeout ainda se
+aplica</para></listitem>
+                            </varlistentry>
+                            <varlistentry><term>no_session</term>
+                                <listitem><para>Apenas faz uma busca online se não existir uma sessão activa do utilizador,
+isto é, se o utilizador presentemente não está "logged in"</para></listitem>
+                            </varlistentry>
+                            <varlistentry><term>never</term>
+                                <listitem><para>Nunca força uma busca online, usa os dados da cache desde que estes não
+estejam expirados</para></listitem>
+                            </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predefinição: no_session
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_gssapi_services</term>
+                    <listitem>
+                        <para>
+                            Lista de serviços PAM separados por vírgulas que têm permissão de tentar
+autenticação GSSAPI usando o módulo pam_sss_gss.so.
+                        </para>
+                        <para>
+                            Para desactivar a autenticação GSSAPI, defina esta opção para
+<quote>-</quote> (traço).
+                        </para>
+                        <para>
+                            Nota: Esta opção também pode ser definida por-domínio o que sobrepõe o valor
+na secção [pam]. Também pode ser definida para domínio de confiança o que
+sobrepõe o valor na secção domain.
+                        </para>
+                        <para>
+                            Exemplo: <programlisting>
+pam_gssapi_services = sudo, sudo-i
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: - (a autenticação GSSAPI é desactivada)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_gssapi_check_upn</term>
+                    <listitem>
+                        <para>
+                            Se True, SSSD irá requerer que o principal utilizador Kerberos que se
+autenticou com sucesso via GSSAPI possa ser associado ao utilizador que está
+a ser autenticado. A autenticação irá falhar se a verificação falhar.
+                        </para>
+                        <para>
+                            Se False, cada utilizador capaz de obter o requerido bilhete de serviço irá
+ser autenticado.
+                        </para>
+                        <para>
+                            Nota: Esta opção também pode ser definida por-domínio o que sobrepõe o valor
+na secção [pam]. Também pode ser definida para domínio de confiança o que
+sobrepõe o valor na secção domain.
+                        </para>
+                        <para>
+                            Predefinição: TRUE
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pam_gssapi_indicators_map</term>
+                    <listitem>
+                        <para>
+                           Lista de indicadores de autenticação separados por vírgulas requeridos a
+estarem presentes num bilhete Kerberos para acesso a serviço PAM que tem
+permissão de tentar autenticação GSSAPI usando o módulo pam_sss_gss.so.
+                        </para>
+                        <para>
+                           Cada elemento da lista pode ser ou um nome de indicador de autenticação ou
+um par <quote>serviço:indicador</quote>. Os indicadores não prefixados com o
+nome de serviço PAM serão requeridos para aceder a qualquer serviço PAM a
+ser usado com <option>pam_gssapi_services</option>. Uma lista resultante de
+indicadores por serviço PAM é então verificada contra os indicadores no
+bilhete Kerberos durante a autenticação por pam_sss_gss.so. Qualquer
+indicador a partir do bilhete que corresponda à lista resultante de
+indicadores para o serviço PAM irá garantir o acesso. Se nenhum dos
+indicadores na lista corresponder, o acesso será negado. Se a lista
+resultante de indicadores para o serviço PAM estiver vazia, a verificação
+não irá prevenir o acesso.
+                        </para>
+                        <para>
+                           Para desactivar a verificação de indicador de autenticação GSSAPI, defina
+esta opção para <quote>-</quote> (traço). Para desactivar a verificação para
+um serviço PAM específico, adicione <quote>service:-</quote>.
+                        </para>
+                        <para>
+                           Nota: Esta opção também pode ser definida por-domínio o que sobrepõe o valor
+na secção [pam]. Também pode ser definida para domínio de confiança o que
+sobrepõe o valor na secção domain.
+                        </para>
+                        <para>
+                            Os seguintes indicadores de autenticação são suportados pelo desenvolvimento
+Kerberos IPA:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>pkinit -- pre-autenticação usando certificados X.509 -- estejam armazenados
+em ficheiros ou em smart cards.</para>
+                                </listitem>
+                                <listitem>
+                                    <para>hardened -- pre-autenticação SPAKE ou qualquer pre-autenticação envolvida
+num canal FAST.</para>
+                                </listitem>
+                                <listitem>
+                                    <para>radius -- pre-autenticação com a ajuda dum servidor RADIUS.</para>
+                                </listitem>
+                                <listitem>
+                                    <para>otp -- pre-autenticação usando autenticação de dois factores integrada (2FA
+ou palavra passe de uma-vez, OTP) em IPA.</para>
+                                </listitem>
+                                <listitem>
+                                    <para>idp -- pre-autenticação usando provedor de identidade externo.</para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para>
+                            Exemplo: para requerer acesso a serviços do SUDO apenas para utilizadores
+que obtiveram os seus bilhetes Kerberos com uma pre-autenticação de
+certificado X.509 (PKINIT), defina <programlisting>
+pam_gssapi_indicators_map = sudo:pkinit, sudo-i:pkinit
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: não definida (o uso de indicadores de autenticação não é
+requerido)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry condition="build_json_pam">
+                    <term>pam_json_services (string)</term>
+                    <listitem>
+                        <para>
+                            Comma separated list of PAM services which can handle the JSON protocol for
+selecting authentication mechanisms
+                        </para>
+                        <para>
+                            To disable JSON protocol, set this option to <quote>-</quote> (dash).
+                        </para>
+                        <para>
+                            Exemplo: <programlisting>
+pam_json_services = gdm-switchable-auth
+                            </programlisting>
+                        </para>
+                        <para>
+                            Default: - (JSON protocol is disabled)
+                        </para>
+                        <para>
+                           Note: 2-Factor Authentication (2FA) is not supported. If 2FA is required, do
+not activate the JSON protocol.
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+        <refsect2 id='SUDO' condition="with_sudo">
+            <title>Opções de configuração do SUDO</title>
+            <para>
+                Estas opções podem ser usadas para configurar o serviço sudo.   As
+instruções detalhadas para configuração do <citerefentry>
+<refentrytitle>sudo</refentrytitle> <manvolnum>8</manvolnum> </citerefentry>
+para trabalhar com <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> estão no manual <citerefentry>
+<refentrytitle>sssd-sudo</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>sudo_timed (booleano)</term>
+                    <listitem>
+                        <para>
+                            Se se deve ou não avaliar os atributos sudoNotBefore e sudoNotAfter que
+implementam entradas de sudoers dependentes de tempo.
+                        </para>
+                        <para>
+                            Predefinição: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+            <variablelist>
+                <varlistentry>
+                    <term>sudo_threshold (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Número máximo de regras expiradas que podem ser refrescadas de uma vez. Se o
+número de regras expiradas estiver abaixo do limiar, essas regras são
+refrescadas com o mecanismo <quote>rules refresh</quote>. Se o limiar for
+excedido, um <quote>full refresh</quote> de regras sudo é despoletado em vez
+do primeiro. Este número de limiar também se aplica ao comando sudo do IPA e
+a buscas de grupo de comando.
+                        </para>
+                        <para>
+                            Predefinição: 50
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+        <refsect2 id='AUTOFS' condition="with_autofs">
+            <title>Opções de configuração do AUTOFS</title>
+            <para>
+                Estas opções podem ser usadas para configurar o serviço autofs.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>autofs_negative_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica durante quantos segundos deve o respondedor autofs manter em
+cache resposta negativas (isto é, consultas por entradas de mapa inválidas,
+como não existentes) antes de perguntar de novo ao backend.
+                        </para>
+                        <para>
+                            Predefinição: 15
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/autofs_restart.xml" />
+        </refsect2>
+
+        <refsect2 id='SSH' condition="with_ssh">
+            <title>Opções de configuração do SSH</title>
+            <para>
+                Estas opções podem ser usadas para configurar o serviço SSH.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>ssh_use_certificate_keys (booleano)</term>
+                    <listitem>
+                        <para>
+                            Se definido para true o <command>sss_ssh_authorizedkeys</command> irá
+retornar chaves ssh derivadas da chave pública de certificados X.509
+armazenados também na entrada do utilizador. Veja <citerefentry>
+<refentrytitle>sss_ssh_authorizedkeys</refentrytitle>
+<manvolnum>1</manvolnum> </citerefentry> para detalhes.
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>ssh_use_certificate_matching_rules (string)</term>
+                    <listitem>
+                        <para>
+                            Por predefinição, o respondedor ssh irá usar todos os certificados
+disponíveis que correspondam a regras para filtrar os certificados para que
+as chaves ssh sejam apenas derivadas dos correspondentes. Com esta opção as
+regras usadas podem ser restritas com uma lista separada por vírgulas de
+nomes de regras de mapeamento e correspondência. Todas as outras regras
+serão ignoradas.
+                        </para>
+                        <para>
+                            Existem duas palavras chave especiais 'all_rules' e 'no_rules' as quais irão
+activar todas ou nenhuma regra, respetivamente. A posterior significa que
+nenhum certificado será filtrado a as chaves ssh serão geradas a partir de
+todos os certificados válidos.
+                        </para>
+                        <para>
+                            Se nenhuma regra estiver configurada usar 'all_rules' irá activar uma regra
+predefinida que activa todos os certificados apropriados para autenticação
+de cliente.   Este é o mesmo comportamento que para o respondedor PAM se a
+autenticação de certificados estiver activa.
+                        </para>
+                        <para>
+                            Um nome de regra não existente é considerado um erro.   Se for um resultado
+nenhuma regra é selecionada e todos os certificados são ignorados.
+                        </para>
+                        <para>
+                            Predefinição: não usada, equivalente a 'all_rules', são usadas todas as
+regras encontradas, ou a regra predefinida
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>ca_db (string)</term>
+                    <listitem>
+                        <para>
+                            Caminho para um armazém de certificados CA de confiança. A opção é usada
+para validar certificados de utilizador antes de derivar chaves ssh públicas
+a partir deles.
+                        </para>
+                        <para>
+                            Predefinição:
+                            <itemizedlist>
+                                <listitem><para>/etc/sssd/pki/sssd_auth_ca_db.pem (caminho para um ficheiro com certificados
+CA de confiança em formato PEM)
+                                          </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+        <refsect2 id='PAC_RESPONDER' condition="with_pac_responder">
+            <title>Opções de configuração do respondedor PAC</title>
+            <para>
+                O respondedor PAC trabalha em conjunto com o plugin de dados de autorização
+para MIT Kerberos sssd_pac_plugin.so e um provedor de sub-domínio. O plugin
+envia os dados PAC durante uma autenticação GSSAPI para o respondedor PAC. O
+provedor de sub-domínio recolhe os alcances de SID e ID do domínio a que o
+cliente está junto e de domínios de confiança remotos a partir do
+controlador de domínio local. Se o PAC for descodificado e avaliado algumas
+das seguintes operações são feitas:
+                <itemizedlist>
+                    <listitem><para>Se o utilizador remoto não existir na cache, é criado. O UID é determinado
+com a ajuda do SID, domínios de confiança irão ter UPGs e o GID irá ter o
+mesmo valor que o UID. O directório home é definido com base no parâmetro
+subdomain_homedir. A shell irá estar vazia por predefinição, isto é, são
+usadas as predefinições do sistema, mas isto pode ser sobreposto com o
+parâmetro default_shell.</para>
+                    </listitem>
+                    <listitem><para>Se existirem SIDs de grupos de domínios conhecidos do sssd, o utilizador
+será adicionado a esses grupos.
+                    </para></listitem>
+                </itemizedlist>
+            </para>
+            <para>
+                Estas opções podem ser usadas para configurar o respondedor PAC.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>allowed_uids (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica a lista de valores UID ou nomes de utilizador separados por
+vírgulas que têm permissão de acesso ao respondedor PAC. Os nomes de
+utilizadores são resolvidos em UIDs no arranque.
+                        </para>
+                        <para condition="with_non_root_user_support">
+                            Predefinição: 0, &sssd_user_name; (apenas o root e utilizadores do serviço
+SSSD têm permissão de acesso ao respondedor do PAC)
+                        </para>
+                        <para condition="without_non_root_user_support">
+                            Predefinição: 0 (apenas o utilizador root ter permissão de acesso ao
+respondedor do PAC)
+                        </para>
+                        <para condition="with_non_root_user_support">
+                            Por favor note que as predefinições serão sobrepostas por esta opção. Se
+ainda deseja permitir ao root e/ou utilizador '&sssd_user_name;' acesso ao
+respondedor PAC, o que seria o caso típico, você tem de adicionar esses à
+lista dos UIDs permitidos explicitamente.
+                        </para>
+                        <para condition="without_non_root_user_support">
+                            Por favor note que apesar do UID 0 ser usado como predefinição irá ser
+sobreposto por esta opção. Se você ainda quiser permitir ao utilizador root
+ter acesso ao respondedor PAC, o que será um caso típico, você também tem de
+adicionar 0 à lista de UIDs permitidos.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pac_lifetime (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Tempo de vida da entrada PAC em segundos. Enquanto o PAC for válido os dados
+do PAC podem ser usados para determinar os membros do grupo de um
+utilizador.
+                        </para>
+                        <para>
+                            Predefinição: 300
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>pac_check (string)</term>
+                    <listitem>
+                        <para>
+                            Aplica verificações adicionais no PAC do bilhete Kerberos o qual está
+disponível nos domínios Active Directory e FreeIPA, se configurado. Por
+favor note que a validação de bilhete Kerberos tem de estar activa para ser
+capaz de verificar o PAC, isto é, a opção krb5_validate tem de estar
+definida para 'True' o que é a predefinição para o provedor IPA e AD. Se
+krb5_validate estiver definida para 'False' as verificações do PAC serão
+saltadas.
+			</para>
+			<para>
+                            Please note that the checks listed below only apply to PACs issued by Active
+Directory or recent versions of FreeIPA. PACs issued e.g. by a plain MIT
+Kerberos KDC will not contain the needed PAC data buffers to run the checks.
+			</para>
+                        <para>
+			    As seguintes opções podem ser usadas sozinhas ou numa lista separadas por
+vírgulas: <variablelist>
+                            <varlistentry>
+                                <term>no_check</term>
+                                <listitem>
+                                    <para>O PAC não deve estar presente e mesmo que esteja presente nenhuma
+verificação adicional será feita.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>pac_present</term>
+                                <listitem>
+                                    <para>O PAC tem de estar presente no bilhete de serviço o qual o SSSD irá requerer
+com a ajuda do TGT do utilizador. Se o PAC não estiver disponível a
+autenticação irá falhar.
+                                    </para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>check_upn</term>
+                                <listitem>
+                                    <para>Se o PAC estiver presente verifica se a informação de nome principal do
+utilizador (UPN) é consistente.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>check_upn_allow_missing</term>
+                                <listitem>
+                                    <para>Esta opção deve ser usada juntamente com 'check_upn' e lida com o caso onde
+uma UPN é definida no lado do servidor mas não é lida pelo SSSD. O exemplo
+típico é um domínio FreeIPA onde 'ldap_user_principal' está definido para um
+nome de atributo não existente.  Isto era feito tipicamente para contornar
+problemas com o lidar de principais de empresa. Mas isto está corrigido já
+há muito tempo e o FreeIPA consegue lidar com principais de empresa muito
+bem e não há mais necessidade de definir 'ldap_user_principal'.</para>
+                                    <para>Atualmente esta opção é definida por predefinição para evitar regressões em
+tais ambientes. Uma mensagem de relatório será adicionada ao log do sistema
+e ao log de depuração do SSSD no caso duma UPN ser encontrada no PAC mas não
+na cache do SSSD. Para evitar esta mensagem no relatório seria melhor
+avaliar se a opção 'ldap_user_principal' pode ser removida. Se isto não for
+possível, remover 'check_upn' irá saltar o teste e evitar a mensagem no log.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>upn_dns_info_present</term>
+                                <listitem>
+                                    <para>O PAC tem de conter o buffer UPN-DNS-INFO, implica 'check_upn'.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>check_upn_dns_info_ex</term>
+                                <listitem>
+                                    <para>Se o PAC estiver presente e a extensão para o buffer UPN-DNS-INFO estiver
+disponível verifica se a informação na extensão é consistente.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>upn_dns_info_ex_present</term>
+                                <listitem>
+                                    <para>O PAC tem de conter a extensão do buffer UPN-DNS-INFO buffer, implica
+'check_upn_dns_info_ex', 'upn_dns_info_present' e 'check_upn'.
+                                    </para>
+                                </listitem>
+                            </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predefinição: no_check (provedores AD e IPA 'check_upn,
+check_upn_allow_missing, check_upn_dns_info_ex')
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+        <refsect2 id='SESSION_RECORDING'>
+            <title>Opções de configuração de registo de sessão</title>
+            <para>
+                O registo de sessão funciona em conjunto com <citerefentry>
+<refentrytitle>tlog-rec-session</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>, uma parte do pacote tlog, para registar o que os
+utilizadores vêm e escrevem quando fazem login num terminal de texto.   Veja
+também <citerefentry> <refentrytitle>sssd-session-recording</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+            </para>
+            <para>
+                Estas opções podem ser usadas para configurar o registo de sessão.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>scope (string)</term>
+                    <listitem>
+                        <para>
+                            Uma das seguintes strings especificando o escopo de registo de sessão:
+<variablelist>
+                                <varlistentry>
+                                    <term>"none"</term>
+                                    <listitem>
+                                        <para>
+                                            Nenhum utilizador é registado.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"some"</term>
+                                    <listitem>
+                                        <para>
+                                            Os utilizadores/grupos especificados pelas opções
+<replaceable>users</replaceable> e <replaceable>groups</replaceable> são
+registados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"all"</term>
+                                    <listitem>
+                                        <para>
+                                            Todos os utilizadores são registados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predefinição: "none"
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>users (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista separada por vírgulas de utilizadores que deverão ter registo de
+sessão activo. Corresponde a nomes de utilizadores como retornados pelo NSS,
+isto é, após a possível substituição de espaços, alterações de
+minúscula/maiúscula, etc.
+                        </para>
+                        <para>
+                            Predefinição: Vazio. Não corresponde a nenhum utilizador.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>groups (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista separada por vírgulas de grupos, cujos membros deverão ter registo
+de sessão activo. Corresponde a nomes de grupos como retornados pelo NSS,
+isto é, após a possível substituição de espaços, alterações de
+minúscula/maiúscula, etc.
+                        </para>
+                        <para>
+                            NOTA: usar esta opção (tê-la definida para qualquer coisa) tem um custo de
+performance considerável, porque cada pedido não-em-cache para um utilizador
+requer obter e corresponder os grupos do qual o utilizador é membro.
+                        </para>
+                        <para>
+                            Predefinição: Vazio. Não corresponde a nenhum grupo.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_users (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de utilizadores que devem a serem excluídos do registo, apenas
+aplicável com 'scope=all'.
+                        </para>
+                        <para>
+                            Predefinição: Empty. Nenhum utilizador excluído.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de grupos separados por vírgulas, cujos membros devem ser
+excluídos do registo. Apenas aplicável com 'scope=all'.
+                        </para>
+                        <para>
+                            NOTA: usar esta opção (tê-la definida para qualquer coisa) tem um custo de
+performance considerável, porque cada pedido não-em-cache para um utilizador
+requer obter e corresponder os grupos do qual o utilizador é membro.
+                        </para>
+                        <para>
+                            Predefinição: Empty. Nenhum grupo excluído.
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+
+    </refsect1>
+
+    <refsect1 id='domain-sections'>
+        <title>SECÇÕES DE DOMÍNIO</title>
+        <para>
+            Estas opções de configuração podem estar presentes numa secção de
+configuração de domínio, isto é, numa secção chamada
+<quote>[domain/<replaceable>NOME</replaceable>]</quote> <variablelist>
+                <varlistentry>
+                    <term>enabled</term>
+                    <listitem>
+                        <para>
+                            Explicitamente activa ou desactiva o domínio. Se <quote>true</quote>, o
+domínio está sempre <quote>activo</quote>. Se <quote>false</quote>, o
+domínio está sempre <quote>inactivo</quote>. Se esta opção não for definida,
+o domínio é activado apenas se estiver listado na opção domains na secção
+<quote>[sssd]</quote>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>domain_type (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica se o domínio destina-se a ser usado por clientes
+conhecedores-de-POSIX como o Name Service Switch ou por aplicações que não
+precisam de dados POSIX para estarem presentes ou serem geradas. Apenas
+objetos de domínios POSIX estão disponíveis para as interfaces e utilitários
+do sistema operativo.
+                        </para>
+                        <para>
+                            Os valores permitidos para esta opção são <quote>posix</quote> e
+<quote>application</quote>.
+                        </para>
+                        <para>
+                            Os domínios POSIX são alcançáveis por todos os serviços. Os domínios
+application são apenas alcançáveis a partir do respondedor InfoPipe (veja
+<citerefentry> <refentrytitle>sssd-ifp</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>) e o respondedor PAM.
+                        </para>
+                        <para>
+                            NOTA: Os domínios application estão atualmente bem testados apenas com
+<quote>id_provider=ldap</quote>.
+                        </para>
+                        <para>
+                            Para uma maneira fácil de configurar domínios não-POSIX, por favor consulte
+a secção <quote>Domínios Application</quote>.
+                        </para>
+                        <para>
+                            Predefinição: posix
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>min_id,max_id (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Limites de UID e GID para o domínio. Se um domínio conter uma entrada que
+está fora destes limites, ela é ignorada.
+                        </para>
+                        <para>
+                            Para utilizadores, isto afecta o limite de GID principal. O utilizador não
+será retornado ao NSS se ou o UID ou o GID principal estiverem fora do
+alcance. Para membros de grupo não-principal, aqueles que estiverem dentro
+do alcance serão reportados como esperado.
+                        </para>
+                        <para>
+                            Estes limites de ID afectam até o salvar de entradas na cache, não apenas
+retornando eles por nome ou ID.
+                        </para>
+                        <para>
+                            Predefinição: 1 para min_id, 0 (sem limite) para max_id
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>enumerate (booleano)</term>
+                    <listitem>
+                        <para>
+                            Determina se um domínio pode ser enumerado, isto é, se o domínio consegue
+listar todos os utilizadores e grupos que contém. Note que não é necessário
+activar a enumeração para que grupos secundários sejam mostrados. Este
+parâmetro pode ter um dos seguintes valores:
+                        </para>
+                        <para>
+                            TRUE = Utilizadores e grupos são enumerados
+                        </para>
+                        <para>
+                            FALSE = Nenhuma enumeração para este domínio
+                        </para>
+                        <para>
+                            Predefinição: FALSE
+                        </para>
+                        <para>
+                            Enumerar um domínio requer ao SSSD descarregar e armazenar TODAS as entradas
+de utilizadores e grupos a partir do servidor remoto.
+                        </para>
+                        <para condition="without_ext_enumeration">
+                            Funcionalidade é apenas suportada para domínios com id_provider = ldap ou
+id_provider = proxy.
+                        </para>
+                        <para>
+                            Nota: Activar a enumeração tem um impacto de performance moderado no SSSD
+enquanto a enumeração está a correr. Pode demorar até vários minutos após o
+SSSD arrancar para completar totalmente as enumerações.   Durante este
+tempo, os pedidos individuais por informação vão diretamente para o LDAP,
+embora possa ser lento, devido ao pesado processamento da enumeração. Salvar
+grandes números de entradas na cache após a enumeração completar também pode
+ser intensivo para a CPU pois as relações de membros têm de ser
+re-computadas. Isto pode levar a que o processo <quote>sssd_be</quote> deixe
+de responder ou até ser reiniciado por um watchdog interno.
+                        </para>
+                        <para>
+                            Enquanto a primeira enumeração está a correr, os pedidos por listas de
+utilizadores ou grupos completas podem retornar sem resultados até que esta
+complete.
+                        </para>
+                        <para>
+                            Mais ainda, activar a enumeração pode aumentar o tempo necessário para
+detectar o desligar da rede, desde que sejam requeridos tempos limite para
+assegurar que as buscas da enumeração sejam completadas com sucesso.   Para
+mais informação, consulte o manual específico do provedor de id em uso.
+                        </para>
+                        <para>
+                            Pelas razões citadas em cima, activar a enumeração não é recomendado,
+especialmente em grandes ambientes.
+                        </para>
+                        <para>
+                            Nota: o provedor proxy é testado com módulos de fonte aberta como
+'libnss_files' e 'libnss_ldap'.  Os módulos de terceiros têm de seguir o
+comportamento documentado dos módulos nss para serem usados nesta
+configuração.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas válidas antes
+de questionar o backend outra vez
+                        </para>
+                        <para>
+                            As marcas temporais de expiração da cache são guardadas como atributos de
+objectos individuais na cache. Assim, alterar o tempo limite da cache apenas
+tem efeito em entradas recentemente adicionadas ou expiradas.   Você deve
+correr a ferramenta <citerefentry> <refentrytitle>sss_cache</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> de modo a forçar o refrescamento
+das entradas que já estão em cache.
+                        </para>
+                        <para>
+                            Predefinição: 5400
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_user_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas de utilizador
+válidas antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_group_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas de grupo
+válidas antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_netgroup_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas de netgroup
+válidas antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_service_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas de serviço
+válidas antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_resolver_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o nss_sss considerar as entradas de máquinas e
+redes válidas antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_sudo">
+                    <term>entry_cache_sudo_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o sudo considerar as regras válidas antes de
+questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_autofs">
+                    <term>entry_cache_autofs_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos deve o serviço autofs considerar os mapas
+automounter válidos antes de questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_ssh">
+                    <term>entry_cache_ssh_host_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos manter uma chave ssh de máquina após
+refrescar. Isto é, durante quanto tempo manter a chave da máquina em cache.
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>entry_cache_computer_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Durante quantos segundos manter a entrada de computador local antes de
+questionar o backend outra vez
+                        </para>
+                        <para>
+                            Predefinição: entry_cache_timeout
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>refresh_expired_interval (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica quantos segundos o SSSD tem de esperar antes de despoletar uma
+tarefa de refrescamento em segundo plano a qual irá refrescar todos os
+registos expirados ou quase expirados.
+                        </para>
+                        <para>
+                            O refrescamento em segundo plano irá processar utilizadores, grupos e
+netgroups na cache. Para utilizadores que tenham executado a operação
+initgroups (obter membros de grupo para utilizador, tipicamente corrido no
+login) no passado, ambas as entradas de utilizador e membros do grupo são
+actualizadas.
+                        </para>
+                        <para>
+                            Esta opção é herdada automaticamente para todos os domínios de confiança.
+                        </para>
+                        <para>
+                            Você pode considerar definir este valor para 3/4 * entry_cache_timeout.
+                        </para>
+                        <para>
+                            A entrada em cache será refrescada por tarefa em segundo plano quando 2/3 do
+tempo limite de cache tiver sido atingido.  Se existirem entradas em cache,
+a tarefa de segundo plano irá regular-se pelos seus valores originais de
+tempo limite de cache em vez do valor de configuração actual.  Isto pode
+levar a uma situação na qual a tarefa de refrescamento em segundo plano
+pareça não estar a funcionar. Isto é feito propositadamente para melhorar a
+operação em modo offline e a reutilização das entradas em cache válidas
+existentes.  Para tornar esta alteração instantânea o utilizador pode querer
+invalidar manualmente a cache existente.
+                        </para>
+                        <para>
+                            Predefinição: 0 (desactivado)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>cache_credentials (booleano)</term>
+                    <listitem>
+                        <para>
+                            Determina se as credenciais do utilizador são também postas em cache na
+cache LDB local. As credenciais e cache referem-se a palavras passe, o que
+inclui o primeiro factor (termo longo) de autenticação de dois-factores, não
+outros mecanismos de autenticação. Espera-se que as autenticações Passkey e
+Smartcard funcionem offline desde que uma autenticação online com sucesso
+esteja guardada na cache sem configuração adicional.
+                        </para>
+                        <para>
+                            Tome nota que apesar das credenciais serem guardadas como uma cinza SHA512
+salgada, isto ainda tem potencialmente algum risco de segurança no caso dum
+atacante conseguir ter acesso a um ficheiro de cache (normalmente requer
+acesso privilegiado) e para quebrar uma palavra passe usando ataque de força
+bruta.
+                        </para>
+                        <para>
+                            Predefinição: FALSE
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>cache_credentials_minimal_first_factor_length (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Se for usado 2-Factor-Authentication (2FA) e as credenciais devem ser
+guardadas este valor determina o comprimento mínimo do primeiro factor de
+autenticação (palavra passe de longo termo) tem de ser guardado como cinza
+SHA512 na cache.
+                        </para>
+                        <para>
+                            Isto deve evitar que PINs curtos de um PIN baseado em esquema 2FA sejam
+guardados na cache o que os tornaria alvos fáceis para ataques de força
+bruta.
+                        </para>
+                        <para>
+                            Predefinição: 8
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>account_cache_expiration (inteiro)</term>
+                    <listitem>
+                        <para>
+                            O número de dias que as entradas são deixadas na cache após o último login
+com sucesso e antes de serem removidos durante uma limpeza da cache. 0
+significa manter para sempre.  O valor deste parâmetro tem de ser maior ou
+igual a offline_credentials_expiration.
+                        </para>
+                        <para>
+                            Predefinição: 0 (ilimitado)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                  <term>pwd_expiration_warning (inteiro)</term>
+                  <listitem>
+                    <para>
+                      Mostra um aviso N dias antes da palavra passe expirar.
+                    </para>
+                    <para>
+                        Se zero for definido, então este filtro não é aplicado, isto é, se o aviso
+de expiração foi recebido do servidor backend, será mostrado
+automaticamente.
+                    </para>
+                    <para>
+                      Por favor note que o servidor backend tem de fornecer informação acerca do
+tempo de expiração da palavra passe.  Se esta informação estiver em falta, o
+sssd não pode mostrar um aviso.. E também tem de ser configurado um provedor
+de autenticação para o backend.
+                    </para>
+                    <para>
+                      Predefinição: 7 (Kerberos), 0 (LDAP)
+                    </para>
+                  </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>id_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor de identificação usado para o domínio.  Os provedores de ID
+suportados são:
+                        </para>
+                        <para>
+                            <quote>proxy</quote>: Suporta um provedor NSS legado.
+                        </para>
+                        <para>
+                            <quote>ldap</quote>: Provedor LDAP. Veja <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>ipa</quote>: Provedor FreeIPA e Red Hat Enterprise Identity
+Management. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do FreeIPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote>: Provedor Active Directory. Veja <citerefentry>
+<refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configurar Active Directory.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: Provedor para OAuth 2.0/Provedores de Identidade (IdP)
+baseado em OIDC. Veja <citerefentry> <refentrytitle>sssd-idp</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>use_fully_qualified_names (booleano)</term>
+                    <listitem>
+                        <para>
+                            Usa o nome completo e domínio (formatado pelo full_name_format do domínio)
+como o nome de login do utilizador reportado ao NSS.
+                        </para>
+                        <para>
+                            Se definido para TRUE, todos os pedidos a este domínio têm de usar nomes
+totalmente qualificados. Por exemplo, se usado em domínio EXEMPLO que contém
+um utilizador "test", <command>getent passwd test</command> não iria
+encontrar o utilizador ao passo que <command>getent passwd
+test@EXEMPLO</command> já iria.
+                        </para>
+                        <para>
+                            NOTA: Esta opção não tem efeito em pesquisas netgroup devido à sua tendência
+a incluir netgroups aninhados sem nomes qualificados. Para netgroups, todos
+os domínios serão pesquisados quando um nome não qualificado é requisitado.
+                        </para>
+                        <para>
+                            Predefinição: FALSE (TRUE para domínios/sub-domínios ou se
+default_domain_suffix for usado)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>ignore_group_members (booleano)</term>
+                    <listitem>
+                        <para>
+                            Não retorna membros de grupo para pesquisas de grupo.
+                        </para>
+                        <para>
+                            Se definido para TRUE, o atributo de membros do grupo não é requisitado a
+partir do servidor ldap, e os membros de grupo não são retornados quando se
+processam chamadas de pesquisa de grupo, tais como <citerefentry>
+<refentrytitle>getgrnam</refentrytitle> <manvolnum>3</manvolnum>
+</citerefentry> ou <citerefentry> <refentrytitle>getgrgid</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry>.  Como um efeito, <quote>getent
+group $groupname</quote> iria retornar o grupo requisitado como se estivesse
+vazio.
+                        </para>
+                        <para>
+                            Activar esta opção pode também tornar as verificações de provedor de acesso
+para membros de grupo significativamente mais rápidas, especialmente para
+grupos que contenham muitos membros.
+                        </para>
+                        <para>
+                            Esta opção pode ser definida por-domínio ou herdada via
+<emphasis>subdomain_inherit</emphasis>.
+                        </para>
+                        <para>
+                            Predefinição: FALSE
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>auth_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor de autenticação usado para o domínio.  Os provedores de
+autenticação suportados são:
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para autenticação LDAP nativa. Veja <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>krb5</quote> para autenticação Kerberos. Veja <citerefentry>
+<refentrytitle>sssd-krb5</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do Kerberos.
+                        </para>
+                        <para>
+                            <quote>ipa</quote>: Provedor FreeIPA e Red Hat Enterprise Identity
+Management. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do FreeIPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote>: Provedor Active Directory. Veja <citerefentry>
+<refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configurar Active Directory.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: Provedor para autenticação baseada em OAuth
+2.0/OIDC. Veja <citerefentry> <refentrytitle>sssd-idp</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação.
+                        </para>
+                        <para>
+                            <quote>proxy</quote> para retransmitir a autenticação para outro alvo PAM.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente a autenticação.
+                        </para>
+                        <para>
+                            Predefinição: é usado <quote>id_provider</quote> se estiver definido e puder
+lidar com pedidos de autenticação.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>access_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor de controlo de acesso usando para este domínio.  Existem dois
+provedores de acesso embutidos (em adição a qualquer incluído em backends
+instalados).  Os provedores especiais internos são:
+                        </para>
+                        <para>
+                            <quote>permit</quote> permite sempre o acesso.
+                        </para>
+                        <para>
+                            <quote>deny</quote> nega sempre o acesso.
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para autenticação LDAP nativa. Veja <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>ipa</quote>: Provedor FreeIPA e Red Hat Enterprise Identity
+Management. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do FreeIPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote>: Provedor Active Directory. Veja <citerefentry>
+<refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configurar Active Directory.
+                        </para>
+                        <para>
+                            <quote>simple</quote> controle de acesso baseado em listas de acesso ou
+negação. Veja <citerefentry> <refentrytitle>sssd-simple</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para mais informação sobre
+configuração do módulo de acesso simple.
+                        </para>
+                        <para>
+                            <quote>krb5</quote>: controle de acesso baseado em .k5login.  Veja
+<citerefentry> <refentrytitle>sssd-krb5</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para mais informação sobre
+configuração de Kerberos.
+                        </para>
+                        <para>
+                            <quote>proxy</quote> para retransmitir o controle de acesso para outro
+módulo PAM.
+                        </para>
+                        <para>
+                            Predefinição: <quote>permit</quote>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>chpass_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor que deverá lidar com operações de mudança de palavra passe para o
+domínio.  Os provedores de mudança de palavra passe suportados são:
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para mudar palavra passe guardada num servidor
+LDAP. Veja <citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>krb5</quote> para mudar a palavra passe Kerberos Veja <citerefentry>
+<refentrytitle>sssd-krb5</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do Kerberos.
+                        </para>
+                        <para>
+                            <quote>ipa</quote>: Provedor FreeIPA e Red Hat Enterprise Identity
+Management. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do FreeIPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote>: Provedor Active Directory. Veja <citerefentry>
+<refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configurar Active Directory.
+                        </para>
+                        <para>
+                            <quote>proxy</quote> para retransmitir alterações de palavra passe para
+outro alvo PAM.
+                        </para>
+                        <para>
+                            <quote>none</quote> desautoriza explicitamente mudanças de palavra passe.
+                        </para>
+                        <para>
+                            Predefinição: é usado <quote>auth_provider</quote> se estiver definido e
+puder lidar com pedidos de mudança de palavra passe.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_sudo">
+                    <term>sudo_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor SUDO usado para o domínio.  Provedores SUDO suportados são:
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para regras guardadas em LDAP. Veja <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais informação sobre configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>ipa</quote> o mesmo que <quote>ldap</quote> mas com definições
+predefinidas de IPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote> o mesmo que <quote>ldap</quote> mas com definições
+predefinidas de AD.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente SUDO.
+                        </para>
+                        <para>
+                            Predefinição: É usado o valor de <quote>id_provider</quote> se estiver
+definido.
+                        </para>
+                        <para>
+                            As instruções detalhadas para configuração do sudo_provider estão no manual
+<citerefentry> <refentrytitle>sssd-sudo</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.  Existem muitas opções de
+configuração que podem ser usadas para ajustar o comportamento. Por favor
+consulte "ldap_sudo_*" em <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+                        </para>
+                        <para>
+                            <emphasis>NOTA:</emphasis> Regras sudo são descarregadas periodicamente em
+segundo plano a menos que o provedor sudo esteja explicitamente
+desactivado. Defina <emphasis>sudo_provider = None</emphasis> para
+desactivar toda a atividade relacionada com sudo no SSSD se você não quiser
+de todo usar o sudo com SSSD.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>selinux_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor que deve lidar com o carregamento de definições selinux. Note que
+este provedor irá ser chamado logo após o provedor de acesso terminar.  Os
+provedores selinux suportados são:
+                        </para>
+                        <para>
+                            <quote>ipa</quote> para carregar definições selinux de um servidor IPA. Veja
+<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de IPA.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente o obtenção de definições
+selinux.
+                        </para>
+                        <para>
+                            Predefinição: é usado <quote>id_provider</quote> se estiver definido e puder
+lidar com pedidos de carregamento selinux.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>subdomains_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor que deve lidar com a obtenção de subdomínios. Este valor deve ser
+o mesmo que id_provider.  Os provedores de subdomínio suportados são:
+                        </para>
+                        <para>
+                            <quote>ipa</quote> para carregar uma lista de subdomínios de um servidor
+IPA. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de IPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote> para carregar uma lista de subdomínios de um servidor
+Active Directory. Veja <citerefentry> <refentrytitle>sssd-ad</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de provedor AD.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente o obtenção de subdomínios.
+                        </para>
+                        <para>
+                            Predefinição: O valor de <quote>id_provider</quote> é usado se estiver
+definido e puder lidar com pedidos de sub-domínio.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>session_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor que configura e gere tarefas relacionadas com sessões de
+utilizador. A única tarefa de sessão de utilizador atualmente fornecida é a
+integração com Fleet Commander, a qual apenas funciona com IPA.  Os
+provedores de sessão suportados são:
+                        </para>
+                        <para>
+                            <quote>ipa</quote> para permitir a execução de tarefas relacionadas com a
+sessão de utilizador.
+                        </para>
+                        <para>
+                            <quote>none</quote> não executa nenhum tipo de tarefa relacionada com a
+sessão de utilizador.
+                        </para>
+                        <para>
+                            Default: <quote>none</quote>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_autofs">
+                    <term>autofs_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor de autofs para o domínio.  Os provedores autofs suportados são:
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para carregar mapas guardados em LDAP. Veja
+<citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>ipa</quote> para carregar mapas guardados num servidor IPA. Veja
+<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de IPA.
+                        </para>
+                        <para>
+                            <quote>ad</quote> para carregar mapas guardados num servidor AD. Veja
+<citerefentry> <refentrytitle>sssd-ad</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de provedor AD.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente o autofs.
+                        </para>
+                        <para>
+                            Predefinição: O valor de <quote>id_provider</quote> é usado se estiver
+definido e puder lidar com pedidos de autofs.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>hostid_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor usado para obter informação de identidade de máquina.  Os
+provedores hostid suportados são:
+                        </para>
+                        <para>
+                            <quote>ipa</quote> para carregar identidades de máquinas guardadas num
+servidor IPA. Veja <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração de IPA.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente hostid.
+                        </para>
+                        <para>
+                            Predefinição: O valor de <quote>id_provider</quote> é usado se estiver
+definido e puder lidar com pedidos de hostid.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>resolver_provider (string)</term>
+                    <listitem>
+                        <para>
+                            O provedor que deverá lidar com pesquisas de máquinas e redes. Os provedores
+resolver são:
+                        </para>
+                        <para>
+                            <quote>proxy</quote> para retransmitir pesquisas para outra biblioteca
+NSS. Veja <quote>proxy_resolver_lib_name</quote>
+                        </para>
+                        <para>
+                            <quote>ldap</quote> para obter máquinas e redes guardadas em LDAP. Veja
+<citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do LDAP.
+                        </para>
+                        <para>
+                            <quote>ad</quote> para obter máquinas e redes guardadas em AD Veja
+<citerefentry> <refentrytitle>sssd-ad</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre
+configuração do provedor AD.
+                        </para>
+                        <para>
+                            <quote>none</quote> desactiva explicitamente a obtenção máquinas e redes.
+                        </para>
+                        <para>
+                            Predefinição: O valor de <quote>id_provider</quote> é usado se estiver
+definido e puder lidar com pedidos de resolvedor.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>re_expression (string)</term>
+                    <listitem>
+                        <para>
+                            Expressão regular para este domínio que descreve como converter a string que
+contém o nome de utilizador e domínio nestes componentes.  O "domain" pode
+corresponder ou ao nome de domínio na configuração do SSSD, ou, no caso de
+subdomínios de confiança IPA e domínios Active Directory, o nome simples
+(NetBIOS) do domínio.
+                        </para>
+                        <para>
+                            Predefinição:
+<quote>^((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]*)|(?P&lt;name&gt;[^@]+))$</quote>
+que permite dois estilos diferentes para nomes de utilizador:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>nome de utilizador</para>
+                                </listitem>
+                                <listitem>
+                                    <para>nome-utilizador@nome.domínio</para>
+                                </listitem>
+                           </itemizedlist>
+                        </para>
+                        <para>
+                            Predefinido para provedores AD e IPA:
+<quote>^(((?P&lt;domain&gt;[^\\]+)\\(?P&lt;name&gt;.+))|((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]+))|((?P&lt;name&gt;[^@\\]+)))$</quote>
+os quais permitem três estilos diferentes para nomes de utilizador:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>nome de utilizador</para>
+                                </listitem>
+                                <listitem>
+                                    <para>nome-utilizador@nome.domínio</para>
+                                </listitem>
+                                <listitem>
+                                    <para>domínio\nome-utilizador</para>
+                                </listitem>
+                            </itemizedlist>
+                            Enquanto os duas primeiras correspondem às predefinições gerais a terceira é
+introduzida para permitir integração fácil de utilizadores de domínios
+Windows.
+                        </para>
+                        <para>
+                            A re-expressão predefinida usa o caractere <quote>@</quote> como separador
+entre o nome e o domínio. Como resultado desta definição a predefinição não
+aceita o caractere <quote>@</quote> em nomes curtos (coo é permitido nos
+nomes de grupo do Windows). Se um utilizador desejar usar nomes com
+<quote>@</quote> ele tem de criar a sua própria re-expressão.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>full_name_format (string)</term>
+                    <listitem>
+                        <para>
+                            Um formato <citerefentry> <refentrytitle>printf</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry>-compatível que descreve como compor
+um nome totalmente qualificado a partir dos componentes nome de utilizador e
+nome de domínio.
+                        </para>
+                        <para>
+                            São suportadas as seguintes expansões: <variablelist>
+                                <varlistentry>
+                                    <term>%1$s</term>
+                                    <listitem><para>nome de utilizador</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%2$s</term>
+                                    <listitem>
+                                        <para>
+                                            nome de domínio como especificado no ficheiro de configuração do SSSD.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%3$s</term>
+                                    <listitem>
+                                        <para>
+                                            nome de domínio liso. Muito usado para domínios Active Directory, ambos
+diretamente configurados ou descobertos via confianças de IPA.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predefinição: <quote>%1$s@%2$s</quote>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>lookup_family_order (string)</term>
+                    <listitem>
+                        <para>
+                            Fornece a habilidade de selecionar famílias de endereços preferidos a usar
+quando executa pesquisas DNS.
+                        </para>
+                        <para>
+                            Valores suportados:
+                        </para>
+                        <para>
+                            ipv4_first: Tenta pesquisar endereços IPv4, se isso falhar, tenta IPv6
+                        </para>
+                        <para>
+                            ipv4_only: Apenas tenta resolver nomes-de-máquinas em endereços IPv4.
+                        </para>
+                        <para>
+                            ipv6_first: Tenta pesquisar endereços IPv6, se isso falhar, tenta IPv4
+                        </para>
+                        <para>
+                            ipv6_only: Apenas tenta resolver nomes-de-máquinas em endereços IPv6.
+                        </para>
+                        <para>
+                            Predefinição: ipv4_first
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dns_resolver_server_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Define a quantidade de tempo (em milissegundos) que o SSSD deve tentar falar
+com o servidor DNS antes de tentar o próximo servidor DNS.
+                        </para>
+                        <para>
+                            O provedor AD irá também usar esta opção para o tempo limite de ping CLDAP.
+                        </para>
+                        <para>
+                            Por favor veja a secção <quote>FAILOVER</quote> para mais informação sobre a
+resolução de serviço.
+                        </para>
+                        <para>
+                            Predefinição: 1000
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dns_resolver_op_timeout (integer)</term>
+                    <listitem>
+                        <para>
+                            Define a quantidade de tempo (em segundos) a esperar para resolver consultas
+DNS únicas (ex. resolução de um nome de máquina ou um registo SRV) antes de
+tentar o próximo nome de máquina ou descoberta DNS.
+                        </para>
+                        <para>
+                            Por favor veja a secção <quote>FAILOVER</quote> para mais informação sobre a
+resolução de serviço.
+                        </para>
+                        <para>
+                            Predefinição: 3
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dns_resolver_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Define a quantidade de tempo (em segundos) a esperar por resposta do serviço
+interno fail over antes de assumir que o serviço está fora de alcance. Se
+este tempo limite for alcançado, o domínio irá continuar a operar em modo
+offline.
+                        </para>
+                        <para>
+                            Por favor veja a secção <quote>FAILOVER</quote> para mais informação sobre a
+resolução de serviço.
+                        </para>
+                        <para>
+                            Predefinição: 6
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dns_resolver_use_search_list (booleano)</term>
+                    <listitem>
+                        <para>
+                            Normalmente, o resolvedor DNS sonda a lista de domínios definida na diretiva
+"search" do ficheiro resolv.conf. Isto pode levar a atrasos em ambientes com
+DNS configurado de modo inapropriado.
+                        </para>
+                        <para>
+                            Se nomes de domínio totalmente qualificados (ou _srv_) forem usados na
+configuração do SSSD, definir esta opção para FALSE pode prevenir pesquisas
+DNS desnecessárias em tais ambientes.
+                        </para>
+                        <para>
+                            Predefinição: TRUE
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dns_discovery_domain (string)</term>
+                    <listitem>
+                        <para>
+                            Se o serviço de descoberta for usado no backend, especifica a parte de
+domínio da consulta DNS de descoberta de serviço.
+                        </para>
+                        <para>
+                            Predefinição: Usa a parte de domínio do nome-de-máquina das máquinas
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>failover_primary_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quando nenhum servidor primário está disponível, o SSSD cai para um servidor
+de salvaguarda. Esta opção define o número de segundos que o SSSD espera
+antes de tentar se re-ligar ao servidor principal.
+                        </para>
+                        <para>
+                            Nota: O valor mínimo é 31.
+                        </para>
+                        <para>
+                            Predefinição: 31
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>override_gid (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Sobrepõe o valor GID principal com o que é especificado.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>case_sensitive (string)</term>
+                    <listitem>
+                        <para>
+                            Trata nomes de utilizador e grupo como sensível a maiúsculas/minúsculas.  Os
+valores de opção possíveis são: <variablelist>
+                            <varlistentry>
+                                <term>True</term>
+                                <listitem>
+                                    <para>
+                                        Sensível a maiúsculas/minúsculas. Este valor é inválido para provedor AD.
+                                    </para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>False</term>
+                                <listitem>
+                                    <para>Insensível a maiúsculas/minúsculas.</para>
+                                </listitem>
+                            </varlistentry>
+                            <varlistentry>
+                                <term>Preserving</term>
+                                <listitem>
+                                    <para>
+                                        O mesmo que False (Insensível a maiúsculas/minúsculas), mas não reduz a
+minúsculas os nomes no resultado da operação NSS. Note que nomes
+alternativos (e no caso de serviços também nomes de protocolos) são na mesma
+reduzidos a minúsculas nos resultados.
+                                    </para>
+                                    <para>
+                                        Se você desejar definir este valor para domínio de confiança com provedor
+IPA, você precisa de defini-lo em ambos o cliente e no SSSD no servidor.
+                                    </para>
+                                </listitem>
+                            </varlistentry>
+                        </variablelist>
+                        </para>
+                        <para>
+                            Esta opção pode ser definida por-domínio ou herdada via
+<emphasis>subdomain_inherit</emphasis>.
+                        </para>
+                        <para>
+                            Predefinição: True (False para provedor AD)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>subdomain_inherit (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica uma lista de parâmetros de configuração que devem ser herdados
+por um subdomínio. Por favor note que apenas os parâmetros selecionados
+podem ser herdados.  Actualmente as seguintes opções podem ser herdadas:
+                        </para>
+                        <para>
+                            ldap_search_timeout
+                        </para>
+                        <para>
+                            ldap_network_timeout
+                        </para>
+                        <para>
+                            ldap_opt_timeout
+                        </para>
+                        <para>
+                            ldap_offline_timeout
+                        </para>
+                        <para>
+                            ldap_purge_cache_timeout
+                        </para>
+                        <para>
+                            ldap_purge_cache_offset
+                        </para>
+                        <para>
+                            ldap_krb5_keytab (o valor de krb5_keytab será usado se ldap_krb5_keytab não
+estiver definido explicitamente)
+                        </para>
+                        <para>
+                            ldap_krb5_ticket_lifetime
+                        </para>
+                        <para>
+                            ldap_connection_expire_timeout
+                        </para>
+                        <para>
+                            ldap_connection_expire_offset
+                        </para>
+                        <para>
+                            ldap_connection_idle_timeout
+                        </para>
+                        <para>
+                            ldap_use_tokengroups
+                        </para>
+                        <para>
+                            ldap_user_principal
+                        </para>
+                        <para>
+                            ignore_group_members
+                        </para>
+                        <para>
+                            auto_private_groups
+                        </para>
+                        <para>
+                            case_sensitive
+                        </para>
+                        <para>
+                            Exemplo: <programlisting>
+subdomain_inherit = ldap_purge_cache_timeout
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predefinição: none
+                        </para>
+                        <para>
+                            Nota: Esta opção apenas funciona com provedores IPA e AD.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>subdomain_homedir (string)</term>
+                    <listitem>
+                        <para>
+                            Usa esta homedir como valor predefinido para todos os subdomínios dentro
+deste domínio em confiança IPA AD.   Veja
+<emphasis>override_homedir</emphasis> para informação sobre possíveis
+valores. Adicionalmente a esses, a expansão em baixo só pode ser usada com
+<emphasis>subdomain_homedir</emphasis>.  <variablelist>
+                                <varlistentry>
+                                    <term>%F</term>
+                                    <listitem><para>nome simples (NetBIOS) de um subdomínio.</para></listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            O valor pode ser sobreposto pela opção
+<emphasis>override_homedir</emphasis>.
+                        </para>
+                        <para>
+                            Predefinição: <filename>/home/%d/%u</filename>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>realmd_tags (string)</term>
+                    <listitem>
+                        <para>
+                            Várias etiquetas armazenadas pelo serviço de configuração realmd para este
+domínio.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>cached_auth_timeout (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Especifica o tempo em segundos desde a última autenticação online com
+sucesso para qual o utilizador será autenticado usando credenciais em cache
+enquanto o SSSD está em modo online. Se as credenciais estiverem incorretas,
+o SSSD regressa à autenticação online.
+                        </para>
+                        <para>
+                            O valor desta opção é herdado por todos os domínios de confiança. Até ao
+momento não é possível definir um valor diferente por domínio de confiança.
+                        </para>
+                        <para>
+                            O valor especial 0 implica que esta funcionalidade é desactivada.
+                        </para>
+                        <para>
+                            Por favor note que se <quote>cached_auth_timeout</quote> for maior que
+<quote>pam_id_timeout</quote> então o backend poderá ser chamado para lidar
+com <quote>initgroups.</quote>
+                        </para>
+                        <para>
+                            Predefinição: 0
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>local_auth_policy (string)</term>
+                    <listitem>
+                        <para>
+                            Política de métodos de autenticação local. Alguns backends (isto é, LDAP,
+provedor proxy) apenas suportam uma autenticação baseada em palavra passe,
+enquanto outros conseguem lidar com autenticação de Smartcard baseada em
+PKINIT (AD, IPA), autenticação de dois-factores (IPA), ou outros métodos
+contra uma instância central. Por predefinição em tais casos a autenticação
+é apenas executada com os métodos suportados pelo backend. Com esta opção
+podem ser ativados métodos adicionais que são avaliados e verificados
+localmente.
+                        </para>
+                        <para>
+                            Existem três valores possíveis para esta opção: match, only,
+enable. <quote>match</quote> é usada para corresponder estados offline e
+online para métodos do Kerberos. <quote>only</quote> ignora os métodos
+online e apenas oferece os locais. enable permite definir explicitamente os
+métodos para autenticação local. Como exemplo,
+<quote>enable:passkey</quote>, apenas ativa passkey para autenticação
+local. Múltiplos valores de ativação devem ser separados por vírgulas, tal
+como <quote>enable:passkey, enable:smartcard</quote>
+                        </para>
+
+                        <para>
+                            A seguinte tabela mostra quais métodos de autenticação, se configurados de
+modo apropriado, estão atualmente ativos ou inativos para cada backend, com
+a local_auth_policy predefinida: <quote>match</quote>
+                        </para>
+                        <informaltable frame='all'>
+                        <tgroup cols='3'>
+                        <colspec colname='c1' align='center'/>
+                        <colspec colname='c2' align='center'/>
+                        <colspec colname='c3' align='center'/>
+
+                        <thead>
+                        <row><entry namest='c1' nameend='c3' align='center'>
+                            local_auth_policy = match (predefinição)</entry></row>
+                        <row><entry></entry><entry>Passkey</entry>
+                            <entry>Smartcard</entry></row>
+                        </thead>
+                        <tbody>
+                        <row><entry>IPA</entry><entry>enabled</entry>
+                            <entry><para>enabled</para>
+                            </entry></row>
+                        <row><entry>AD</entry><entry>desactivado</entry>
+                            <entry><para>enabled</para></entry>
+                            </row>
+                        <row><entry>LDAP</entry><entry>desactivado</entry>
+                            <entry><para>desactivado</para></entry>
+                            </row>
+                        </tbody></tgroup></informaltable>
+                        <para>
+                            Por favor note que se a autenticação Smartcard local estiver ativa e uma
+Smartcard presente, a autenticação Smartcard será preferida sobre os métodos
+de autenticação suportados pelo backend.  Isto é, vai haver um pedido de PIN
+em vez de, por exemplo, um pedido de palavra passe.
+                        </para>
+                        <para>
+                            O seguinte exemplo de configuração permite aos utilizadores locais
+autenticarem-se localmente usando qualquer método ativo (isto é, smartcard,
+passkey).  <programlisting>
+[domain/shadowutils]
+id_provider = proxy
+proxy_lib_name = files
+auth_provider = none
+local_auth_policy = only
+</programlisting>
+                        </para>
+                        <para>
+                            Predefinição: match
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>auto_private_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Esta opção recebe qualquer um dos três valores disponíveis: <variablelist>
+                                <varlistentry>
+                                    <term>true</term>
+                                    <listitem>
+                                        <para>
+                                            Cria o grupo privado do utilizador incondicionalmente a partir do número UID
+do utilizador.  O número GID é ignorado neste caso.
+                                        </para>
+                                        <para>
+                                            NOTA: Porque o número GID, e o grupo privado do utilizador são herdados a
+partir do número UID, não é suportado ter múltiplas entradas com o mesmo
+número UID ou GID nesta opção. Por outras palavras, activar esta opção
+reforça a singularidade entre o espaço de ID.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>false</term>
+                                    <listitem>
+                                        <para>
+                                            Usa sempre o número GID principal do utilizador. O número GID tem de se
+referir a um objecto grupo na base de dados do LDAP.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>hybrid</term>
+                                    <listitem>
+                                        <para>
+                                            Um grupo primário é auto-gerado para entradas de utilizador cujos números
+UID e GID têm o mesmo valor e ao mesmo tempo o número GID não corresponde a
+um objecto grupo real no LDAP.  Se os valores forem iguais, mas o GID
+primário na entrada no utilizador for também usado por um objecto grupo, o
+GID primário do utilizador resolve para esse objecto grupo.
+                                        </para>
+                                        <para>
+                                            Se o UID e GID de um utilizador forem diferentes, então o GID tem de
+corresponder à entrada do grupo, caso contrário o GID é simplesmente não
+resolvível.
+                                        </para>
+                                        <para>
+                                            Esta funcionalidade é útil para ambientes onde se deseja parar de manter
+objetos grupo separados para os grupos privados do utilizador, mas também se
+deseja reter os grupos privados existentes de utilizador.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Para provedores de id baseados em LDAP (LDAP, IPA e AD) a predefinição para
+o domínio configurado é tipicamente False porque as fontes têm o conceito de
+um grupo primário.  <phrase condition="with_idp_provider">O provedor de id
+IdP está a usar True porque IdPs tipicamente não têm grupos
+primários.</phrase>
+                        </para>
+                        <para>
+                            Para subdomínios, o valor predefinido é False para subdomínios que usem IDs
+POSIX assinados e True para subdomínios que usam mapeamento de ID
+automático.
+                        </para>
+                        <para>
+                            O valor de auto_private_groups pode ser ou definido por-subdomínio numa
+sub-secção, por exemplo: <programlisting>
+[domain/forest.domain/sub.domain]
+auto_private_groups = false
+</programlisting> ou
+globalmente para todos os subdomínios na secção de domínio principal usando
+a opção subdomain_inherit: <programlisting>
+[domain/forest.domain]
+subdomain_inherit = auto_private_groups
+auto_private_groups = false
+</programlisting>
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+
+        <para>
+            Opções válidas para domínios proxy.  <variablelist>
+                <varlistentry>
+                    <term>proxy_pam_target (string)</term>
+                    <listitem>
+                        <para>
+                            O alvo proxy que o PAM "proxia".
+                        </para>
+                        <para>
+                            Predefinição: não definida por predefinição, você tem de tomar uma
+configuração pam existente ou criar uma nova e adicionar o nome do serviço
+aqui. Como alternativa você pode activar autenticação local com a opção
+local_auth_policy.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>proxy_lib_name (string)</term>
+                    <listitem>
+                        <para>
+                            O nome da biblioteca NSS a usar em domínios proxy. As funções NSS procuradas
+na biblioteca estão no formato _nss_$(libName)_$(function), por exemplo
+_nss_files_getpwent.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>proxy_resolver_lib_name (string)</term>
+                    <listitem>
+                        <para>
+                            O nome da biblioteca NSS a usar para buscas de máquinas e redes em domínios
+proxy. As funções NSS procuradas na biblioteca estão no formato
+_nss_$(libName)_$(function), por exemplo _nss_dns_gethostbyname2_r.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>proxy_fast_alias (booleano)</term>
+                    <listitem>
+                        <para>
+                            Quando um utilizador ou grupo é procurado pelo nome no provedor proxy, é
+executada uma segunda procura pelo ID para "canonizar" o nome no caso de o
+nome pedido ser um alias. Definir esta opção para true irá fazer com que o
+SSSD execute a procura de ID a partir da cache por razões de performance.
+                        </para>
+                        <para>
+                            Predefinição: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>proxy_max_children (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica o número de filhos proxy pré-forcados. É útil para
+ambientes SSSD de alta carga onde o sssd pode esgotar as slots para filhos
+disponíveis, o que iria causar alguns problemas devido a pedidos serem
+postos em fila de espera.
+                        </para>
+                        <para>
+                            Predefinido: 10
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+            </variablelist>
+        </para>
+
+        <refsect2 id='app_domains'>
+            <title>Domínios Application</title>
+            <para>
+                O SSSD, com a sua interface D-Bus (veja <citerefentry>
+<refentrytitle>sssd-ifp</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>) está a apelar a aplicações como uma porta para um
+directório LDAP onde os utilizadores e grupos são armazenados. No entanto,
+ao contrário do desenvolvimento tradicional do SSSD onde todos os
+utilizadores e grupos ou têm atributos POSIX ou esses atributos podem ser
+inferidos a partir de SIDs de Windows, em muitos casos os utilizadores e
+grupos no cenário de suporte de aplicação não têm atributos POSIX.  Em vez
+de definir uma secção
+<quote>[domain/<replaceable>NOME</replaceable>]</quote>. o administrador
+pode definir uma secção
+<quote>[application/<replaceable>NOME</replaceable>]</quote> que representa
+internamente um domínio com definições de heranças opcionais tipo
+<quote>application</quote> a partir de um domínio tradicional SSSD.
+            </para>
+            <para>
+                Por favor note que o domínio application ainda tem de ser explicitamente
+activado no parâmetro <quote>domains</quote> para que a ordem de procura
+entre o domínio application e o seu domínio irmão POSIX seja definida
+corretamente.
+            </para>
+            <variablelist>
+                <title>Parâmetros de domínio Application</title>
+                <varlistentry>
+                    <term>inherit_from (string)</term>
+                    <listitem>
+                        <para>
+                            O domínio tipo-POSIX do SSSD de onde o domínio application herda todas as
+definições. O domínio application pode ainda adicionar as suas definições às
+definições application que ampliam ou sobrepõem as definições de domínio
+<quote>sibling</quote>.
+                        </para>
+                        <para>
+                            Predefinição: Não definida
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+            <para>
+                O seguinte exemplo ilustra o uso de um domínio application, Nesta
+configuração, o domínio POSIX é ligado a um servidor LDAP e é usado pelo SO
+através do respondedor NSS. Adicionalmente, o domínio application também
+requisita o atributo telephoneNumber, guarda-o como o atributo de telefone
+na cache e torna o atributo telefone acessível através da interface D-Bus.
+            </para>
+<programlisting>
+[sssd]
+domains = appdom, posixdom
+
+[ifp]
+user_attributes = +phone
+
+[domain/posixdom]
+id_provider = ldap
+ldap_uri = ldap://ldap.example.com
+ldap_search_base = dc=example,dc=com
+
+[application/appdom]
+inherit_from = posixdom
+ldap_user_extra_attrs = phone:telephoneNumber
+</programlisting>
+        </refsect2>
+
+    </refsect1>
+
+    <refsect1 id='trusted-domains'>
+        <title>SECÇÃO DE DOMÍNIO DE CONFIANÇA</title>
+        <para>
+            Algumas opções usadas na secção domínio podem também ser usadas na secção
+dos domínios de confiança, isto é, na secção chamada
+<quote>[domain/<replaceable>DOMAIN_NAME</replaceable>/<replaceable>TRUSTED_DOMAIN_NAME</replaceable>]</quote>.
+Onde DOMAIN_NAME é o real domínio base unido. Por favor consulte os exemplos
+em baixo para explicação. As opções actualmente suportadas na secção de
+domínio de confiança são:
+        </para>
+            <para>ldap_search_base,</para>
+            <para>ldap_user_search_base,</para>
+            <para>ldap_group_search_base,</para>
+            <para>ldap_netgroup_search_base,</para>
+            <para>ldap_service_search_base,</para>
+            <para>ldap_sasl_mech,</para>
+            <para>ad_server,</para>
+            <para>ad_backup_server,</para>
+            <para>ad_site,</para>
+            <para>use_fully_qualified_names</para>
+            <para>pam_gssapi_services</para>
+            <para>pam_gssapi_check_upn</para>
+        <para>
+            Para mais detalhes acerca destas opções veja as suas descrições individuais
+no manual.
+        </para>
+    </refsect1>
+
+    <refsect1 id='certmap'>
+        <title>SECÇÃO DE MAPEAMENTO DE CERTIFICADO</title>
+        <para>
+            Para permitir a autenticação com Smartcards e certificados o SSSD deve ser
+capaz de mapear certificados para utilizadores. Isto pode ser feito ao
+adicionar o certificado completo ao objecto LDAP do utilizador ou a uma
+sobreposição global. Apesar de se usar o certificado completo seja requerido
+para se usar a funcionalidade de autenticação Smartcard do SSH (veja
+<citerefentry> <refentrytitle>sss_ssh_authorizedkeys</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> para detalhes) pode ser incomodo ou
+mesmo não possível fazer isto para os casos gerais onde os serviços locais
+usam PAM para autenticação..
+        </para>
+        <para>
+            Para tornar o mapeamento mais flexível as regras de mapeamento e
+correspondência foram adicionadas ao SSSD (veja <citerefentry>
+<refentrytitle>sss-certmap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para detalhes).
+        </para>
+        <para>
+            Uma regra de mapeamento e correspondência pode se adicionada à configuração
+do SSSD numa secção própria com um nome como
+<quote>[certmap/<replaceable>NOME_DOMÍNIO</replaceable>/<replaceable>NOME_REGRA</replaceable>]</quote>.
+Nesta secção são permitidas as seguintes opções:
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term>matchrule (string)</term>
+                <listitem>
+                    <para>
+                        Apenas os certificados da Smartcard que corresponde a esta regra serão
+processados, todos os outros serão ignorados.
+                    </para>
+                    <para>
+                        Predefinição: KRB5:&lt;EKU&gt;clientAuth, isto é, apenas certificados que
+têm a Utilização de Chave Estendida <quote>clientAuth</quote>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>maprule (string)</term>
+                <listitem>
+                    <para>
+                        Define como um utilizador é encontrado para um dado certificado.
+                    </para>
+                    <para>
+                        Predefinição:
+                        <itemizedlist>
+                            <listitem>
+                                <para>LDAP:(userCertificate;binary={cert!bin})  para provedores baseados em LDAP
+como <quote>ldap</quote>, <quote>AD</quote> ou <quote>ipa</quote>.</para>
+                            </listitem>
+                            <listitem>
+                                <para>se maprule não estiver definida e o provedor for <quote>proxy</quote>, o
+nome RULE_NAME é assumido para ser o nome do utilizador correspondente.</para>
+                            </listitem>
+                        </itemizedlist>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>domains (string)</term>
+                <listitem>
+                    <para>
+                        Lista de nomes de domínios separados por vírgulas em que a regra deve ser
+aplicada. Por predefinição uma regra é apenas válida no domínio configurado
+no sssd.conf. Se o provedor suportar subdomínios esta opção pode ser usada
+para adicionar a regra também a subdomínios.
+                    </para>
+                    <para>
+                        Predefinição: o domínio configurado em sssd.conf
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>priority (inteiro)</term>
+                <listitem>
+                    <para>
+                        Valor inteiro não assinado que define a prioridade da regra. Quanto mais
+alto o número mais baixa a prioridade.  <quote>0</quote> significa a mais
+alta prioridade enquanto <quote>4294967295</quote> é a mais baixa.
+                    </para>
+                    <para>
+                        Predefinição: a prioridade mais baixa
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='prompting_configuration'>
+        <title>SECÇÃO DE CONFIGURAÇÃO DE INCITAÇÃO</title>
+        <para>
+            Se um ficheiro especial
+(<filename>/var/lib/sss/pubconf/pam_preauth_available</filename>)  existir o
+módulo pam_sss do PAM do SSSD irá pedir ao SSSD para perceber quais métodos
+de autenticação estão disponíveis para o utilizador que tenta iniciar
+sessão.  Com base nos resultados o pam_sss irá incitar o utilizador pelas
+credenciais apropriadas.
+        </para>
+        <para>
+            Com o crescente número de métodos de autenticação e a possibilidade de que
+existam vários para um único utilizador, a heurística usada pelo pam_sss
+para selecionar a incitação pode não ser apropriada para todos os casos. As
+seguintes opções fornecem melhor flexibilidade aqui.
+        </para>
+        <para>
+            Cada método de autenticação suportado tem a sua sub-secção de configuração
+sub <quote>[prompting/...]</quote>. Actualmente existem: <variablelist>
+            <varlistentry>
+                <term>[prompting/password]</term>
+                <listitem>
+                    <para>para configurar a incitação da palavra passe, as opções permitidas são:
+<variablelist><varlistentry><term>password_prompt</term>
+                        <listitem><para>para alterar o texto da incitação da palavra passe</para></listitem></varlistentry></variablelist>
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist> <variablelist>
+            <varlistentry>
+                <term>[prompting/2fa]</term>
+                <listitem>
+                    <para>para configurar a incitação de autenticação de dois-factores, as opções
+permitidas são: <variablelist><varlistentry><term>first_prompt</term>
+                        <listitem><para>para alterar a string da incitação para o primeiro factor </para></listitem>
+                        </varlistentry>
+                        <varlistentry><term>second_prompt</term>
+                        <listitem><para>para alterar o texto da incitação para o segundo factor </para></listitem>
+                        </varlistentry>
+                        <varlistentry><term>single_prompt</term>
+                        <listitem><para>valor booleano, se True irá existir apenas uma incitação usando o valor de
+first_prompt onde é esperado que ambos factores são inseridos como uma única
+string. Por favor note que ambos factores têm de ser inseridos aqui, mesmo
+que o segundo factor seja opcional.</para></listitem>
+                        </varlistentry>
+                    </variablelist> Se o segundo
+factor for opcional e se deve ser possível registar ou apenas com a palavra
+passe ou com ambos factores a incitação de dois-passos tem de ser usada.
+                    </para>
+                    <para>
+                    Alguns clientes, como o SSH com 'PasswordAuthentication yes', geram os seus
+próprios avisos e não usam os avisos fornecidos pelo SSSD ou outros módulos
+PAM. Adicionalmente, para SSH com PasswordAuthentication, se a autenticação
+de dois-factores estiver ativa, o SSSD espera que as credenciais inseridas
+pelo utilizador no aviso de palavra passe do SSH seja sempre os dois
+factores numa única string, mesmo que a autenticação de dois-factores seja
+opcional.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+<variablelist>
+            <varlistentry condition="build_passkey">
+                <term>[prompting/passkey]</term>
+                <listitem>
+                    <para>para configura a incitação a autenticação passkey, as opções permitidas são:
+<variablelist>
+                    <varlistentry>
+                        <term>interactive</term>
+                        <listitem>
+                            <para>valor booleano, se True incita uma mensagem e espera antes de testar a
+presença dum dispositivo passkey.  Recomendado se o seu dispositivo não
+tiver um gatilho táctico.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>interactive_prompt</term>
+                        <listitem>
+                            <para>para alterar a mensagem da incitação interactiva.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>touch</term>
+                        <listitem>
+                            <para>valor booleano, se True incita uma mensagem a lembrar o utilizador a tocar
+no dispositivo.
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>touch_prompt</term>
+                        <listitem>
+                            <para>para mudar a mensagem do aviso de toque.
+                            </para>
+                        </listitem>
+                        </varlistentry>
+                    </variablelist>
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+        </para>
+        <para>
+            É possível adicionar uma sub-secção para serviços PAM específicos,
+ex. <quote>[prompting/password/sshd]</quote> para mudar individualmente a
+incitação para este serviço.
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EXEMPLOS</title>
+        <para>
+            1. O exemplo seguinte mostra uma configuração SSSD típica. Não descreve a
+configuração dos próprios domínios - consulte a documentação sobre
+configuração de domínios para mais detalhes. <programlisting>
+[sssd]
+domains = LDAP
+services = nss, pam
+
+[nss]
+filter_groups = root
+filter_users = root
+
+[pam]
+
+[domain/LDAP]
+id_provider = ldap
+ldap_uri = ldap://ldap.example.com
+ldap_search_base = dc=example,dc=com
+
+auth_provider = krb5
+krb5_server = kerberos.example.com
+krb5_realm = EXAMPLE.COM
+cache_credentials = true
+
+min_id = 10000
+max_id = 20000
+enumerate = False
+</programlisting>
+        </para>
+        <para>
+            2. O seguinte exemplo mostra a configuração de confiança IPA AD onde a
+floresta AD consiste de dois domínios numa estrutura pai filho.  É suposto o
+domínio IPA (ipa.com) ter confiança com domínio AD (ad.com).  ad.com tem
+domínio filho (child.ad.com). Para activar os nomes curtos no domínio filho
+deve ser usada a seguinte configuração.  <programlisting>
+[domain/ipa.com/child.ad.com]
+use_fully_qualified_names = false
+</programlisting>
+        </para>
+        <para>
+            3. O exemplo seguinte mostra a configuração de uma regra de mapeamento de
+certificado. É válida para o domínio configurado <quote>my.domain</quote> e
+adicionalmente para os subdomínios <quote>your.domain</quote> e usa o
+certificado completo no filtro de procura.  <programlisting>
+[certmap/my.domain/rule_name]
+matchrule = &lt;ISSUER&gt;^CN=My-CA,DC=MY,DC=DOMAIN$
+maprule = (userCertificate;binary={cert!bin})
+domains = my.domain, your.domain
+priority = 10
+</programlisting>
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

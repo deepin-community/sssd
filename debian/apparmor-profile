@@ -6,6 +6,7 @@
   #include <abstractions/nameservice>
   #include <abstractions/openssl>
   #include <abstractions/user-tmp>
+  #include <abstractions/p11-kit>
 
   capability chown,
   capability dac_override,
@@ -32,6 +33,11 @@
   /etc/gss/mech.d/ r,
   /etc/gss/mech.d/** r,
   /usr/share/sssd/cfg_rules.ini r,
+  /etc/sssd/pki/ r,
+  /etc/sssd/pki/** r,
+  /{,var/}run/pcscd/pcscd.comm rw,
+  /etc/machine-id r,
+  /etc/opensc/opensc.conf r,
 
   /usr/lib/@{multiarch}/ldb/modules/ldb/* m,
   /usr/lib/@{multiarch}/samba/ldb/* m,

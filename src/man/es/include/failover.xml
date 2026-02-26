@@ -13,26 +13,19 @@ listados en orden de preferencia. La lista puede contener cualquier número
 de servidores.
         </para>
         <para>
-            For each failover-enabled config option, two variants exist:
-<emphasis>primary</emphasis> and <emphasis>backup</emphasis>.  The idea is
-that servers in the primary list are preferred and backup servers are only
-searched if no primary servers can be reached. If a backup server is
-selected, a timeout of 31 seconds is set. After this timeout SSSD will
-periodically try to reconnect to one of the primary servers. If it succeeds,
-it will replace the current active (backup) server.
+            Para cada opción de configuración con conmutación por error habilitado,
+existen dos variantes: <emphasis>primaria</emphasis> y
+<emphasis>respaldo</emphasis>. La idea es que los servidores de la lista
+principal sean los preferidos y solo se busquen servidores de respaldo si no
+se puede acceder a ninguno. Si se selecciona un servidor de respaldo, se
+establece un tiempo de espera de 31 segundos. Después de este tiempo, SSSD
+intentará reconectarse periódicamente a uno de los servidores
+principales. Si lo logra, reemplazará el actual servidor activo (de
+respaldo).
         </para>
     </refsect2>
     <refsect2 id='failover_mechanism'>
-        <title>El mecanismo de conmutación por errorEl mecanismo de failover distingue
-entre una máquina y un servicio. El punto final intenta primero resolver el
-nombre de host de una máquina dada; si el intento de resolución falla, la
-máquina es considerada fuera de línea. No se harán más intentos de conexión
-con esta máquina para ningún otro servicio. Si el intento de resolución
-tiene éxito, el punto final intenta conectar a un servicio en esa
-máquina. Si el intento de conexión al servicio falla, entonces sólo se
-considera fuera de línea este servicio concreto y el punto final conmutará
-automáticamente sobre el siguientes servicio. La máquina se considera que
-sigue en línea y se puede intentar el acceso a otros servicios.</title>
+        <title>El Mecanismo de Conmutación por Error</title>
         <para>
             El mecanismo de conmutación por error distingue entre una máquina y un
 servicio. El punto final intenta primero resolver el nombre de host de una
@@ -56,31 +49,32 @@ al modo fuera de línea y después intentará reconectar cada 30 segundo.
         </para>
     </refsect2>
     <refsect2 id='failover_tuning'>
-        <title>Failover time outs and tuning</title>
+        <title>Vencimiento de conmutación por error y ajuste</title>
         <para>
-            Resolving a server to connect to can be as simple as running a single DNS
-query or can involve several steps, such as finding the correct site or
-trying out multiple host names in case some of the configured servers are
-not reachable. The more complex scenarios can take some time and SSSD needs
-to balance between providing enough time to finish the resolution process
-but on the other hand, not trying for too long before falling back to
-offline mode. If the SSSD debug logs show that the server resolution is
-timing out before a live server is contacted, you can consider changing the
-time outs.
+            Resolver un servidor para conectarse puede ser tan sencillo como ejecutar
+una sola consulta DNS o implicar varios pasos, como encontrar el sitio
+correcto o probar varios nombres de host en caso de que algunos de los
+servidores configurados no sean accesibles. Los escenarios más complejos
+pueden tardar un tiempo, y SSSD debe encontrar el equilibrio entre
+proporcionar tiempo suficiente para completar el proceso de resolución y,
+por otro lado, no intentarlo durante demasiado tiempo antes de volver al
+modo sin conexión. Si las bitácoras de depuración de SSSD muestran que la
+resolución del servidor se agota antes de que se contacte con un servidor
+activo, puede considerar modificar los tiempos de espera.
         </para>
         <para>
-            This section lists the available tunables. Please refer to their description
-in the <citerefentry>
+            Esta sección enumera los parámetros ajustables disponibles. Consulte su
+descripción en la página del manual <citerefentry>
 <refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum>
-</citerefentry>, manual page.  <variablelist>
+</citerefentry>. <variablelist>
                 <varlistentry>
                     <term>
                         dns_resolver_server_timeout
                     </term>
                     <listitem>
                         <para>
-                            Time in milliseconds that sets how long would SSSD talk to a single DNS
-server before trying next one.
+                            Tiempo en milisegundos que establece durante cuánto tiempo hablaría SSSD con
+un solo servidor DNS antes de intentar con el siguiente.
                         </para>
                         <para>
                             Predeterminado: 1000
@@ -93,9 +87,10 @@ server before trying next one.
                     </term>
                     <listitem>
                         <para>
-                            Time in seconds to tell how long would SSSD try to resolve single DNS query
-(e.g. resolution of a hostname or an SRV record) before trying the next
-hostname or discovery domain.
+                            Tiempo en segundos para indicar durante cuánto tiempo SSSD intentaría
+resolver una única consulta DNS (por ejemplo, la resolución de un nombre de
+host o un registro SRV) antes de intentar con el siguiente nombre de host o
+dominio de descubrimiento.
                         </para>
                         <para>
                             Predeterminado: 3
@@ -108,9 +103,9 @@ hostname or discovery domain.
                     </term>
                     <listitem>
                         <para>
-                            How long would SSSD try to resolve a failover service. This service
-resolution internally might include several steps, such as resolving DNS SRV
-queries or locating the site.
+                            Cuanto tiempo tardaría SSSD en resolver un servicio de conmutación por
+error. Esta resolución interna del servicio podría incluir varios pasos,
+como resolver consultas DNS SRV o localizar el sitio.
                         </para>
                         <para>
                             Predeterminado: 6
@@ -120,12 +115,12 @@ queries or locating the site.
             </variablelist>
         </para>
         <para>
-            For LDAP-based providers, the resolve operation is performed as part of an
-LDAP connection operation. Therefore, also the
-<quote>ldap_opt_timeout</quote> timeout should be set to a larger value than
-<quote>dns_resolver_timeout</quote> which in turn should be set to a larger
-value than <quote>dns_resolver_op_timeout</quote> which should be larger
-than <quote>dns_resolver_server_timeout</quote>.
+            Para los proveedores basados en LDAP, la operación de resolución se realiza
+como parte de una conexión LDAP. Por lo tanto, el tiempo de espera
+<quote>ldap_opt_timeout</quote> debe establecerse en un valor mayor que
+<quote>dns_resolver_timeout</quote>, que a su vez debe establecerse en un
+valor mayor que <quote>dns_resolver_op_timeout</quote>, que a su vez debe
+ser mayor que <quote>dns_resolver_server_timeout</quote>.
         </para>
     </refsect2>
 </refsect1>

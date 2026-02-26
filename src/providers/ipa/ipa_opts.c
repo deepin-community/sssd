@@ -45,7 +45,6 @@ struct dp_option ipa_basic_opts[] = {
     { "ipa_hbac_support_srchost", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "ipa_automount_location", DP_OPT_STRING, { "default" }, NULL_STRING },
     { "ipa_ranges_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
-    { "ipa_enable_dns_sites", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "ipa_server_mode", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "ipa_views_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "krb5_confd_path", DP_OPT_STRING, { KRB5_MAPPING_DIR }, NULL_STRING },
@@ -63,12 +62,16 @@ struct dp_option ipa_dyndns_opts[] = {
     { "dyndns_refresh_interval", DP_OPT_NUMBER, NULL_NUMBER, NULL_NUMBER },
     { "dyndns_refresh_interval_offset", DP_OPT_NUMBER, NULL_NUMBER, NULL_NUMBER },
     { "dyndns_iface", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_address", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "dyndns_ttl", DP_OPT_NUMBER, { .number = 1200 }, NULL_NUMBER },
     { "dyndns_update_ptr", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "dyndns_force_tcp", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "dyndns_auth", DP_OPT_STRING, { "gss-tsig" }, NULL_STRING },
     { "dyndns_auth_ptr", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "dyndns_server", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_cacert", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_cert", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_key", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     DP_OPTION_TERMINATOR
 };
 
@@ -76,6 +79,7 @@ struct dp_option ipa_def_ldap_opts[] = {
     { "ldap_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_backup_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "ldap_read_rootdse", DP_OPT_STRING, { "anonymous" }, NULL_STRING },
     { "ldap_default_bind_dn", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_default_authtok_type", DP_OPT_STRING, NULL_STRING, NULL_STRING},
     { "ldap_default_authtok", DP_OPT_BLOB, NULL_BLOB, NULL_BLOB },
@@ -109,8 +113,11 @@ struct dp_option ipa_def_ldap_opts[] = {
     { "ldap_pwmodify_mode", DP_OPT_STRING, { "exop" }, NULL_STRING },
     { "ldap_offline_timeout", DP_OPT_NUMBER, { .number = 60 }, NULL_NUMBER },
     { "ldap_force_upper_case_realm", DP_OPT_BOOL, BOOL_TRUE, BOOL_TRUE },
-    { "ldap_enumeration_refresh_timeout", DP_OPT_NUMBER, { .number = 300 }, NULL_NUMBER },
-    { "ldap_enumeration_refresh_offset", DP_OPT_NUMBER, { .number = 30 }, NULL_NUMBER },
+    /* ipa_provider doesn't support enumeration, 'ldap_enumeration_*' options are here
+     * only because this structure is shared with ldap_provider
+     */
+    { "ldap_enumeration_refresh_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
+    { "ldap_enumeration_refresh_offset", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_purge_cache_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_purge_cache_offset", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_tls_cacert", DP_OPT_STRING, { "/etc/ipa/ca.crt" }, NULL_STRING },
@@ -149,7 +156,10 @@ struct dp_option ipa_def_ldap_opts[] = {
     { "ldap_chpass_backup_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_chpass_dns_service_name", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_chpass_update_last_change", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
-    { "ldap_enumeration_search_timeout", DP_OPT_NUMBER, { .number = 60 }, NULL_NUMBER },
+    /* ipa_provider doesn't support enumeration, 'ldap_enumeration_*' options are here
+     * only because this structure is shared with ldap_provider
+     */
+    { "ldap_enumeration_search_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     /* Do not include ldap_auth_disable_tls_never_use_in_production in the
      * manpages or SSSDConfig API
      */
@@ -177,6 +187,9 @@ struct dp_option ipa_def_ldap_opts[] = {
     { "ldap_pwdlockout_dn", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "wildcard_limit", DP_OPT_NUMBER, { .number = 1000 }, NULL_NUMBER},
     { "ldap_library_debug_level", DP_OPT_NUMBER, NULL_NUMBER, NULL_NUMBER},
+    { "ldap_use_ppolicy", DP_OPT_BOOL, BOOL_TRUE, BOOL_TRUE },
+    { "ldap_ppolicy_pwd_change_threshold", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
+    { "ldap_subid_ranges_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     DP_OPTION_TERMINATOR
 };
 
@@ -226,6 +239,7 @@ struct sdap_attr_map ipa_user_map[] = {
     { "ldap_user_auth_type", "ipaUserAuthType", SYSDB_AUTH_TYPE, NULL },
     { "ldap_user_certificate", "userCertificate;binary", SYSDB_USER_CERT, NULL },
     { "ldap_user_email", "mail", SYSDB_USER_EMAIL, NULL },
+    { SDAP_ATTR_MAP_NO_OPT, "sAMAccountName", SYSDB_AD_SAMACCOUNTNAME, NULL },
     { "ldap_user_passkey", "ipaPassKey", SYSDB_USER_PASSKEY, NULL },
     SDAP_ATTR_MAP_TERMINATOR
 };
@@ -260,7 +274,7 @@ struct sdap_attr_map ipa_netgroup_map[] = {
 };
 
 struct sdap_attr_map ipa_subid_map[] = {
-    { "ipa_subuid_object_class", "ipasubordinateid", SYSDB_SUBID_RANGE_OC, NULL },
+    { "ipa_subuid_object_class", "ipaSubordinateIdEntry", SYSDB_SUBID_RANGE_OC, NULL },
     { "ipa_subuid_count", "ipaSubUidCount", SYSDB_SUBID_UID_COUND, NULL },
     { "ipa_subgid_count", "ipaSubGidCount", SYSDB_SUBID_GID_COUNT, NULL },
     { "ipa_subuid_number", "ipaSubUidNumber", SYSDB_SUBID_UID_NUMBER, NULL },

@@ -302,6 +302,14 @@ enum nss_status _nss_sss_initgroups_dyn(const char *user, gid_t group,
         return NSS_STATUS_NOTFOUND;
     }
 
+#ifdef SSSD_NON_ROOT_USER
+    /* Never resolve SSSD_USER */
+    if (strcmp(user, SSSD_USER) == 0) {
+        *errnop = 0;
+        return NSS_STATUS_NOTFOUND;
+    }
+#endif /* SSSD_NON_ROOT_USER */
+
     ret = sss_nss_mc_initgroups_dyn(user, user_len, group, start, size,
                                     groups, limit);
     switch (ret) {
@@ -426,6 +434,19 @@ enum nss_status _nss_sss_getgrnam_r(const char *name, struct group *result,
         *errnop = EINVAL;
         return NSS_STATUS_NOTFOUND;
     }
+
+    if (name_len == 0) {
+        *errnop = EINVAL;
+        return NSS_STATUS_NOTFOUND;
+    }
+
+#ifdef SSSD_NON_ROOT_USER
+    /* Never resolve SSSD_USER */
+    if (strcmp(name, SSSD_USER) == 0) {
+        *errnop = 0;
+        return NSS_STATUS_NOTFOUND;
+    }
+#endif /* SSSD_NON_ROOT_USER */
 
     ret = sss_nss_mc_getgrnam(name, name_len, result, buffer, buflen);
     switch (ret) {

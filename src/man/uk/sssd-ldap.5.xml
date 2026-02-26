@@ -30,13 +30,16 @@
             Ви можете налаштувати SSSD на використання декількох доменів LDAP.
         </para>
         <para>
-            LDAP back end supports id, auth, access and chpass providers. If you want to
-authenticate against an LDAP server either TLS/SSL or LDAPS is
-required. <command>sssd</command> <emphasis>does not</emphasis> support
-authentication over an unencrypted channel.  Even if the LDAP server is used
-only as an identity provider, an encrypted channel is strongly
-recommended. Please refer to <quote>ldap_access_filter</quote> config option
-for more information about using LDAP as an access provider.
+            У основному модулі LDAP передбачено підтримку засобів надання ідентифікатора
+(id), уповноважень (auth), доступу (access) та зміни паролів (chpass). Якщо
+ви бажаєте виконувати розпізнавання на сервері LDAP, потрібен TLS/SSL або
+LDAPS. У <command>sssd</command> <emphasis>не передбачено</emphasis>
+підтримки розпізнавання за допомогою шифрованого каналу обміну
+даними. Навіть якщо сервер LDAP використовується лише для надання даних
+профілів, наполегливо рекомендуємо користуватися шифрованим каналом обміну
+даними. Будь ласка, зверніться до опису параметра налаштування
+<quote>ldap_access_filter</quote>, щоб дізнатися більше про використання
+LDAP, як засобу керування доступом.
         </para>
     </refsect1>
 
@@ -145,6 +148,44 @@ LDAP. Підтримки визначення декількох значень 
                 </varlistentry>
 
                 <varlistentry>
+                    <term>ldap_read_rootdse (рядок)</term>
+                    <listitem>
+                        <para>
+                            SSSD зчитує RootDSE, щоб отримати інформацію про LDAP та його
+можливості. Типово це робиться анонімно. Однак, це може бути заборонено на
+сервері LDAP. У таких випадках ми можемо використовувати цей параметр, щоб
+впливати на поведінку SSSD.
+                        </para>
+                        <para>
+                            Дозволеними значеннями є такі:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        anonymous
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        authenticated
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        never
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                            Типово, з використанням варіанта «anonymous», SSSD намагається анонімно
+зчитувати RootDSE. Якщо це не вдасться, SSSD повторює спробу з
+розпізнаванням.
+                        </para>
+                        <para>
+                            Типове значення: anonymous
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
                     <term>ldap_schema (рядок)</term>
                     <listitem>
                         <para>
@@ -210,6 +251,14 @@ LDAP. Підтримки визначення декількох значень 
                                 <listitem>
                                     <para>
                                         ldap_modify — безпосереднє внесення змін до userPassword (не рекомендуємо).
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        exop_force – спробувати виконати розширену дію зі зміни пароля (RFC 3062),
+навіть якщо не залишилося жодних резервних входів. Залежно від типу та
+налаштувань сервера LDAP, зміна пароля може не вдатися, оскільки
+прив’язування з розпізнаванням неможливе.
                                     </para>
                                 </listitem>
                             </itemizedlist>
@@ -294,10 +343,6 @@ LDAP.
                         <para>
                             Визначає кількість секунд, протягом яких SSSD має очікувати до оновлення
 свого кешу нумерованих записів.
-                        </para>
-                        <para>
-                            Цей параметр також може бути встановлено для окремого піддомену або
-успадковано за допомогою <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Типове значення: 300
@@ -395,6 +440,20 @@ Directory Server 2008 та новіших версій.
                     </listitem>
                 </varlistentry>
 
+                <varlistentry condition="with_subid">
+                    <term>ldap_subid_ranges_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Необов’язковий. Використати вказаний рядок як основу пошуку пов’язаних з
+підлеглими діапазонами об’єктів.
+                        </para>
+                        <para>
+                            Default: the value of <emphasis>cn=subids,%basedn</emphasis> for IPA
+otherwise <emphasis>ldap_search_base</emphasis>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
                 <varlistentry>
                     <term>ldap_service_search_base (рядок)</term>
                     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ldap_search_bases.xml" />
@@ -440,10 +499,6 @@ SSSD. Ймовірно, його буде колись замінено на п�
                             Визначає час очікування на дані (у секундах) для виконання пошуків номерів
 користувачів та груп у ldap, перш ніж пошук буде скасовано з поверненням
 кешованих даних (і переходом до автономного режиму роботи)
-                        </para>
-                        <para>
-                            Цей параметр також може бути встановлено для окремого піддомену або
-успадковано за допомогою <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Типове значення: 60
@@ -611,9 +666,11 @@ RootDSE, але цю підтримку не увімкнено або вона 
                             У Active Directory за допомогою правила MaxValRange (типове значення 1500
 записів) обмежується кількість записів, які може бути отримано під час
 пошуку. Якщо у певній групі міститься більше записів учасників, до відповіді
-буде включено специфічне для AD розширення діапазону. За допомогою цього
-параметра можна вимкнути обробку розширення діапазону, отже великі групи
-буде представлено як такі, у яких немає учасників.
+буде включено специфічне для AD розширення діапазону. Якщо увімкнено, цей
+параметр забороняє SSSD обробляти розширення діапазону. У результаті великі
+групи буде показано як такі, що не мають учасників.  Цей параметр не вмикає
+у SSSD читання підлеглих діапазонів. Щоб отримати список усіх учасників
+групи вам слід збільшити значення параметра MaxValRange в Active Directory.
                         </para>
                         <para>
                             Типове значення: False
@@ -764,8 +821,9 @@ OpenLDAP та Active Directory.
                         <para>
                             Визначає шлях до каталогу, де у окремих файлах містяться сертифікати служб
 сертифікації (CA). Типовими назвами файлів є хеші сертифікатів з додаванням
-«.0». Для створення відповідних назв можна скористатися
-<command>cacertdir_rehash</command>, якщо ця програма є доступною.
+«.0». Для створення відповідних назв можна скористатися <command>openssl
+rehash</command> або <command>c_rehash</command>, якщо відповідна програма є
+доступною.
                         </para>
                         <para>
                             Типове значення: використовувати типові параметри OpenLDAP, що зберігаються
@@ -818,12 +876,12 @@ OpenLDAP та Active Directory.
                     <term>ldap_id_use_start_tls (булеве значення)</term>
                     <listitem>
                         <para>
-                            Specifies that the id_provider connection must also use <systemitem
-class="protocol">tls</systemitem> to protect the channel.
-<emphasis>true</emphasis> is strongly recommended for security reasons.
+                            Визначає, що з’єднання id_provider має також використовувати <systemitem
+class="protocol">tls</systemitem> для захисту каналу. З міркувань безпеки
+наполегливо рекомендуємо значення <emphasis>true</emphasis> .
                         </para>
                         <para>
-                            Типове значення: false
+                            Типове значення: true
                         </para>
                     </listitem>
                 </varlistentry>
@@ -905,6 +963,7 @@ netbiosname$@REALM
 host/hostname@REALM
 *$@REALM
 host/*@REALM
+netbiosname$@*
 host/*
                             </programlisting> Якщо жоден
 з них не буде знайдено, буде повернуто перший реєстраційний запис у таблиці
@@ -1164,10 +1223,10 @@ Directory. Навіть якщо SSSD зможе переходити за по�
 щодо кількості днів з часу виконання дії зі зміни пароля.
                         </para>
                         <para>
-                            Рекомендуємо встановити цей параметр явним чином, якщо використано
-"ldap_pwd_policy = shadow", щоб дати SSSD знати, оновлюватиме LDAP атрибут
-shadowLastChange автоматично після зміни пароля чи SSSD має зробити це
-окремо.
+                            It is recommended to set this option explicitly if "ldap_pwd_policy =
+shadow" is used to let SSSD know if the LDAP server will update
+shadowLastChange LDAP attribute automatically after a password change or if
+SSSD has to update it.
                         </para>
                         <para>
                             Типове значення: False
@@ -1313,23 +1372,23 @@ pwd_expire_policy_renew: </emphasis> Ці параметри корисні, я�
 наприклад на ключах SSH.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Відмінність між цими варіантами полягає у дії, яку буде виконано, якщо строк
+дії пароля буде вичерпано:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_reject - user is denied to log in,
+                                        pwd_expire_policy_reject — користувачу заборонено входити,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_warn - user is still able to log in,
+                                        pwd_expire_policy_warn — користувачу можна входити,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                        pwd_expire_policy_renew — програма попросить користувача негайно змінити
+пароль.
                                     </para>
                                 </listitem>
                             </itemizedlist>
@@ -1337,7 +1396,8 @@ immediately.
                         <para>
                             Будь ласка, зауважте, що для того, щоб цим можна було скористатися, слід
 встановити «access_provider = ldap». Крім того, слід встановити для
-параметра «ldap_pwd_policy» відповідні правила поводження із паролями.
+параметра «ldap_pwd_policy» значення shadow або mit_kerberos. Ці параметри
+не працюють із правилами поводження із паролями на боці сервера.
                         </para>
                         <para>
                             <emphasis>authorized_service</emphasis>: використовувати для визначення
@@ -1473,6 +1533,37 @@ libldap буде записано незалежно від загального
                         </para>
                         <para>
                             Типове значення: 0 (діагностику libldap вимкнено)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_use_ppolicy (булеве значення)</term>
+                    <listitem>
+                        <para>
+                            Вмикає запити і використання засобів керування правилами паролів на боці
+сервера. Вимикання цього параметра дозволяє взаємодію із службами, які
+надсилають у відповідні некоректне розширення правил.
+                        </para>
+                        <para>
+                            Типове значення: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_ppolicy_pwd_change_threshold (ціле число)</term>
+                    <listitem>
+                        <para>
+                            Примушує до зміни пароля, якщо увімкнені засоби керування правилами паролів
+на боці сервера, а залишкова кількість резервних спроб увійти, яку буде
+повернуто після спроби розпізнавання, досягає або знижується за порогове
+значення. Зауважте, що мінімальним дієвим значенням є 2, оскільки зміна
+пароля споживає 2 дві додаткові резервні спроби увійти: одна для перевірки
+поточного пароля і друга для виконання зміни пароля.
+                        </para>
+                        <para>
+                            Типове значення: 0
                         </para>
                     </listitem>
                 </varlistentry>

@@ -1,82 +1,85 @@
 <listitem>
     <para>
-        SSSD supports two representations for specifying the debug level. The
-simplest is to specify a decimal value from 0-9, which represents enabling
-that level and all lower-level debug messages. The more comprehensive option
-is to specify a hexadecimal bitmask to enable or disable specific levels
-(such as if you wish to suppress a level).
+        SSSD admite dos representaciones para especificar el nivel de depuración. La
+más sencilla consiste en especificar un valor decimal de 0 a 9, que
+representa la habilitación de ese nivel y de todos los mensajes de
+depuración de nivel inferior. La opción más completa consiste en especificar
+una máscara de bits hexadecimal para habilitar o deshabilitar niveles
+específicos (por ejemplo, si se desea suprimir un nivel).
     </para>
     <para>
-        Please note that each SSSD service logs into its own log file. Also please
-note that enabling <quote>debug_level</quote> in the <quote>[sssd]</quote>
-section only enables debugging just for the sssd process itself, not for the
-responder or provider processes. The <quote>debug_level</quote> parameter
-should be added to all sections that you wish to produce debug logs from.
+        Tenga en cuenta que cada servicio SSSD registra su propio archivo de
+registro. Tenga en cuenta también que al habilitar
+<quote>debug_level</quote> en la sección <quote>[sssd]</quote>, solo se
+habilita la depuración del proceso sssd, no de los procesos de respuesta o
+proveedor. El parámetro <quote>debug_level</quote> debe agregarse a todas
+las secciones desde las que desee generar desde bitácoras de depuración.
     </para>
     <para>
-        In addition to changing the log level in the config file using the
-<quote>debug_level</quote> parameter, which is persistent, but requires SSSD
-restart, it is also possible to change the debug level on the fly using the
-<citerefentry> <refentrytitle>sss_debuglevel</refentrytitle>
-<manvolnum>8</manvolnum> </citerefentry> tool.
+        Además de cambiar el nivel de registro en el archivo de configuración usando
+el parámetro <quote>debug_level</quote>, que es persistente, pero requiere
+reiniciar SSSD, también es posible cambiar el nivel de depuración sobre la
+marcha usando la herramienta <citerefentry>
+<refentrytitle>sss_debuglevel</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>.
     </para>
     <para>
         Niveles de depuración actualmente soportados:
     </para>
     <para>
-         <emphasis>0</emphasis>, <emphasis>0x0010</emphasis>: Fatal
-failures. Anything that would prevent SSSD from starting up or causes it to
-cease running.
+         <emphasis>0</emphasis>, <emphasis>0x0010</emphasis>: Fallos
+fatales. Cualquier cosa que impida que SSSD se inicie o deje de funcionar.
     </para>
     <para>
-         <emphasis>1</emphasis>, <emphasis>0x0020</emphasis>: Critical failures. An
-error that doesn't kill SSSD, but one that indicates that at least one major
-feature is not going to work properly.
+         <emphasis>1</emphasis>, <emphasis>0x0020</emphasis>: Fallos críticos. Un
+error que no elimina SSSD, pero que indica que al menos una característica
+importante no funcionará apropiadamente.
     </para>
     <para>
-         <emphasis>2</emphasis>, <emphasis>0x0040</emphasis>: Serious failures. An
-error announcing that a particular request or operation has failed.
+         <emphasis>2</emphasis>, <emphasis>0x0040</emphasis>: Fallos graves. Un error
+que anuncia que una solicitud u operación en particular ha fallado.
     </para>
     <para>
-         <emphasis>3</emphasis>, <emphasis>0x0080</emphasis>: Minor failures. These
-are the errors that would percolate down to cause the operation failure of
-2.
+         <emphasis>3</emphasis>, <emphasis>0x0080</emphasis>: Fallos menores. Son los
+errores que podrían filtrarse y causar el fallo operativo del punto 2.
     </para>
     <para>
-         <emphasis>4</emphasis>, <emphasis>0x0100</emphasis>: Configuration settings.
+         <emphasis>4</emphasis>, <emphasis>0x0100</emphasis>: Ajustes de
+configuración.
     </para>
     <para>
-         <emphasis>5</emphasis>, <emphasis>0x0200</emphasis>: Function data.
+         <emphasis>5</emphasis>, <emphasis>0x0200</emphasis>: Datos de función.
     </para>
     <para>
-         <emphasis>6</emphasis>, <emphasis>0x0400</emphasis>: Trace messages for
-operation functions.
+         <emphasis>6</emphasis>, <emphasis>0x0400</emphasis>: Mensajes de seguimiento
+para funciones de operación.
     </para>
     <para>
-         <emphasis>7</emphasis>, <emphasis>0x1000</emphasis>: Trace messages for
-internal control functions.
+         <emphasis>7</emphasis>, <emphasis>0x1000</emphasis>: Mensajes de seguimiento
+para funciones de control interno.
     </para>
     <para>
-         <emphasis>8</emphasis>, <emphasis>0x2000</emphasis>: Contents of
-function-internal variables that may be interesting.
+         <emphasis>8</emphasis>, <emphasis>0x2000</emphasis>: Contenido de variables
+internas de la función que pueden ser interesantes.
     </para>
     <para>
-         <emphasis>9</emphasis>, <emphasis>0x4000</emphasis>: Extremely low-level
-tracing information.
+         <emphasis>9</emphasis>, <emphasis>0x4000</emphasis>: Información de
+seguimiento de nivel extremadamente bajo.
     </para>
     <para>
-         <emphasis>9</emphasis>, <emphasis>0x20000</emphasis>: Performance and
-statistical data, please note that due to the way requests are processed
-internally the logged execution time of a request might be longer than it
-actually was.
+         <emphasis>9</emphasis>, <emphasis>0x20.000</emphasis>: Datos de rendimiento
+y estadísticos, tenga en cuenta que debido a la forma en que se procesan las
+solicitudes internamente, el tiempo de ejecución registrado de una solicitud
+puede ser más largo de lo que realmente fue.
     </para>
     <para>
-         <emphasis>10</emphasis>, <emphasis>0x10000</emphasis>: Even more low-level
-libldb tracing information. Almost never really required.
+         <emphasis>10</emphasis>, <emphasis>0x10000</emphasis>: Aún más información
+de seguimiento de bajo nivel de libldb. Casi nunca es necesario.
     </para>
     <para>
-        To log required bitmask debug levels, simply add their numbers together as
-shown in following examples:
+        Para registrar en la bitácora los niveles de depuración de máscara de bits
+requeridos, simplemente sume sus números como se muestra en los siguientes
+ejemplos:
     </para>
     <para>
         <emphasis>Ejemplo</emphasis>: Para registrar fallos fatales, críticos y
@@ -88,11 +91,11 @@ configuración, datos de función, mensajes de traza para funciones de control
 interno use 0x1310.
     </para>
     <para>
-        <emphasis>Note</emphasis>: The bitmask format of debug levels was introduced
-in 1.7.0.
+        <emphasis>Nota</emphasis>: El formato de máscara de los bit de los niveles
+de depuración se introdujo en 1.7.0.
     </para>
     <para>
-        <emphasis>Default</emphasis>: 0x0070 (i.e. fatal, critical and serious
-failures; corresponds to setting 2 in decimal notation)
+        <emphasis>Predeterminado</emphasis>: 0x0070 (es decir, fallas fatales,
+críticas y graves; corresponde a la configuración 2 en notación decimal)
     </para>
 </listitem>

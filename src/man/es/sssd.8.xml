@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd</refname>
+        <refpurpose>Dæmon de Servicios de Seguridad del Sistema (SSSD)</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sssd</command> <arg choice='opt'>
+<replaceable>opciones</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            <command>SSSD</command> suministra un conjunto de demonios para gestionar el
+acceso a directorios remotos y mecanismos de autenticación. Suministra una
+interfaz NSS y PAM hacia el sistema y un sistema de parte trasera conectable
+para conectar múltiples fuentes de cuentas diferentes así como interfaz
+D-Bus. Es también la base para suministrar servicios de auditoría y política
+a los clientes para proyectos como FreeIPA. Suministra una base de datos más
+robusta para almacenar los usuarios locales así como datos de usuario
+extendidos.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPCIONES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--debug-level</option>
+<replaceable>NIVEL</replaceable>
+                </term>
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/debug_levels.xml" />
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>--debug-timestamps=</option><replaceable>mode</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        <emphasis>1</emphasis>: Agregar marca de tiempo a los mensajes de depuración
+                    </para>
+                    <para>
+                        <emphasis>0</emphasis>: Desactiva marca de tiempo en mensajes de depuración
+                    </para>
+                    <para>
+                        Predeterminado: 1
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>--debug-microseconds=</option><replaceable>mode</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        <emphasis>1</emphasis>: Agregar microsegundos a la marca de tiempo en
+mensajes de depuración
+                    </para>
+                    <para>
+                        <emphasis>0</emphasis>: Desactiva microsegundos en marcas de tiempo
+                    </para>
+                    <para>
+                        Predeterminado: 0
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>--logger=</option><replaceable>valor</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Lugar donde SSSD enviará mensajes de bitácora.
+                    </para>
+                    <para>
+                        <emphasis>stderr</emphasis>: Redirecciona mensajes de depuración a la salida
+de error estándar.
+                    </para>
+                    <para>
+                        <emphasis>Archivos</emphasis>: Redirigir mensajes depurados a las bitácoras
+de archivo. Por defecto, las bitácoras de registro están almacenadas en
+<filename>/var/registro/sssd</filename> y hay archivos de registro separado
+para cada servicio SSSD y dominio.
+                    </para>
+                    <para>
+                        <emphasis>journald</emphasis>: Redirige depurar mensajes a systemd-journald
+                    </para>
+                    <para>
+                        Por defecto: no fijado (retrocede al journald si está disponible, en otro
+caso a stderr)
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-D</option>,<option>--daemon</option>
+                </term>
+                <listitem>
+                    <para>
+                        Convertido en un demonio después de la puesta en marcha.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-i</option>,<option>--interactive</option>
+                </term>
+                <listitem>
+                    <para>
+                        Ejecutar en primer plano, no convertirse en un demonio.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-c</option>,<option>--config</option>
+                </term>
+                <listitem>
+                    <para>
+                        Especifica un fichero de configuración distinto al de por defecto. El por
+defecto es <filename>/etc/sssd/sssd.conf</filename>. Para referencia sobre
+las opciones y sintaxis del fichero de configuración, consulta la página de
+manual <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+            <varlistentry>
+                <term>
+                    <option>--version</option>
+                </term>
+                <listitem>
+                    <para>
+                        Imprimir número de versión y salir.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Señales</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>SIGTERM/SIGINT</term>
+                <listitem>
+                    <para>
+                        Informa a SSSD para terminar graciosamente todos sus procesos hijos y
+después para el monitor.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGHUP</term>
+                <listitem>
+                    <para>
+                        Le dice a SSSD que pare de escribir en su fichero descriptor de depuración
+actual y cerrar y reabrirlo. Esto significa facilitar la circulación de
+registro con programas como logrotate.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGUSR1</term>
+                <listitem>
+                    <para>
+                        Dice el SSSD para simular operación desconectada para la duración del
+parámetro <quote>off-line_timeout</quote>. Esto es útil para probar. La
+señal puede ser enviada a cualquiera del proceso sssd o cualquier proceso
+sssd_be directamente.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGUSR2</term>
+                <listitem>
+                    <para>
+                        Dice el SSSD para ir on-line inmediatamente. Esto es útil para testeo. La
+señal puede ser enviada a cualquiera el proceso sssd o cualquier proceso
+sssd_be directamente.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGRTMIN+1</term>
+                <listitem>
+                    <para>
+                        Indica al SSSD que re-planifica las tareas periódicas. El vigía interno
+envía esta señal a los proveedores cuando se detecta un cambio de hora,
+aunque también puede enviarse directamente a cualquier proceso sssd_be.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>ESTADO DE SALIDA</title>
+        <variablelist>
+            <varlistentry>
+                <term>0</term>
+                <listitem>
+                    <para>
+                        SSSD fue apagado correctamente.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>1</term>
+                <listitem>
+                    <para>
+                        Configuración incorrecta U opción de línea de instrucción.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>2</term>
+                <listitem>
+                    <para>
+                        Error al asignar memoria.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>6</term>
+                <listitem>
+                    <para>
+                        SSSD ya está ejecutándose.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Otros códigos</term>
+                <listitem>
+                    <para>
+                        Otros códigos indican errores diferentes, probablemente relacionados con la
+falta de permisos de acceso. Consulte SSSD y los registros del sistema para
+obtener más información.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='notes'>
+        <title>NOTAS</title>
+        <para>
+            Si la variable de entorno SSS_NSS_USE_MEMCACHE está configurada en "NO", las
+aplicaciones cliente no utilizarán el caché rápido en memoria.
+        </para>
+        <para condition="enable_lockfree_support">
+            Si la variable de entorno SSS_LOCKFREE está fijada a "NO", solicita desde
+múltiples hilos de una sola aplicación será serializada.
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

@@ -80,15 +80,14 @@ en LDAP-server.
         <para>
 <programlisting>
 [sssd]
-config_file_version = 2
 services = nss, pam, sudo
 domains = EXEMPEL
 
 [domain/EXEMPEL]
 id_provider = ldap
 sudo_provider = ldap
-ldap_uri = ldap://example.com
-ldap_sudo_search_base = ou=sudoers,dc=example,dc=com
+ldap_uri = ldap://exempel.se
+ldap_sudo_search_base = ou=sudoers,dc=exempel,dc=se
 </programlisting> <phrase
 condition="have_systemd"> Det är viktigt att observera att på plattformar
 där systemd stödjs finns det inget behov av att lägga till

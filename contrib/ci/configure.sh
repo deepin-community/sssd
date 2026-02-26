@@ -27,48 +27,19 @@ declare -a CONFIGURE_ARG_LIST=(
     "--disable-rpath"
     "--disable-static"
     "--enable-ldb-version-check"
-    "--with-syslog=journald"
+    "--with-initscript=sysv"
+    "--with-syslog=syslog"
     "--enable-systemtap"
+    "--with-subid"
+    "--with-passkey"
+    "--without-python2-bindings"
 )
-
-
-if [[ "$DISTRO_BRANCH" == -redhat-centos-8*- ||
-      "$DISTRO_BRANCH" == -redhat-redhatenterprise*-8.*- ]]; then
-    CONFIGURE_ARG_LIST+=(
-        "--with-python2-bindings"
-    )
-else
-    CONFIGURE_ARG_LIST+=(
-        "--without-python2-bindings"
-    )
-fi
-
 
 # Different versions of Debian might need different versions here but this is
 # sufficient to make the CI work
 if [[ "$DISTRO_BRANCH" == -debian-* ]]; then
     CONFIGURE_ARG_LIST+=(
         "--with-smb-idmap-interface-version=5"
-    )
-fi
-
-if [[ "$DISTRO_BRANCH" == -redhat-fedora-* ||
-      "$DISTRO_BRANCH" == -redhat-centos-9*- ||
-      "$DISTRO_BRANCH" == -redhat-centos-10*- ||
-      "$DISTRO_BRANCH" == -redhat-redhatenterprise*-9.*- ||
-      "$DISTRO_BRANCH" == -redhat-redhatenterprise*-10.*- ]]; then
-    CONFIGURE_ARG_LIST+=(
-        "--with-subid"
-    )
-fi
-
-if [[ "$DISTRO_BRANCH" == -redhat-fedora-* ||
-      "$DISTRO_BRANCH" == -redhat-centos-9*- ||
-      "$DISTRO_BRANCH" == -redhat-centos-10*- ||
-      "$DISTRO_BRANCH" == -redhat-redhatenterprise*-9.*- ||
-      "$DISTRO_BRANCH" == -redhat-redhatenterprise*-10.*- ]]; then
-    CONFIGURE_ARG_LIST+=(
-        "--with-passkey"
     )
 fi
 

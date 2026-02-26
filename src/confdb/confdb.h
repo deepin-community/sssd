@@ -40,16 +40,13 @@
 
 #define CONFDB_DEFAULT_CFG_FILE_VER 2
 #define CONFDB_FILE "config.ldb"
+#define CONFDB_KCM_FILE "config_kcm.ldb"
 #define SSSD_CONFIG_FILE_NAME "sssd.conf"
 #define SSSD_CONFIG_FILE SSSD_CONF_DIR"/"SSSD_CONFIG_FILE_NAME
 #define CONFDB_DEFAULT_CONFIG_DIR_NAME "conf.d"
 #define CONFDB_DEFAULT_CONFIG_DIR SSSD_CONF_DIR"/"CONFDB_DEFAULT_CONFIG_DIR_NAME
 #define SSSD_MIN_ID 1
 #define CONFDB_DEFAULT_SHELL_FALLBACK "/bin/sh"
-#define CONFDB_FALLBACK_CONFIG \
-    "[sssd]\n" \
-    "services = nss\n"
-
 
 /* Configuration options */
 
@@ -61,7 +58,6 @@
 #define CONFDB_SERVICE_DEBUG_TIMESTAMPS "debug_timestamps"
 #define CONFDB_SERVICE_DEBUG_MICROSECONDS "debug_microseconds"
 #define CONFDB_SERVICE_DEBUG_BACKTRACE_ENABLED "debug_backtrace_enabled"
-#define CONFDB_SERVICE_RECON_RETRIES "reconnection_retries"
 #define CONFDB_SERVICE_FD_LIMIT "fd_limit"
 #define CONFDB_SERVICE_ALLOWED_UIDS "allowed_uids"
 
@@ -88,24 +84,16 @@
 /* Both monitor and domains */
 #define CONFDB_NAME_REGEX   "re_expression"
 #define CONFDB_FULL_NAME_FORMAT "full_name_format"
-#define CONFDB_DEFAULT_FULL_NAME_FORMAT_INTERNAL  "%1$s@%2$s%3$s"
-#define CONFDB_DEFAULT_FULL_NAME_FORMAT           "%1$s@%2$s"
+#define CONFDB_DEFAULT_FULL_NAME_FORMAT "%1$s@%2$s"
 
 /* Responders */
 #define CONFDB_RESPONDER_GET_DOMAINS_TIMEOUT "get_domains_timeout"
 #define CONFDB_RESPONDER_CLI_IDLE_TIMEOUT "client_idle_timeout"
 #define CONFDB_RESPONDER_CLI_IDLE_DEFAULT_TIMEOUT 60
-#define CONFDB_RESPONDER_LOCAL_NEG_TIMEOUT "local_negative_timeout"
-#define CONFDB_RESPONDER_LOCAL_NEG_TIMEOUT_DEFAULT 14400
 #define CONFDB_RESPONDER_IDLE_TIMEOUT "responder_idle_timeout"
 #define CONFDB_RESPONDER_IDLE_DEFAULT_TIMEOUT 300
 #define CONFDB_RESPONDER_CACHE_FIRST "cache_first"
-#ifdef BUILD_FILES_PROVIDER
-/* There is a subtile issue with this option when 'files' + another domain is enabled */
-#define CONFDB_RESPONDER_CACHE_FIRST_DEFAILT false
-#else
-#define CONFDB_RESPONDER_CACHE_FIRST_DEFAILT true
-#endif
+#define CONFDB_RESPONDER_CACHE_FIRST_DEFAULT true
 
 /* NSS */
 #define CONFDB_NSS_CONF_ENTRY "config/nss"
@@ -161,6 +149,7 @@
 #define CONFDB_PAM_PASSKEY_AUTH "pam_passkey_auth"
 #define CONFDB_PAM_PASSKEY_CHILD_TIMEOUT "passkey_child_timeout"
 #define CONFDB_PAM_PASSKEY_DEBUG_LIBFIDO2 "passkey_debug_libfido2"
+#define CONFDB_PAM_JSON_SERVICES "pam_json_services"
 
 /* SUDO */
 #define CONFDB_SUDO_CONF_ENTRY "config/sudo"
@@ -179,10 +168,6 @@
 
 /* SSH */
 #define CONFDB_SSH_CONF_ENTRY "config/ssh"
-#define CONFDB_SSH_HASH_KNOWN_HOSTS "ssh_hash_known_hosts"
-#define CONFDB_DEFAULT_SSH_HASH_KNOWN_HOSTS false
-#define CONFDB_SSH_KNOWN_HOSTS_TIMEOUT "ssh_known_hosts_timeout"
-#define CONFDB_DEFAULT_SSH_KNOWN_HOSTS_TIMEOUT 180
 #define CONFDB_SSH_CA_DB "ca_db"
 #define CONFDB_DEFAULT_SSH_CA_DB SYSCONFDIR"/sssd/pki/sssd_auth_ca_db.pem"
 #define CONFDB_SSH_USE_CERT_KEYS "ssh_use_certificate_keys"
@@ -229,8 +214,6 @@
 #define CONFDB_DOMAIN_TIMEOUT "timeout"
 #define CONFDB_DOMAIN_ATTR "cn"
 #define CONFDB_DOMAIN_ENUMERATE "enumerate"
-#define CONFDB_SUBDOMAIN_ENUMERATE "subdomain_enumerate"
-#define CONFDB_DEFAULT_SUBDOMAIN_ENUMERATE "none"
 #define CONFDB_DOMAIN_MINID "min_id"
 #define CONFDB_DOMAIN_MAXID "max_id"
 #define CONFDB_DOMAIN_CACHE_CREDS "cache_credentials"
@@ -281,12 +264,8 @@
 #define CONFDB_PROXY_FAST_ALIAS "proxy_fast_alias"
 #define CONFDB_PROXY_MAX_CHILDREN "proxy_max_children"
 
-#ifdef BUILD_FILES_PROVIDER
-/* Files Provider */
-#define CONFDB_FILES_PASSWD "passwd_files"
-#define CONFDB_FILES_GROUP "group_files"
-#define CONFDB_DOMAIN_FALLBACK_TO_NSS "fallback_to_nss"
-#endif
+/* IdP Provider */
+#define CONFDB_IDP_CLIENT_SECRET "idp_client_secret"
 
 /* KCM Service */
 #define CONFDB_KCM_CONF_ENTRY "config/kcm"
@@ -345,10 +324,6 @@ enum sss_domain_state {
      * return cached data
      */
     DOM_INACTIVE,
-    /** Domain is being updated. Responders should ignore cached data and
-     * always contact the DP
-     */
-    DOM_INCONSISTENT,
 };
 
 /** Whether the domain only supports looking up POSIX entries */
@@ -380,7 +355,6 @@ struct sss_domain_info {
     char *provider;
     int timeout;
     bool enumerate;
-    char **sd_enumerate;
     bool fqnames;
     enum sss_domain_mpg_mode mpg_mode;
     bool ignore_group_members;
@@ -400,6 +374,9 @@ struct sss_domain_info {
     const char *homedir_substr;
     const char *override_shell;
     const char *default_shell;
+    /* Domain specific ID override template attributes */
+    const char *template_homedir;
+    const char *template_shell;
 
     uint32_t user_timeout;
     uint32_t group_timeout;
@@ -429,6 +406,7 @@ struct sss_domain_info {
     char *dns_name;
     char *domain_id;
     uint32_t trust_direction;
+    uint32_t trust_type;
     struct timeval subdomains_last_checked;
 
     bool has_views;
@@ -438,9 +416,6 @@ struct sss_domain_info {
     struct sss_domain_info *next;
 
     enum sss_domain_state state;
-#ifdef BUILD_FILES_PROVIDER
-    bool fallback_to_nss;
-#endif
     char **sd_inherit;
 
     /* Do not use the forest pointer directly in new code, but rather the
@@ -727,7 +702,7 @@ int confdb_set_string(struct confdb_ctx *cdb,
  * @param[in] attribute The name of the attribute to update
  * @param[out] result A pointer to the retrieved array of strings
  *
- * @return 0 - Successfully retrieved the entry (or used the default)
+ * @return 0 - Successfully retrieved the entry
  * @return ENOMEM - There was insufficient memory to complete the operation
  * @return EINVAL - The section could not be parsed, or the attribute was not
  *                  single-valued.
@@ -737,6 +712,19 @@ int confdb_set_string(struct confdb_ctx *cdb,
 int confdb_get_string_as_list(struct confdb_ctx *cdb, TALLOC_CTX *ctx,
                               const char *section, const char *attribute,
                               char ***result);
+
+/**
+ * @brief Convenience function to retrieve a list of configured services,
+ * including implicitly configured, as a null-terminated array of strings.
+ *
+ * @param[in] cdb The connection object to the confdb
+ * @param[in] ctx The parent memory context for the returned string
+ * @param[out] _result A pointer to the retrieved array of strings
+ *
+ * @return 0 on success, error code otherwise
+ */
+int confdb_get_services_as_list(struct confdb_ctx *cdb, TALLOC_CTX *ctx,
+                                char ***_result);
 
 /**
  * @brief Convenience function to retrieve a list of subsections given a

@@ -24,7 +24,6 @@ class SSSDOptions(object):
         'debug_backtrace_enabled': _('Enable/disable debug backtrace'),
         'timeout': _('Watchdog timeout before restarting service'),
         'command': _('Command to start service'),
-        'reconnection_retries': _('Number of times to attempt connection to Data Providers'),
         'fd_limit': _('The number of file descriptors that may be opened by this responder'),
         'client_idle_timeout': _('Idle time before automatic disconnection of a client'),
         'responder_idle_timeout': _('Idle time before automatic shutdown of the responder'),
@@ -34,8 +33,6 @@ class SSSDOptions(object):
                              'calculated by the following: offline_timeout + random_offset.'),
 
         # [sssd]
-        'config_file_version': _(
-            'Indicates what is the syntax of the config file. SSSD 0.6.0 and later use version 2.'),
         'services': _('SSSD Services to start'),
         'domains': _('SSSD Domains to start'),
         're_expression': _('Regex to parse username and domain'),
@@ -61,7 +58,6 @@ class SSSDOptions(object):
         'enum_cache_timeout': _('Enumeration cache timeout length (seconds)'),
         'entry_cache_no_wait_timeout': _('Entry cache background update timeout length (seconds)'),
         'entry_negative_timeout': _('Negative cache timeout length (seconds)'),
-        'local_negative_timeout': _('Files negative cache timeout length (seconds)'),
         'filter_users': _('Users that SSSD should explicitly ignore'),
         'filter_groups': _('Groups that SSSD should explicitly ignore'),
         'filter_users_in_groups': _('Should filtered users appear in groups'),
@@ -117,6 +113,7 @@ class SSSDOptions(object):
         'pam_passkey_auth': _('Allow passkey device authentication.'),
         'passkey_child_timeout': _('How many seconds will pam_sss wait for passkey_child to finish'),
         'passkey_debug_libfido2': _('Enable debugging in the libfido2 library'),
+        'pam_json_services': _('Enable JSON protocol for authentication methods selection.'),
 
         # [sudo]
         'sudo_timed': _('Whether to evaluate the time-based attributes in sudo rules'),
@@ -186,8 +183,8 @@ class SSSDOptions(object):
         'dns_resolver_op_timeout': _('How long should keep trying to resolve single DNS query (seconds)'),
         'dns_resolver_timeout': _('How long to wait for replies from DNS when resolving servers (seconds)'),
         'dns_discovery_domain': _('The domain part of service discovery DNS query'),
-        'failover_primary_timeout': _('How often SSSD tries to reconnect to the primary server after a successful '
-                                      'connection to the backup server.'),
+        'failover_primary_timeout': _('Specifies the interval, in seconds, that SSSD waits before attempting to reconnect to the primary '
+                                      'server after a successful connection to the backup server'),
         'override_gid': _('Override GID value from the identity provider with this value'),
         'case_sensitive': _('Treat usernames as case sensitive'),
         'entry_cache_user_timeout': _('Entry cache timeout length (seconds)'),
@@ -200,15 +197,20 @@ class SSSDOptions(object):
         'refresh_expired_interval': _('How often should expired entries be refreshed in background'),
         'refresh_expired_interval_offset': _("Maximum period deviation when refreshing expired entries in background"),
         'dyndns_update': _("Whether to automatically update the client's DNS entry"),
+        'dyndns_update_per_family': _('Whether DNS update of A and AAAA record should be performed '
+                                      'in one update or in two separate updates'),
         'dyndns_ttl': _("The TTL to apply to the client's DNS entry after updating it"),
         'dyndns_iface': _("The interface whose IP should be used for dynamic DNS updates"),
+        'dyndns_address': _("The list of IP addresses that should be used for dynamic DNS updates"),
         'dyndns_refresh_interval': _("How often to periodically update the client's DNS entry"),
         'dyndns_refresh_interval_offset': _("Maximum period deviation when updating the client's DNS entry"),
         'dyndns_update_ptr': _("Whether the provider should explicitly update the PTR record as well"),
         'dyndns_force_tcp': _("Whether the nsupdate utility should default to using TCP"),
         'dyndns_auth': _("What kind of authentication should be used to perform the DNS update"),
         'dyndns_server': _("Override the DNS server used to perform the DNS update"),
-        'subdomain_enumerate': _('Control enumeration of trusted domains'),
+        'dyndns_dot_cacert': _("The file of the certificate authorities certificates for DoT"),
+        'dyndns_dot_cert': _("The certificate(s) file for authentication for the DoT transport"),
+        'dyndns_dot_key': _("The key file for authenticated encryption for the DoT transport"),
         'subdomain_refresh_interval': _('How often should subdomains list be refreshed'),
         'subdomain_refresh_interval_offset': _('Maximum period deviation when refreshing the subdomain list'),
         'subdomain_inherit': _('List of options that should be inherited into a subdomain'),
@@ -232,9 +234,6 @@ class SSSDOptions(object):
         'ipa_server': _('IPA server address'),
         'ipa_backup_server': _('Address of backup IPA server'),
         'ipa_hostname': _('IPA client hostname'),
-        'ipa_dyndns_update': _("Whether to automatically update the client's DNS entry in FreeIPA"),
-        'ipa_dyndns_ttl': _("The TTL to apply to the client's DNS entry after updating it"),
-        'ipa_dyndns_iface': _("The interface whose IP should be used for dynamic DNS updates"),
         'ipa_hbac_search_base': _("Search base for HBAC related objects"),
         'ipa_hbac_refresh': _("The amount of time between lookups of the HBAC rules against the IPA server"),
         'ipa_selinux_refresh': _("The amount of time in seconds between lookups of the SELinux maps against the IPA "
@@ -243,7 +242,6 @@ class SSSDOptions(object):
         'ipa_automount_location': _("The automounter location this IPA client is using"),
         'ipa_master_domain_search_base': _("Search base for object containing info about IPA domain"),
         'ipa_ranges_search_base': _("Search base for objects containing info about ID ranges"),
-        'ipa_enable_dns_sites': _("Enable DNS sites - location based service discovery"),
         'ipa_views_search_base': _("Search base for view containers"),
         'ipa_view_class': _("Objectclass for view containers"),
         'ipa_view_name': _("Attribute with the name of the view"),
@@ -321,7 +319,6 @@ class SSSDOptions(object):
         'ad_update_samba_machine_account_password': _('Whether to update the machine account password in the Samba '
                                                       'database'),
         'ad_use_ldaps': _('Use LDAPS port for LDAP and Global Catalog requests'),
-        'ad_allow_remote_domain_local_groups': _('Do not filter domain local groups from other domains'),
 
         # [provider/krb5]
         'krb5_kdcip': _('Kerberos server address'),
@@ -357,6 +354,7 @@ class SSSDOptions(object):
         'ldap_uri': _('ldap_uri, The URI of the LDAP server'),
         'ldap_backup_uri': _('ldap_backup_uri, The URI of the LDAP server'),
         'ldap_search_base': _('The default base DN'),
+        'ldap_read_rootdse': _('How to read rootDSE from LDAP server'),
         'ldap_schema': _('The Schema Type in use on the LDAP server, rfc2307'),
         'ldap_pwmodify_mode': _('Mode used to change user password'),
         'ldap_default_bind_dn': _('The default bind DN'),
@@ -399,6 +397,8 @@ class SSSDOptions(object):
 
         'ldap_disable_paging': _('Disable the LDAP paging control'),
         'ldap_disable_range_retrieval': _('Disable Active Directory range retrieval'),
+        'ldap_use_ppolicy': _('Use the ppolicy extension'),
+        'ldap_ppolicy_pwd_change_threshold': _('Force a password change when remaining grace logins reach or go below this threshold'),
 
         # [provider/ldap/id]
         'ldap_search_timeout': _('Length of time to wait for a search request'),
@@ -451,6 +451,8 @@ class SSSDOptions(object):
         'ldap_user_email': _('attribute containing the email address of the user'),
         'ldap_user_passkey': _('attribute containing the passkey mapping data of the user'),
         'ldap_user_extra_attrs': _('A list of extra attributes to download along with the user entry'),
+
+        'ldap_subid_ranges_search_base': _("Search base for SUBID ranges"),
 
         'ldap_group_search_base': _('Base DN for group lookups'),
         'ldap_group_object_class': _('Objectclass for groups'),

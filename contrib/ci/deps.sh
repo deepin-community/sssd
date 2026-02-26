@@ -45,50 +45,17 @@ if [[ "$DISTRO_BRANCH" == -redhat-* ]]; then
         krb5-server
         krb5-workstation
         libunistring-devel
+        libcap-devel
+        systemtap-sdt-dtrace
+        python3-dbus
+        python3-ldap
+        python3-ldb
+        python3-psutil
+        python3-pycodestyle
+        python3-pytest
+        python3-requests
+        libfido2-devel
     )
-
-    if [[ "$DISTRO_BRANCH" == -redhat-redhatenterprise*-8.*- ||
-          "$DISTRO_BRANCH" == -redhat-centos*-8*- ]]; then
-        DEPS_LIST+=(
-            python2
-            python2-devel
-            python2-requests
-        )
-    fi
-
-    if [[ "$DISTRO_BRANCH" == -redhat-fedora-4[0-9]* ||
-          "$DISTRO_BRANCH" == -redhat-fedora-3[7-9]* ||
-          "$DISTRO_BRANCH" == -redhat-redhatenterprise*-8.*- ||
-          "$DISTRO_BRANCH" == -redhat-redhatenterprise*-9.*- ||
-          "$DISTRO_BRANCH" == -redhat-centos*-8*- ||
-          "$DISTRO_BRANCH" == -redhat-centos*-9*- ]]; then
-        DEPS_LIST+=(
-            python3-dbus
-            python3-ldap
-            python3-ldb
-            python3-psutil
-            python3-pycodestyle
-            python3-pytest
-            python3-requests
-        )
-    else
-        DEPS_LIST+=(
-            dbus-python
-            pyldb
-            pytest
-            python-ldap
-            python-pep8
-            python-psutil
-            python-requests
-        )
-    fi
-
-    if [[ "$DISTRO_BRANCH" == -redhat-fedora-* ]]; then
-        DEPS_LIST+=(
-            http-parser-devel
-            libfido2-devel
-        )
-    fi
 
     _DEPS_LIST_SPEC=`
         sed -e 's/@PACKAGE_VERSION@/0/g' \
@@ -164,7 +131,6 @@ if [[ "$DISTRO_BRANCH" == -debian-* ]]; then
         ldap-utils
         slapd
         systemtap-sdt-dev
-        libhttp-parser-dev
         libjansson-dev
         libjose-dev
         libcurl4-openssl-dev
@@ -179,6 +145,9 @@ if [[ "$DISTRO_BRANCH" == -debian-* ]]; then
         libp11-kit-dev
         bc
         libunistring-dev
+        libcap-dev
+        libsubid4
+        libsubid-dev
     )
 
     DEPS_INTGCHECK_SATISFIED=true

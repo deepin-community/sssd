@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude"
+                href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>pam_sss_gss</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>pam_sss_gss</refname>
+        <refpurpose>Módulo PAM para autenticação GSSAPI do SSSD</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>pam_sss_gss.so</command> <arg choice='opt'>
+<replaceable>debug</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            <command>pam_sss_gss.so</command> autentica o utilizador sobre GSSAPI em
+cooperação com o SSSD.
+        </para>
+        <para>
+            Este módulo irá tentar autenticar o utilizador usando nome de serviço
+baseado-em-maquina do GSSAPI host@hostname o que traduz para
+host/hostname@REALM principal do Kerberos. A parte
+<emphasis>REALM</emphasis> do nome principal Kerberos é derivada pelos
+mecanismos internos do Kerberos e pode ser definida explicitamente na
+configuração da secção [domain_realm] em /etc/krb5.conf.
+        </para>
+        <para>
+            SSSD é usado para fornecer o nome de serviço desejado e para validar as
+credenciais do utilizador usando chamadas GSSAPI. Se o bilhete de serviço já
+estiver presente na cache de credenciais do Kerberos ou o bilhete do
+utilizador puder ser usado para obter o bilhete do serviço correto então o
+utilizador será autenticado.
+        </para>
+        <para>
+            Se <option>pam_gssapi_check_upn</option> for True (predefinição) então o
+SSSD requer que as credenciais usadas para obter o bilhete de serviço possam
+ser associadas com o utilizador. Isto significa que o principal que possui
+as credenciais Kerberos tem de corresponder ao nome principal do utilizador
+como definido em LDAP.
+        </para>
+        <para>
+            Para activar a autenticação GSSAPI no SSSD, defina a opção
+<option>pam_gssapi_services</option> em [pam] ou secção domain do
+sssd.conf. As credenciais de serviços precisam de ser guardadas na keytab do
+SSSD (já está presente se usar o provedor ipa ou ad). A localização da
+keytab pode ser definida com a opção <option>krb5_keytab</option>. Veja
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> e <citerefentry>
+<refentrytitle>sssd-krb5</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para mais detalhes sobre estas opções.
+        </para>
+        <para>
+            Alguns desenvolvimentos Kerberos permitem associar indicadores de
+autenticação com um método particular de pré-autenticação usado para obter
+um bilhete de concessão de bilhete pelo utilizador.  O
+<command>pam_sss_gss.so</command> permite forçar a presença de indicadores
+de autenticação nos bilhetes de serviço antes de que se possa aceder a um
+serviço particular do PAM.
+        </para>
+        <para>
+            Se a opção <option>pam_gssapi_indicators_map</option> estiver definida em
+[pam] ou secção domain do sssd.conf, então o SSSD irá executar uma
+verificação da presença de quaisquer indicadores configurados no bilhete de
+serviço.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>debug</option>
+                </term>
+                <listitem>
+                    <para>Escreve informação de depuração.</para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='module_types_provides'>
+        <title>TIPOS DE MÓDULOS FORNECIDOS</title>
+        <para>Apenas se o tipo de módulo <option>auth</option> for fornecido.</para>
+    </refsect1>
+
+    <refsect1 id="return_values">
+        <title>VALORES DE RETORNO</title>
+        <variablelist>
+            <varlistentry>
+                <term>PAM_SUCCESS</term>
+                <listitem>
+                    <para>
+                        A operação do PAM terminou com sucesso.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_USER_UNKNOWN</term>
+                <listitem>
+                    <para>
+                        O utilizador não é conhecido pelo serviço de autenticação ou a autenticação
+GSSAPI não é suportada.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTH_ERR</term>
+                <listitem>
+                    <para>
+                        Falha de autenticação.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTHINFO_UNAVAIL</term>
+                <listitem>
+                    <para>
+                        Incapaz de aceder à informação de autenticação.  Isto pode ser devido a uma
+falha de rede ou de hardware.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_SYSTEM_ERR</term>
+                <listitem>
+                    <para>
+                        Ocorreu um erro do sistema. Os ficheiros log do SSSD podem conter informação
+adicional acerca do erro.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='examples'>
+        <title>EXEMPLOS</title>
+        <para>
+            O principal caso de uso é fornecer autenticação sem palavra passe no sudo
+mas sem a necessidade de desactivar completamente a autenticação.  Para
+conseguir isto, primeiro active a autenticação GSSAPI para o sudo no
+sssd.conf:
+        </para>
+        <programlisting>
+[domain/MYDOMAIN]
+pam_gssapi_services = sudo, sudo-i
+        </programlisting>
+        <para>
+            E depois active o módulo na pilha PAM desejada (ex. /etc/pam.d/sudo e
+/etc/pam.d/sudo-i).
+        </para>
+        <programlisting>
+...
+auth sufficient pam_sss_gss.so
+...
+        </programlisting>
+    </refsect1>
+
+    <refsect1 id='troubleshooting'>
+        <title>RESOLUÇÃO DE PROBLEMAS</title>
+        <para>
+            Registos do SSSD, a saída de depuração do pam_sss_gss e o syslog podem
+conter informação auxiliar acerca do erro. Aqui estão alguns problemas
+comuns:
+        </para>
+        <para>
+            1. Eu tenho a variável de ambiente KRB5CCNAME definida e a autenticação não
+funciona: Dependendo da sua versão de sudo, é possível que o sudo não passe
+esta variável para o ambiente PAM. Tente adicionar KRB5CCNAME a
+<option>env_keep</option> em /etc/sudoers ou nas suas opções predefinidas de
+regras sudo do LDAP.
+        </para>
+        <para>
+            2. Autenticação não funciona e o syslog contém "Servidor não encontrado na
+base de dados do Kerberos": Provavelmente o Kerberos não é capaz de resolver
+o reino correctamente para o bilhete de serviço baseado no nome de
+máquina. Tente adicionar o nome de máquina directamente a
+<option>[domain_realm]</option> em /etc/krb5.conf tal como:
+        </para>
+        <para>
+            3. Autenticação não funciona e o syslog contém "Nenhuma credencial do
+Kerberos disponível": Você não tem nenhumas credenciais que possam ser
+usadas obter o bilhete de serviço requerido. Use o kinit ou autentique-se
+sobre o SSSD para adquirir essas credenciais.
+        </para>
+        <para>
+            4. Autenticação não funciona e o registo sssd-pam do SSSD contém "Utilizador
+com UPN [$UPN] não foi encontrado." ou "UPN [$UPN] não corresponde ao
+utilizador alvo [$username].": Você está a usar credenciais que não podem
+ser mapeadas ao utilizador que está a ser autenticado. Tente usar o kswitch
+para selecionar um principal diferente, certifique-se que se autentica com o
+SSSD ou considere desactivar <option>pam_gssapi_check_upn</option>.
+        </para>
+        <programlisting>
+[domain_realm]
+.myhostname = MYREALM
+        </programlisting>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

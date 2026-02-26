@@ -61,7 +61,7 @@ static errno_t sec_get(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    buf = sss_iobuf_init_steal(tmp_ctx, data, len);
+    buf = sss_iobuf_init_steal(tmp_ctx, data, len, true);
     if (buf == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Cannot init the iobuf\n");
         ret = EIO;
@@ -213,7 +213,7 @@ static errno_t secdb_container_url_req(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    ret = sss_sec_new_req(tmp_ctx, sctx, url, geteuid(), &sreq);
+    ret = sss_sec_new_req(tmp_ctx, sctx, url, &sreq);
     if (ret != EOK) {
         goto done;
     }
@@ -241,7 +241,7 @@ static errno_t secdb_cc_url_req(TALLOC_CTX *mem_ctx,
         return ENOMEM;
     }
 
-    ret = sss_sec_new_req(tmp_ctx, sctx, secdb_url, geteuid(), &sreq);
+    ret = sss_sec_new_req(tmp_ctx, sctx, secdb_url, &sreq);
     if (ret != EOK) {
         goto done;
     }
@@ -310,7 +310,7 @@ static errno_t secdb_dfl_url_req(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    ret = sss_sec_new_req(tmp_ctx, sctx, url, geteuid(), &sreq);
+    ret = sss_sec_new_req(tmp_ctx, sctx, url, &sreq);
     if (ret != EOK) {
         goto done;
     }
@@ -683,7 +683,8 @@ static struct tevent_req *ccdb_secdb_set_default_send(TALLOC_CTX *mem_ctx,
 
     iobuf = sss_iobuf_init_readonly(state,
                                     (const uint8_t *) uuid_str,
-                                    UUID_STR_SIZE);
+                                    UUID_STR_SIZE,
+                                    false);
     if (iobuf == NULL) {
         ret = ENOMEM;
         goto immediate;
@@ -871,8 +872,8 @@ static errno_t ccdb_secdb_get_cc_for_uuid(TALLOC_CTX *mem_ctx,
             continue;
         }
 
-        cli_cred.ucred.uid = pwd->pw_uid;
-        cli_cred.ucred.gid = pwd->pw_gid;
+        cli_creds_set_uid(&cli_cred, pwd->pw_uid);
+        cli_creds_set_gid(&cli_cred, pwd->pw_gid);
 
         ret = key_by_uuid(tmp_ctx, secdb->sctx, &cli_cred, uuid, &secdb_key);
         if (ret != EOK) {
@@ -1221,7 +1222,7 @@ struct tevent_req *ccdb_secdb_name_by_uuid_send(TALLOC_CTX *mem_ctx,
         goto immediate;
     }
 
-    DEBUG(SSSDBG_TRACE_INTERNAL, "Got ccache by UUID\n");
+    DEBUG(SSSDBG_TRACE_INTERNAL, "Got name '%s' by UUID\n", name);
     ret = EOK;
 immediate:
     if (ret == EOK) {
@@ -1260,7 +1261,7 @@ struct tevent_req *ccdb_secdb_uuid_by_name_send(TALLOC_CTX *mem_ctx,
     errno_t ret;
     char *key;
 
-    DEBUG(SSSDBG_TRACE_INTERNAL, "Translating name to UUID\n");
+    DEBUG(SSSDBG_TRACE_INTERNAL, "Translating name '%s' to UUID\n", name);
 
     req = tevent_req_create(mem_ctx, &state, struct ccdb_secdb_uuid_by_name_state);
     if (req == NULL) {
@@ -1282,7 +1283,7 @@ struct tevent_req *ccdb_secdb_uuid_by_name_send(TALLOC_CTX *mem_ctx,
         goto immediate;
     }
 
-    DEBUG(SSSDBG_TRACE_INTERNAL, "Got ccache by UUID\n");
+    DEBUG(SSSDBG_TRACE_INTERNAL, "Got UUID by name\n");
     ret = EOK;
 immediate:
     if (ret == EOK) {

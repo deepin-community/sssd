@@ -21,9 +21,6 @@ endif
 if BUILD_PAC_RESPONDER
 PAC_RESPONDER_CONDS = ;with_pac_responder
 endif
-if BUILD_IFP
-IFP_CONDS = ;with_ifp
-endif
 if BUILD_KCM
 KCM_CONDS = ;with_kcm
 endif
@@ -47,20 +44,29 @@ endif
 if HAVE_INOTIFY
 HAVE_INOTIFY_CONDS = ;have_inotify
 endif
+if BUILD_SUBID
+SUBID_CONDS = ;with_subid
+endif
 if BUILD_PASSKEY
 PASSKEY_CONDS = ;build_passkey
 endif
-if BUILD_FILES_PROVIDER
-FILES_PROVIDER_CONDS = ;with_files_provider
-else
-FILES_PROVIDER_CONDS = ;without_files_provider
-endif
 if SSSD_NON_ROOT_USER
 SSSD_NON_ROOT_USER_CONDS = ;with_non_root_user_support
+else
+SSSD_NON_ROOT_USER_CONDS = ;without_non_root_user_support
+endif
+if HAVE_LIBNL
+LIBNL_CONDS = ;have_libnl
+endif
+if BUILD_ID_PROVIDER_IDP
+IDP_CONDS = ;with_idp_provider
+endif
+if HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
+JSON_PAM_CONDS = ;build_json_pam
 endif
 
 
-CONDS = with_false$(SUDO_CONDS)$(AUTOFS_CONDS)$(SSH_CONDS)$(PAC_RESPONDER_CONDS)$(IFP_CONDS)$(GPO_CONDS)$(SYSTEMD_CONDS)$(KCM_CONDS)$(STAP_CONDS)$(KCM_RENEWAL_CONDS)$(LOCKFREE_CLIENT_CONDS)$(HAVE_INOTIFY_CONDS)$(PASSKEY_CONDS)$(FILES_PROVIDER_CONDS)$(SSSD_NON_ROOT_USER_CONDS)
+CONDS = with_false$(SUDO_CONDS)$(AUTOFS_CONDS)$(SSH_CONDS)$(PAC_RESPONDER_CONDS)$(GPO_CONDS)$(SYSTEMD_CONDS)$(KCM_CONDS)$(STAP_CONDS)$(KCM_RENEWAL_CONDS)$(LOCKFREE_CLIENT_CONDS)$(HAVE_INOTIFY_CONDS)$(SUBID_CONDS)$(PASSKEY_CONDS)$(SSSD_NON_ROOT_USER_CONDS)$(LIBNL_CONDS)$(IDP_CONDS)$(JSON_PAM_CONDS)
 
 
 #Special Rules:
@@ -77,7 +83,7 @@ endif
 EXTRA_DIST = $(wildcard $(srcdir)/*.xml) $(wildcard $(srcdir)/include/*.xml)
 man_MANS = \
     sssd.8 sssd.conf.5 sssd-ldap.5 sssd-ldap-attributes.5 \
-    sssd-krb5.5 sssd-simple.5 sss-certmap.5 \
+    sssd-krb5.5 sssd-simple.5 sss-certmap.5 sssd-ifp.5 \
     sssd_krb5_locator_plugin.8 sssd_krb5_localauth_plugin.8 \
     pam_sss.8 pam_sss_gss.8 sss_obfuscate.8 sss_cache.8 sss_debuglevel.8 \
 	sss_seed.8 sss_override.8 idmap_sss.8 sssctl.8 sssd-session-recording.5 \
@@ -88,15 +94,12 @@ man_MANS += sssd-ipa.5 sssd-ad.5
 endif
 
 if BUILD_SSH
-man_MANS += sss_ssh_authorizedkeys.1 sss_ssh_knownhostsproxy.1
+man_MANS += sss_ssh_authorizedkeys.1 \
+            sss_ssh_knownhosts.1
 endif
 
 if BUILD_SUDO
 man_MANS += sssd-sudo.5
-endif
-
-if BUILD_IFP
-man_MANS += sssd-ifp.5
 endif
 
 if BUILD_KCM
@@ -111,10 +114,8 @@ if BUILD_NFS_IDMAP
 man_MANS += sss_rpcidmapd.5
 endif
 
-if HAVE_INOTIFY
-if BUILD_FILES_PROVIDER
-man_MANS += sssd-files.5
-endif # BUILD_FILES_PROVIDER
+if BUILD_ID_PROVIDER_IDP
+man_MANS += sssd-idp.5
 endif
 
 $(builddir)/src/man/sssd_user_name.include:

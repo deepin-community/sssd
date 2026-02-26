@@ -1,6 +1,7 @@
-#git=https://github.com/SSSD/sssd
-version=4
-opts="uversionmangle=s/alpha/~alpha/;s/beta/~beta/,pgpsigurlmangle=s/$/.asc/, \
-      filenamemangle=s#@ANY_VERSION@$#$1.tar.gz#, \
-      downloadurlmangle=s#/tag/#/download/#;s#@ANY_VERSION@$#$1/@PACKAGE@-$1.tar.gz#" \
-https://github.com/SSSD/sssd/tags .*/releases/tag/@ANY_VERSION@
+Version: 5
+
+Source: https://github.com/SSSD/sssd/tags
+Matching-Pattern: .*/releases/tag/@ANY_VERSION@
+Filename-Mangle: s/@ANY_VERSION@$/sssd-$1.tar.gz/
+Download-Url-Mangle: s#/tag/#/download/#;s#@ANY_VERSION@$#$1/@PACKAGE@-$1.tar.gz#
+Pgp-Sig-Url-Mangle: s/$/.asc/

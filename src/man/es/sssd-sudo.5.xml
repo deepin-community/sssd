@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-sudo</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-sudo</refname>
+        <refpurpose>Configuración de sudo con el motor de SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página de manual describe como configurar <citerefentry>
+<refentrytitle>sudo</refentrytitle> <manvolnum>8</manvolnum> </citerefentry>
+para trabajar con <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> y como SSSD esconde reglas sudo.
+        </para>
+    </refsect1>
+
+    <refsect1 id='sudo'>
+        <title>Configurando sudo para cooperar con SSSD</title>
+        <para>
+            Para habilitar SSSD como una fuente de reglas sudo, añada
+<emphasis>sss</emphasis> a la entrada <emphasis>sudoers</emphasis> en
+<citerefentry> <refentrytitle>nsswitch.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            Por ejemplo, para configurar sudo para primero buscar reglas en el fichero
+<citerefentry> <refentrytitle>sudoers</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> estándar (que contendría reglas
+para aplicar al usuario local) y después en SSSD, el fichero nsswitch.conf
+contiene la siguiente línea:
+        </para>
+        <para>
+<programlisting>
+sudoers: archivos sss
+</programlisting>
+        </para>
+        <para>
+            Más información sobre la configuración del orden de búsqueda de sudoers
+desde el archivo nsswuitch.conf así información sobre el esquema LDAP que se
+usa para almacenar reglas sudo en el directorio se puede encontrar en
+<citerefentry> <refentrytitle>sudoers.ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            <emphasis>Nota</emphasis>: para utilizar `netgroups` o IPA `hostgroups` en
+sudo reglas, también necesitas a correctamente puesto <citerefentry>
+<refentrytitle>nisdomainname</refentrytitle> <manvolnum>1</manvolnum>
+</citerefentry> a vuestro NIS nombre de ámbito (cuál equals a IPA nombre de
+ámbito cuando utiliza hostgroups).
+        </para>
+    </refsect1>
+
+    <refsect1 id='sssd'>
+        <title>Configurando SSSD para ir a buscar reglas sudo</title>
+        <para>
+            Toda configuración que está necesitado en SSSD el lado es para extender el
+listado de <emphasis>servicios</emphasis> con “sudo” en [sssd] sección de
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>. Para solicitar búsquedas en LDAP,
+puedes además establecer la búsqueda base para “sudo” en las reglas que se
+utilizan en la opción <emphasis>ldap_sudo_search_base</emphasis>.
+        </para>
+        <para>
+            El siguiente ejemplo muestra como configurar SSSD para descargar reglas sudo
+desde un servidor LDAP.
+        </para>
+        <para>
+<programlisting>
+[sssd]
+services = nss, pam, sudo
+domains = EJEMPLO
+
+[domain/EJEMPLO]
+id_provider = ldap
+sudo_provider = ldap
+ldap_uri = ldap://ejemplo.com
+ldap_sudo_search_base = ou=sudoers,dc=ejemplo,dc=com
+</programlisting> <phrase
+condition="have_systemd"> Es importante de notar que en plataformas donde
+systemd está admitidas no hay necesitad de añadir el proveedor “sudo” al
+listado de servicios, como acaecía opcional. Aún así, sssd-sudo.socket debe
+ser habilitado en su lugar. </phrase>
+        </para>
+        <para>
+            Cuando SSSD está configurado para utilizar IPA como el ID de proveedor, el
+proveedor de ‘sudo’ es habilitado automáticamente. La base de la búsqueda de
+‘sudo’ está configurada para utilizar IPA nativo del árbol LDAP
+(cn=sudo,$SUFFIX).  En cambio si cualquiera otra base de búsqueda está
+definida en sssd.conf, será utilizado este valor. El árbol compacto
+(ou=sudoers,$SUFFIX) ya no es requerido para funcionalidad IPA de ‘sudo’.
+        </para>
+    </refsect1>
+
+    <refsect1 id='cache'>
+        <title>El mecanismo de almacenamiento en cache de regla SUDO</title>
+        <para>
+            El mayor desafío, cuando se desarrolla soporte sudo en SSSD, fue asegurar
+que ejecutando sudo con SSSD como la fuente de datos suministre la misma
+experiencia de usuario y sea tan rápido como sudo pero se mantenga
+proporcionando el conjunto más actual de reglas como sea posible. Para
+satisfacer estos requisitos, SSSD usa tres clases de actualizaciones. A
+ellas nos referimos como refresco total, refresco inteligente y refresco de
+reglas.
+        </para>
+        <para>
+            El <emphasis>refresco inteligente</emphasis> periódicamente descarga reglas
+que son nuevas o fueron modificadas desde la última actualización. Su
+objetivo principal es mantener la base de datos creciendo mediante la
+atracción de pequeños incrementos que no generen grandes cantidades de
+tráfico de red.
+        </para>
+        <para>
+            <emphasis>full refresh</emphasis> simplemente refresca todas las reglas sudo
+almacenadas en el cache y las reemplaza con las reglas que están almacenadas
+en el servidor. Esto se usa para mantener el cache consistente borrando cada
+regla que fue borrada del servidor. Sin embargo, un refresco total puede
+producir gran cantidad de tráfico y por lo tanto debería ser ejecutado sólo
+ocasionalmente dependiendo del tamaño y de la estabilidad de las reglas
+sudo.
+        </para>
+        <para>
+            El <emphasis>refresco de reglas</emphasis> asegura que no concedamos más
+permisos al usuario que los definidos. Se dispara cada vez que el usuario
+ejecuta sudo. El refresco de reglas encontrará todas las reglas que se
+apliquen a ese usuario, comprobará su tiempo de expiración y las recargará
+si han expirado. En el caso de que alguna de esas reglas estén desaparecidas
+del servidor, SSSD hará un refresco total fuera de banda puesto que más
+reglas (que apliquen a otros usuarios) pueden haber sido borradas.
+        </para>
+        <para>
+            Si está habilitado, SSSD almacenará sólo las reglas que pueden ser aplicadas
+a esa máquina. Esto indica reglas que contienen uno de los siguientes
+valores en el atributo <emphasis>sudoHost</emphasis>:
+        </para>
+        <itemizedlist>
+            <listitem>
+                <para>
+                    palabra clave ALL
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    comodines
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    netgroup (en la forma "+netgroup")
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    nombre de host o nombre de dominio totalmente cualificado de esta máquina
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    una de las direcciones IP de esta máquina
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    una de las direcciones IP de la red (en la forma "dirección/máscara")
+                </para>
+            </listitem>
+        </itemizedlist>
+        <para>
+            Hay muchas opciones de configuración que pueden ser usadas para ajustar el
+comportamiento. Por favor vea "ldap_sudo_*" en <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> y "sudo_*" en <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+    </refsect1>
+
+    <refsect1 id='performance'>
+        <title>Ajustando el rendimiento</title>
+        <para>
+            SSSD utiliza diferentes tipos de mecanismos con filtros LDAP más o menos
+complejos para mantener actualizadas las reglas de sudo almacenadas en
+caché. La configuración predeterminada está establecida con valores que
+deberían satisfacer a la mayoría de nuestros usuarios, pero los siguientes
+párrafos contienen algunos consejos para ajustar la configuración a sus
+necesidades.
+        </para>
+        <para>
+            1. <emphasis>Atributos de índice LDAP</emphasis>. Asegúrese que estén
+indexados los atributos LDAP siguientes: objectClass, cn, entryUSN o
+modifyTimestamp.
+        </para>
+        <para>
+            2. <emphasis>Establezca ldap_sudo_search_base</emphasis>. Establezca la base
+de búsqueda para el contenedor que mantiene las reglas de sudo para limitar
+el ámbito de la búsqueda.
+        </para>
+        <para>
+            3. <emphasis>Establezca intervalo completo de refresco
+inteligente</emphasis>. Si sus reglas sudo no cambian a menudo y no requiere
+actualización rápida de reglas cacheadas en vuestros clientes, puede
+considerar aumentar <emphasis>ldap_sudo_full_refresh_interval</emphasis> y
+<emphasis>ldap_sudo_smart_refresh_interval</emphasis>. Puede también
+considerar inutilizar el refresco inteligente estableciendo
+<emphasis>ldap_sudo_smart_refresh_interval = 0</emphasis>.
+        </para>
+        <para>
+            4. Si tiene un número grande de clientes, puede considerar aumentar el valor
+de <emphasis>ldap_sudo_random_offset</emphasis> para distribuir mejor la
+carga sobre el servidor.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

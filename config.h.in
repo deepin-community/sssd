@@ -24,17 +24,11 @@
 /* Build chain id */
 #undef BUILD_CHAIN_ID
 
-/* whether to build with files provider support */
-#undef BUILD_FILES_PROVIDER
-
-/* whether to build with InfoPipe support */
-#undef BUILD_IFP
+/* whether to build with IdP id provider */
+#undef BUILD_ID_PROVIDER_IDP
 
 /* whether to build with KCM server support */
 #undef BUILD_KCM
-
-/* whether to build sss_simpleifp library */
-#undef BUILD_LIBSIFP
 
 /* whether to build with NFSv4 IDMAP support */
 #undef BUILD_NFS_IDMAP
@@ -56,6 +50,15 @@
 
 /* whether to build with SUDO support */
 #undef BUILD_SUDO
+
+/* whether to install the systemd-sysusers configuration */
+#undef BUILD_SYSTEMD_SYSUSERS
+
+/* whether to install tmpfiles configuration */
+#undef BUILD_TMPFILES
+
+/* whether to install the udev rules */
+#undef BUILD_UDEV_RULES
 
 /* Path to the SSSD data provider plugins */
 #undef DATA_PROVIDER_PLUGINS_PATH
@@ -99,7 +102,10 @@
 /* Build with cifs idmap plugin */
 #undef HAVE_CIFS_IDMAP_PLUGIN
 
-/* Define to 1 if the system has the type `DBusBasicValue'. */
+/* CURLOPT_PROTOCOLS_STR available */
+#undef HAVE_CURLOPT_PROTOCOLS_STR
+
+/* Define to 1 if the system has the type 'DBusBasicValue'. */
 #undef HAVE_DBUSBASICVALUE
 
 /* Define if dbus_watch_get_unix_fd exists */
@@ -112,14 +118,14 @@
 /* Build with debian config */
 #undef HAVE_DEBIAN
 
-/* Define to 1 if you have the declaration of `cygwin_conv_path', and to 0 if
+/* Define to 1 if you have the declaration of 'cygwin_conv_path', and to 0 if
    you don't. */
 #undef HAVE_DECL_CYGWIN_CONV_PATH
 
 /* Define if you have the GNU dld library. */
 #undef HAVE_DLD
 
-/* Define to 1 if you have the `dlerror' function. */
+/* Define to 1 if you have the 'dlerror' function. */
 #undef HAVE_DLERROR
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
@@ -131,10 +137,10 @@
 /* Define to 1 if you have the <endian.h> header file. */
 #undef HAVE_ENDIAN_H
 
-/* Define to 1 if the system has the type `errno_t'. */
+/* Define to 1 if the system has the type 'errno_t'. */
 #undef HAVE_ERRNO_T
 
-/* Define to 1 if you have the `explicit_bzero' function. */
+/* Define to 1 if you have the 'explicit_bzero' function. */
 #undef HAVE_EXPLICIT_BZERO
 
 /* Using faketime for some tests */
@@ -152,8 +158,8 @@
 /* whether compiler supports __attribute__((warn_unused_result)) */
 #undef HAVE_FUNCTION_ATTRIBUTE_WARN_UNUSED_RESULT
 
-/* Define to 1 if you have the `futimens' function. */
-#undef HAVE_FUTIMENS
+/* Build with gdm-custom-json-pam-extension support */
+#undef HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
 
 /* Build with gdm-pam-extensions support */
 #undef HAVE_GDM_PAM_EXTENSIONS
@@ -161,7 +167,7 @@
 /* Build with gentoo config */
 #undef HAVE_GENTOO
 
-/* Define to 1 if you have the `getpgrp' function. */
+/* Define to 1 if you have the 'getpgrp' function. */
 #undef HAVE_GETPGRP
 
 /* Define if the GNU gettext() function is already present or preinstalled. */
@@ -173,7 +179,7 @@
 /* Inotify works */
 #undef HAVE_INOTIFY
 
-/* Define to 1 if the system has the type `intptr_t'. */
+/* Define to 1 if the system has the type 'intptr_t'. */
 #undef HAVE_INTPTR_T
 
 /* Define to 1 if you have the <inttypes.h> header file. */
@@ -188,52 +194,52 @@
 /* Define to 1 if you have the <keyutils.h> header file. */
 #undef HAVE_KEYUTILS_H
 
-/* Define to 1 if you have the `krb5_cc_cache_match' function. */
+/* Define to 1 if you have the 'krb5_cc_cache_match' function. */
 #undef HAVE_KRB5_CC_CACHE_MATCH
 
-/* Define to 1 if you have the `krb5_cc_get_full_name' function. */
+/* Define to 1 if you have the 'krb5_cc_get_full_name' function. */
 #undef HAVE_KRB5_CC_GET_FULL_NAME
 
-/* Define to 1 if you have the `krb5_find_authdata' function. */
+/* Define to 1 if you have the 'krb5_find_authdata' function. */
 #undef HAVE_KRB5_FIND_AUTHDATA
 
-/* Define to 1 if you have the `krb5_free_keytab_entry_contents' function. */
+/* Define to 1 if you have the 'krb5_free_keytab_entry_contents' function. */
 #undef HAVE_KRB5_FREE_KEYTAB_ENTRY_CONTENTS
 
-/* Define to 1 if you have the `krb5_free_unparsed_name' function. */
+/* Define to 1 if you have the 'krb5_free_unparsed_name' function. */
 #undef HAVE_KRB5_FREE_UNPARSED_NAME
 
-/* Define to 1 if you have the `krb5_get_error_message' function. */
+/* Define to 1 if you have the 'krb5_get_error_message' function. */
 #undef HAVE_KRB5_GET_ERROR_MESSAGE
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_alloc' function. */
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_alloc' function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_ALLOC
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_set_canonicalize'
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_set_canonicalize'
    function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_CANONICALIZE
 
 /* Define to 1 if you have the
-   `krb5_get_init_creds_opt_set_change_password_prompt' function. */
+   'krb5_get_init_creds_opt_set_change_password_prompt' function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_CHANGE_PASSWORD_PROMPT
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_set_expire_callback'
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_set_expire_callback'
    function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_EXPIRE_CALLBACK
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_set_fast_ccache_name'
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_set_fast_ccache_name'
    function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_FAST_CCACHE_NAME
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_set_fast_flags'
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_set_fast_flags'
    function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_FAST_FLAGS
 
-/* Define to 1 if you have the `krb5_get_init_creds_opt_set_responder'
+/* Define to 1 if you have the 'krb5_get_init_creds_opt_set_responder'
    function. */
 #undef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_RESPONDER
 
-/* Define to 1 if you have the `krb5_get_time_offsets' function. */
+/* Define to 1 if you have the 'krb5_get_time_offsets' function. */
 #undef HAVE_KRB5_GET_TIME_OFFSETS
 
 /* Define to 1 if you have the <krb5.h> header file. */
@@ -242,10 +248,10 @@
 /* Define to 1 if you have the <krb5/krb5.h> header file. */
 #undef HAVE_KRB5_KRB5_H
 
-/* Define to 1 if you have the `krb5_kt_free_entry' function. */
+/* Define to 1 if you have the 'krb5_kt_free_entry' function. */
 #undef HAVE_KRB5_KT_FREE_ENTRY
 
-/* Define to 1 if you have the `krb5_kt_have_content' function. */
+/* Define to 1 if you have the 'krb5_kt_have_content' function. */
 #undef HAVE_KRB5_KT_HAVE_CONTENT
 
 /* Build with krb5 localauth plugin */
@@ -254,55 +260,56 @@
 /* Build with krb5 locator plugin */
 #undef HAVE_KRB5_LOCATOR_PLUGIN
 
-/* Define to 1 if you have the `krb5_parse_name_flags' function. */
+/* Define to 1 if you have the 'krb5_parse_name_flags' function. */
 #undef HAVE_KRB5_PARSE_NAME_FLAGS
 
-/* Define to 1 if you have the `krb5_principal_get_realm' function. */
+/* Define to 1 if you have the 'krb5_principal_get_realm' function. */
 #undef HAVE_KRB5_PRINCIPAL_GET_REALM
 
-/* Define to 1 if you have the `krb5_princ_realm' function. */
+/* Define to 1 if you have the 'krb5_princ_realm' function. */
 #undef HAVE_KRB5_PRINC_REALM
 
-/* Define to 1 if you have the `krb5_set_trace_callback' function. */
+/* Define to 1 if you have the 'krb5_set_trace_callback' function. */
 #undef HAVE_KRB5_SET_TRACE_CALLBACK
 
-/* Define to 1 if the system has the type `krb5_ticket_times'. */
+/* Define to 1 if the system has the type 'krb5_ticket_times'. */
 #undef HAVE_KRB5_TICKET_TIMES
 
-/* Define to 1 if the system has the type `krb5_times'. */
+/* Define to 1 if the system has the type 'krb5_times'. */
 #undef HAVE_KRB5_TIMES
 
-/* Define to 1 if you have the `krb5_timestamp_to_sfstring' function. */
+/* Define to 1 if you have the 'krb5_timestamp_to_sfstring' function. */
 #undef HAVE_KRB5_TIMESTAMP_TO_SFSTRING
 
-/* Define to 1 if the system has the type `krb5_trace_info'. */
+/* Define to 1 if the system has the type 'krb5_trace_info'. */
 #undef HAVE_KRB5_TRACE_INFO
 
-/* Define to 1 if you have the `krb5_unmarshal_credentials' function. */
+/* Define to 1 if you have the 'krb5_unmarshal_credentials' function. */
 #undef HAVE_KRB5_UNMARSHAL_CREDENTIALS
 
-/* Define to 1 if you have the `krb5_unparse_name_flags' function. */
+/* Define to 1 if you have the 'krb5_unparse_name_flags' function. */
 #undef HAVE_KRB5_UNPARSE_NAME_FLAGS
 
-/* Define if LDAP connection callbacks are available */
+/* Define if LDAP connection callbacks are available, always set when
+   cross-compiling */
 #undef HAVE_LDAP_CONNCB
 
-/* Define to 1 if you have the `ldap_control_create' function. */
+/* Define to 1 if you have the 'ldap_control_create' function. */
 #undef HAVE_LDAP_CONTROL_CREATE
 
-/* Define to 1 if you have the `ldap_create_deref_control_value' function. */
+/* Define to 1 if you have the 'ldap_create_deref_control_value' function. */
 #undef HAVE_LDAP_CREATE_DEREF_CONTROL_VALUE
 
-/* Define to 1 if you have the `ldap_derefresponse_free' function. */
+/* Define to 1 if you have the 'ldap_derefresponse_free' function. */
 #undef HAVE_LDAP_DEREFRESPONSE_FREE
 
-/* Define to 1 if you have the `ldap_init_fd' function. */
+/* Define to 1 if you have the 'ldap_init_fd' function. */
 #undef HAVE_LDAP_INIT_FD
 
-/* Define to 1 if you have the `ldap_is_ldapc_url' function. */
+/* Define to 1 if you have the 'ldap_is_ldapc_url' function. */
 #undef HAVE_LDAP_IS_LDAPC_URL
 
-/* Define to 1 if you have the `ldap_parse_derefresponse_control' function. */
+/* Define to 1 if you have the 'ldap_parse_derefresponse_control' function. */
 #undef HAVE_LDAP_PARSE_DEREFRESPONSE_CONTROL
 
 /* Define to 1 if you have the <ldb.h> header file. */
@@ -316,18 +323,6 @@
 
 /* Define if libdlloader will be built on this platform */
 #undef HAVE_LIBDLLOADER
-
-/* libini_config version 0.6.1 or greater */
-#undef HAVE_LIBINI_CONFIG_V0
-
-/* libini_config version 1.0.0 or greater */
-#undef HAVE_LIBINI_CONFIG_V1
-
-/* libini_config version 1.1.0 or greater */
-#undef HAVE_LIBINI_CONFIG_V1_1
-
-/* libini_config version 1.3.0 or greater */
-#undef HAVE_LIBINI_CONFIG_V1_3
 
 /* Build with libnetlink support */
 #undef HAVE_LIBNL
@@ -344,7 +339,7 @@
 /* whether platform is little endian */
 #undef HAVE_LITTLE_ENDIAN
 
-/* Define to 1 if the system has the type `long long'. */
+/* Define to 1 if the system has the type 'long long'. */
 #undef HAVE_LONG_LONG
 
 /* Define to 1 if you have the <minix/config.h> header file. */
@@ -371,10 +366,13 @@
 /* Build with the PAC responder */
 #undef HAVE_PAC_RESPONDER
 
-/* Define to 1 if you have the `pam_modutil_getlogin' function. */
+/* Define to 1 if you have the 'pam_modutil_getlogin' function. */
 #undef HAVE_PAM_MODUTIL_GETLOGIN
 
-/* Define to 1 if you have the `pam_vsyslog' function. */
+/* Define to 1 if you have the 'pam_syslog' function. */
+#undef HAVE_PAM_SYSLOG
+
+/* Define to 1 if you have the 'pam_vsyslog' function. */
 #undef HAVE_PAM_VSYSLOG
 
 /* Define to 1 if you have the <pcre2.h> header file. */
@@ -383,8 +381,11 @@
 /* Define to 1 if you have the <popt.h> header file. */
 #undef HAVE_POPT_H
 
-/* Define to 1 if you have the `prctl' function. */
+/* Define to 1 if you have the 'prctl' function. */
 #undef HAVE_PRCTL
+
+/* Define to 1 if you have the 'procctl' function. */
+#undef HAVE_PROCCTL
 
 /* Pthread mutexes available. */
 #undef HAVE_PTHREAD
@@ -434,9 +435,6 @@
 /* Define to 1 if you have the <selinux/selinux.h> header file. */
 #undef HAVE_SELINUX_SELINUX_H
 
-/* Build with SELinux support */
-#undef HAVE_SEMANAGE
-
 /* Define to 1 if you have the <semanage/semanage.h> header file. */
 #undef HAVE_SEMANAGE_SEMANAGE_H
 
@@ -446,16 +444,19 @@
 /* Define to 1 if you have the <setjmp.h> header file. */
 #undef HAVE_SETJMP_H
 
+/* Define to 1 if you have the <shadow.h> header file. */
+#undef HAVE_SHADOW_H
+
 /* Define if you have the shl_load function. */
 #undef HAVE_SHL_LOAD
 
-/* Define to 1 if you have the `sigaction' function. */
+/* Define to 1 if you have the 'sigaction' function. */
 #undef HAVE_SIGACTION
 
-/* Define to 1 if you have the `sigblock' function. */
+/* Define to 1 if you have the 'sigblock' function. */
 #undef HAVE_SIGBLOCK
 
-/* Define to 1 if you have the `sigprocmask' function. */
+/* Define to 1 if you have the 'sigprocmask' function. */
 #undef HAVE_SIGPROCMASK
 
 /* Define to 1 if you have the <stdarg.h> header file. */
@@ -482,23 +483,32 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if `lc_arg' is a member of `struct ldap_conncb'. */
+/* Define to 1 if 'lc_arg' is a member of 'struct ldap_conncb'. */
 #undef HAVE_STRUCT_LDAP_CONNCB_LC_ARG
 
-/* Define to 1 if `resource_groups' is a member of `struct PAC_LOGON_INFO'. */
+/* Define to 1 if 'resource_groups' is a member of 'struct PAC_LOGON_INFO'. */
 #undef HAVE_STRUCT_PAC_LOGON_INFO_RESOURCE_GROUPS
 
-/* Define to 1 if `ex' is a member of `struct PAC_UPN_DNS_INFO'. */
+/* Define to 1 if 'ex' is a member of 'struct PAC_UPN_DNS_INFO'. */
 #undef HAVE_STRUCT_PAC_UPN_DNS_INFO_EX
 
-/* Define to 1 if `gid' is a member of `struct ucred'. */
+/* Define to 1 if 'gid' is a member of 'struct ucred'. */
 #undef HAVE_STRUCT_UCRED_GID
 
-/* Define to 1 if `pid' is a member of `struct ucred'. */
+/* Define to 1 if 'pid' is a member of 'struct ucred'. */
 #undef HAVE_STRUCT_UCRED_PID
 
-/* Define to 1 if `uid' is a member of `struct ucred'. */
+/* Define to 1 if 'uid' is a member of 'struct ucred'. */
 #undef HAVE_STRUCT_UCRED_UID
+
+/* Define to 1 if 'cr_groups' is a member of 'struct xucred'. */
+#undef HAVE_STRUCT_XUCRED_CR_GROUPS
+
+/* Define to 1 if 'cr_pid' is a member of 'struct xucred'. */
+#undef HAVE_STRUCT_XUCRED_CR_PID
+
+/* Define to 1 if 'cr_uid' is a member of 'struct xucred'. */
+#undef HAVE_STRUCT_XUCRED_CR_UID
 
 /* Build with suse config */
 #undef HAVE_SUSE
@@ -514,6 +524,9 @@
 
 /* Define to 1 if systemtap is enabled */
 #undef HAVE_SYSTEMTAP
+
+/* Define to 1 if you have the <sys/capability.h> header file. */
+#undef HAVE_SYS_CAPABILITY_H
 
 /* Define to 1 if you have the <sys/endian.h> header file. */
 #undef HAVE_SYS_ENDIAN_H
@@ -533,41 +546,41 @@
 /* Build with certificates from test CA */
 #undef HAVE_TEST_CA
 
-/* Define to 1 if you have the `tevent_fd_get_tag' function. */
+/* Define to 1 if you have the 'tevent_fd_get_tag' function. */
 #undef HAVE_TEVENT_FD_GET_TAG
 
-/* Define to 1 if you have the `tevent_fd_set_tag' function. */
+/* Define to 1 if you have the 'tevent_fd_set_tag' function. */
 #undef HAVE_TEVENT_FD_SET_TAG
 
-/* Define to 1 if you have the `tevent_immediate_get_tag' function. */
+/* Define to 1 if you have the 'tevent_immediate_get_tag' function. */
 #undef HAVE_TEVENT_IMMEDIATE_GET_TAG
 
-/* Define to 1 if you have the `tevent_immediate_set_tag' function. */
+/* Define to 1 if you have the 'tevent_immediate_set_tag' function. */
 #undef HAVE_TEVENT_IMMEDIATE_SET_TAG
 
-/* Define to 1 if you have the `tevent_set_trace_fd_callback' function. */
+/* Define to 1 if you have the 'tevent_set_trace_fd_callback' function. */
 #undef HAVE_TEVENT_SET_TRACE_FD_CALLBACK
 
-/* Define to 1 if you have the `tevent_set_trace_immediate_callback' function.
+/* Define to 1 if you have the 'tevent_set_trace_immediate_callback' function.
    */
 #undef HAVE_TEVENT_SET_TRACE_IMMEDIATE_CALLBACK
 
-/* Define to 1 if you have the `tevent_set_trace_signal_callback' function. */
+/* Define to 1 if you have the 'tevent_set_trace_signal_callback' function. */
 #undef HAVE_TEVENT_SET_TRACE_SIGNAL_CALLBACK
 
-/* Define to 1 if you have the `tevent_set_trace_timer_callback' function. */
+/* Define to 1 if you have the 'tevent_set_trace_timer_callback' function. */
 #undef HAVE_TEVENT_SET_TRACE_TIMER_CALLBACK
 
-/* Define to 1 if you have the `tevent_signal_get_tag' function. */
+/* Define to 1 if you have the 'tevent_signal_get_tag' function. */
 #undef HAVE_TEVENT_SIGNAL_GET_TAG
 
-/* Define to 1 if you have the `tevent_signal_set_tag' function. */
+/* Define to 1 if you have the 'tevent_signal_set_tag' function. */
 #undef HAVE_TEVENT_SIGNAL_SET_TAG
 
-/* Define to 1 if you have the `tevent_timer_get_tag' function. */
+/* Define to 1 if you have the 'tevent_timer_get_tag' function. */
 #undef HAVE_TEVENT_TIMER_GET_TAG
 
-/* Define to 1 if you have the `tevent_timer_set_tag' function. */
+/* Define to 1 if you have the 'tevent_timer_set_tag' function. */
 #undef HAVE_TEVENT_TIMER_SET_TAG
 
 /* Define if struct ucred is available */
@@ -582,17 +595,20 @@
 /* Define to 1 if you have the <unistr.h> header file. */
 #undef HAVE_UNISTR_H
 
-/* Define to 1 if you have the `utimensat' function. */
-#undef HAVE_UTIMENSAT
-
 /* Define to 1 if you have the <uuid/uuid.h> header file. */
 #undef HAVE_UUID_UUID_H
+
+/* Define to 1 if you have the <valgrind/valgrind.h> header file. */
+#undef HAVE_VALGRIND_VALGRIND_H
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #undef HAVE_WCHAR_H
 
 /* whether OpenSSL's x400Address is ASN1_STRING */
 #undef HAVE_X400ADDRESS_STRING
+
+/* Define if struct xucred is available */
+#undef HAVE_XUCRED
 
 /* The path to the ipa-getkeytab utility */
 #undef IPA_GETKEYTAB_PATH
@@ -605,6 +621,9 @@
 
 /* Directory used for storing Kerberos replay caches */
 #undef KRB5_RCACHE_DIR
+
+/* Override for LDB_MODULES_PATH environment variable */
+#undef LDB_MODULES_PATH_OVERRIDE
 
 /* Where to store log files for the SSSD */
 #undef LOG_PATH
@@ -620,9 +639,6 @@
 
 /* whether to build sssd nss plugin with nonstandard glibc behaviour */
 #undef NONSTANDARD_SSS_NSS_BEHAVIOUR
-
-/* NSCD configuration file */
-#undef NSCD_CONF_PATH
 
 /* The path to nsupdate */
 #undef NSUPDATE_PATH
@@ -666,6 +682,12 @@
 /* The path of libpython for dlopen-tests */
 #undef PYTHON_DLOPEN_LIB
 
+/* The path to the adcli utility */
+#undef RENEWAL_PROG_PATH_ADCLI
+
+/* The path to the realm utility */
+#undef RENEWAL_PROG_PATH_REALM
+
 /* Path to the SSSD Secrets databases */
 #undef SECRETS_DB_PATH
 
@@ -675,40 +697,40 @@
 /* The shell used to record user sessions */
 #undef SESSION_RECORDING_SHELL
 
-/* The size of `char', as computed by sizeof. */
+/* The size of 'char', as computed by sizeof. */
 #undef SIZEOF_CHAR
 
-/* The size of `gid_t', as computed by sizeof. */
+/* The size of 'gid_t', as computed by sizeof. */
 #undef SIZEOF_GID_T
 
-/* The size of `id_t', as computed by sizeof. */
+/* The size of 'id_t', as computed by sizeof. */
 #undef SIZEOF_ID_T
 
-/* The size of `int', as computed by sizeof. */
+/* The size of 'int', as computed by sizeof. */
 #undef SIZEOF_INT
 
-/* The size of `long', as computed by sizeof. */
+/* The size of 'long', as computed by sizeof. */
 #undef SIZEOF_LONG
 
-/* The size of `long long', as computed by sizeof. */
+/* The size of 'long long', as computed by sizeof. */
 #undef SIZEOF_LONG_LONG
 
-/* The size of `off_t', as computed by sizeof. */
+/* The size of 'off_t', as computed by sizeof. */
 #undef SIZEOF_OFF_T
 
-/* The size of `short', as computed by sizeof. */
+/* The size of 'short', as computed by sizeof. */
 #undef SIZEOF_SHORT
 
-/* The size of `size_t', as computed by sizeof. */
+/* The size of 'size_t', as computed by sizeof. */
 #undef SIZEOF_SIZE_T
 
-/* The size of `ssize_t', as computed by sizeof. */
+/* The size of 'ssize_t', as computed by sizeof. */
 #undef SIZEOF_SSIZE_T
 
-/* The size of `time_t', as computed by sizeof. */
+/* The size of 'time_t', as computed by sizeof. */
 #undef SIZEOF_TIME_T
 
-/* The size of `uid_t', as computed by sizeof. */
+/* The size of 'uid_t', as computed by sizeof. */
 #undef SIZEOF_UID_T
 
 /* Samba's new push/pull switch functions */
@@ -735,7 +757,7 @@
 /* Define to 1 if you want ldb version check. */
 #undef SSS_LDB_VERSION_CHECK
 
-/* Define to 1 if all of the C90 standard headers exist (not just the ones
+/* Define to 1 if all of the C89 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
@@ -746,7 +768,7 @@
 /* Define if the keyring should be used */
 #undef USE_KEYRING
 
-/* Enable extensions on AIX 3, Interix.  */
+/* Enable extensions on AIX, Interix, z/OS.  */
 #ifndef _ALL_SOURCE
 # undef _ALL_SOURCE
 #endif
@@ -807,11 +829,15 @@
 #ifndef __STDC_WANT_IEC_60559_DFP_EXT__
 # undef __STDC_WANT_IEC_60559_DFP_EXT__
 #endif
+/* Enable extensions specified by C23 Annex F.  */
+#ifndef __STDC_WANT_IEC_60559_EXT__
+# undef __STDC_WANT_IEC_60559_EXT__
+#endif
 /* Enable extensions specified by ISO/IEC TS 18661-4:2015.  */
 #ifndef __STDC_WANT_IEC_60559_FUNCS_EXT__
 # undef __STDC_WANT_IEC_60559_FUNCS_EXT__
 #endif
-/* Enable extensions specified by ISO/IEC TS 18661-3:2015.  */
+/* Enable extensions specified by C23 Annex H and ISO/IEC TS 18661-3:2015.  */
 #ifndef __STDC_WANT_IEC_60559_TYPES_EXT__
 # undef __STDC_WANT_IEC_60559_TYPES_EXT__
 #endif
@@ -840,6 +866,9 @@
 /* journald is available */
 #undef WITH_JOURNALD
 
+/* Send syslog to stderr */
+#undef WITH_STDERR_SYSLOG
+
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD
@@ -852,44 +881,44 @@
 # endif
 #endif
 
-/* Define to `short' if <sys/types.h> does not define. */
+/* Define to 'short' if <sys/types.h> does not define. */
 #undef int16_t
 
-/* Define to `long' if <sys/types.h> does not define. */
+/* Define to 'long' if <sys/types.h> does not define. */
 #undef int32_t
 
-/* Define to `long long' if <sys/types.h> does not define. */
+/* Define to 'long long' if <sys/types.h> does not define. */
 #undef int64_t
 
-/* Define to `char' if <sys/types.h> does not define. */
+/* Define to 'char' if <sys/types.h> does not define. */
 #undef int8_t
 
 /* Define to `long long' if <stdint.h> does not define. */
 #undef intptr_t
 
-/* Define to `unsigned long long' if <sys/types.h> does not define. */
+/* Define to 'unsigned long long' if <sys/types.h> does not define. */
 #undef ptrdiff_t
 
-/* Define to `unsigned int' if <sys/types.h> does not define. */
+/* Define to 'unsigned int' if <sys/types.h> does not define. */
 #undef size_t
 
-/* Define to `int' if <sys/types.h> does not define. */
+/* Define to 'int' if <sys/types.h> does not define. */
 #undef ssize_t
 
-/* Define to `unsigned short' if <sys/types.h> does not define. */
+/* Define to 'unsigned short' if <sys/types.h> does not define. */
 #undef uint16_t
 
-/* Define to `unsigned long' if <sys/types.h> does not define. */
+/* Define to 'unsigned long' if <sys/types.h> does not define. */
 #undef uint32_t
 
-/* Define to `unsigned long long' if <sys/types.h> does not define. */
+/* Define to 'unsigned long long' if <sys/types.h> does not define. */
 #undef uint64_t
 
-/* Define to `unsigned char' if <sys/types.h> does not define. */
+/* Define to 'unsigned char' if <sys/types.h> does not define. */
 #undef uint8_t
 
-/* Define to `unsigned int' if <sys/types.h> does not define. */
+/* Define to 'unsigned int' if <sys/types.h> does not define. */
 #undef uint_t
 
-/* Define to `unsigned long long' if <sys/types.h> does not define. */
+/* Define to 'unsigned long long' if <sys/types.h> does not define. */
 #undef uintptr_t

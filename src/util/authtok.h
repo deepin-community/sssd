@@ -28,6 +28,10 @@
     sss_authtok_get_type((tok)) == SSS_AUTHTOK_TYPE_SC_PIN \
         || sss_authtok_get_type((tok)) == SSS_AUTHTOK_TYPE_SC_KEYPAD)
 
+#define IS_PW_OR_ST_AUTHTOK(tok) ( \
+    sss_authtok_get_type((tok)) == SSS_AUTHTOK_TYPE_PASSWORD \
+        || sss_authtok_get_type((tok)) == SSS_AUTHTOK_TYPE_PAM_STACKED)
+
 
 /* Use sss_authtok_* accessor functions instead of struct sss_auth_token
  */
@@ -505,6 +509,21 @@ errno_t sss_authtok_get_passkey_pin(struct sss_auth_token *tok,
                                     const char **pin, size_t *len);
 
 /**
+ * @brief Set local passkey PIN in sss_auth_token structure
+ *
+ * @param tok    A pointer to an sss_auth_token
+ * @param pin    A pointer to a const char *, that will point to a null
+ *               terminated string
+ *
+ * @return       EOK on success
+ *               EINVAL if there's no token
+ *               ENOENT if the token is empty
+ *               EACCESS if the token is not a passkey token
+ */
+errno_t sss_authtok_set_local_passkey_pin(struct sss_auth_token *tok,
+                                          const char *pin);
+
+/**
  * @brief Set passkey kerberos preauth credentials into an auth token,
  *        replacing any previous data.
  *
@@ -520,4 +539,20 @@ errno_t sss_authtok_get_passkey_pin(struct sss_auth_token *tok,
 errno_t sss_authtok_set_passkey_krb(struct sss_auth_token *tok,
                                     const char *prompt, const char *key,
                                     const char *pin);
+
+/**
+ * @brief Set PAM stacked credentials in a single string into an auth token,
+ *        replacing any previous data
+ *
+ * @param tok        A pointer to an sss_auth_token structure to change, also
+ *                   used as a memory context to allocate the internal data.
+ * @param str        A string where the stacked credential is found.
+ * @param len        The length of the string or, if 0 is passed,
+ *                   then strlen(password) will be used internally.
+ *
+ * @return       EOK on success
+ *               ENOMEM on error
+ */
+errno_t sss_authtok_set_pam_stacked(struct sss_auth_token *tok,
+                                    const char *str, size_t len);
 #endif /*  __AUTHTOK_H__ */

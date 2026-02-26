@@ -6,14 +6,15 @@ BindsTo=sssd.service
 RefuseManualStart=true
 
 [Install]
-Also=sssd-pam.socket sssd-pam-priv.socket
+Also=sssd-pam.socket
 
 [Service]
 Environment=DEBUG_LOGGER=--logger=files
 EnvironmentFile=-@environment_file@
-ExecStartPre=-/bin/chown @SSSD_USER@:@SSSD_USER@ @logpath@/sssd_pam.log
 ExecStart=@libexecdir@/sssd/sssd_pam ${DEBUG_LOGGER} --socket-activated
+# 'CAP_DAC_READ_SEARCH' is granted as permitted file capability to be elevated to establish GSS API context
+CapabilityBoundingSet= CAP_DAC_READ_SEARCH
 Restart=on-failure
 User=@SSSD_USER@
 Group=@SSSD_USER@
-PermissionsStartOnly=true
+@supplementary_groups@

@@ -46,7 +46,7 @@ sdap_attrs_add_ldap_attr(struct sysdb_attrs *ldap_attrs,
     }
 
     if (el->num_values == 0) {
-        DEBUG(SSSDBG_TRACE_INTERNAL, "%s is not available "
+        DEBUG(SSSDBG_TRACE_ALL, "%s is not available "
               "for [%s].\n", desc, objname);
     } else {
         num_values = multivalued ? el->num_values : 1;
@@ -205,6 +205,39 @@ char *sdap_combine_filters(TALLOC_CTX *mem_ctx,
 {
     return sdap_combine_filters_ex(mem_ctx, '&', base_filter, extra_filter);
 }
+
+/* we check the principal and if it contains our realm, then we drop it
+ * for the comparison with sAMAccountName */
+
+char *principal_string_to_samaccountname(TALLOC_CTX *mem_ctx,
+                                         const char *attr_name,
+                                         const char *princ,
+                                         const char *realm)
+{
+    char *p;
+
+    if (attr_name == NULL || princ == NULL || realm == NULL) {
+        return NULL;
+    }
+
+    p = strchr(princ, '@');
+    if (p == NULL) {
+        return NULL;
+    }
+
+    if (strcasecmp(p + 1,realm) == 0) {
+        return talloc_asprintf(mem_ctx, "(%s=%.*s)", attr_name,
+                                                     (int) (p - princ),
+                                                     princ);
+    }
+    return NULL;
+}
+
+/* enterprise principals are expected that their realm is from the local domain
+ * and the request is send to the local KDC which then will look at the part
+ * before the realm with the \@ and will try to figure out from which trusted
+ * realm the principal might be coming from and if it found wound it will tell
+ * the client to forward the request to this realm */
 
 char *get_enterprise_principal_string_filter(TALLOC_CTX *mem_ctx,
                                              const char *attr_name,

@@ -5,21 +5,21 @@ LDAP de este tipo de atributo.
     </para>
     <para>
         sintaxis: <programlisting>
-search_base[?scope?[filter][?search_base?scope?[filter]]*]
-
+search_base[?scope?[filtro][?search_base?scope?[filtro]]*]
 </programlisting>
     </para>
     <para>
-        The scope can be one of "base", "onelevel" or "subtree". The scope functions
-as specified in section 4.5.1.2 of http://tools.ietf.org/html/rfc4511
+        El ámbito puede ser uno entre «base», «onelevel» o «subtree». Las funciones
+de ámbito como las especificadas en la sección 4.5.1.2 de
+http://tools.ietf.org/html/rfc4511
     </para>
     <para>
         El filtro debe ser un filtro de búsqueda LDAP válido como se especifica en
 http://www.ietf.org/rfc/rfc2254.txt
     </para>
     <para>
-        Para ejemplos de esta sintaxis, por favor vea la sección de ejemplos de
-<quote>ldap_search_base</quote>
+        Para ejemplos de esta sintaxis, refiérase a sección de ejemplos de
+<quote>ldap_search_base</quote>.
     </para>
     <para>
         Predeterminado: el valor de <emphasis>ldap_search_base</emphasis>

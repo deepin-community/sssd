@@ -23,23 +23,20 @@
 #include "util/util.h"
 
 
-#ifdef HAVE_EXPLICIT_BZERO
-
-#include <string.h>
-
-#else
-
-typedef void *(*_sss_memset_t)(void *, int, size_t);
-
-static volatile _sss_memset_t memset_func = memset;
-
-static void explicit_bzero(void *s, size_t n)
+void sss_erase_krb5_data_securely(krb5_data *data)
 {
-    memset_func(s, 0, n);
+    if (data != NULL) {
+        sss_erase_mem_securely(data->data, data->length);
+    }
 }
 
-#endif
-
+void sss_erase_krb5_creds_securely(krb5_creds *cred)
+{
+    if (cred != NULL) {
+        sss_erase_krb5_data_securely(&cred->ticket);
+        sss_erase_krb5_data_securely(&cred->second_ticket);
+    }
+}
 
 int sss_erase_talloc_mem_securely(void *p)
 {
@@ -55,15 +52,6 @@ int sss_erase_talloc_mem_securely(void *p)
     explicit_bzero(p, size);
 
     return 0;
-}
-
-void sss_erase_mem_securely(void *p, size_t size)
-{
-    if ((p == NULL) || (size == 0)) {
-        return;
-    }
-
-    explicit_bzero(p, size);
 }
 
 

@@ -31,7 +31,8 @@
 <replaceable>allow_missing_name</replaceable> </arg> <arg choice='opt'>
 <replaceable>prompt_always</replaceable> </arg> <arg choice='opt'>
 <replaceable>try_cert_auth</replaceable> </arg> <arg choice='opt'>
-<replaceable>require_cert_auth</replaceable> </arg></cmdsynopsis>
+<replaceable>require_cert_auth</replaceable> </arg> <arg choice='opt'>
+<replaceable>allow_chauthtok_by_root</replaceable> </arg></cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1 id='description'>
@@ -210,6 +211,21 @@ auth sufficient pam_sss.so allow_missing_name
                         Если смарт-карта недоступна по истечении тайм-аута или для текущей службы не
 разрешена проверка подлинности на основе сертификата, возвращается
 PAM_AUTHINFO_UNAVAIL.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>allow_chauthtok_by_root</option>
+                </term>
+                <listitem>
+                    <para>
+                        По умолчанию действие PAM chauthtok немедленно возвращает PAM_SUCCESS, если
+pam_sss.so вызывается от имени пользователя root.
+                    </para>
+                    <para>
+                        Этот параметр отключает такое поведение, позволяя изменять токены
+аутентификации при работе от имени root.
                     </para>
                 </listitem>
             </varlistentry>

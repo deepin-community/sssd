@@ -32,7 +32,7 @@ cache_req_user_by_filter_prepare_domain_data(struct cache_req *cr,
                                              struct sss_domain_info *domain)
 {
     TALLOC_CTX *tmp_ctx;
-    const char *name;
+    char *name;
     errno_t ret;
 
     if (cr->data->name.name == NULL) {
@@ -52,11 +52,7 @@ cache_req_user_by_filter_prepare_domain_data(struct cache_req *cr,
         goto done;
     }
 
-    name = sss_reverse_replace_space(tmp_ctx, name, cr->rctx->override_space);
-    if (name == NULL) {
-        ret = ENOMEM;
-        goto done;
-    }
+    sss_reverse_replace_space_inplace(name, cr->rctx->override_space);
 
     talloc_zfree(data->name.lookup);
     data->name.lookup = talloc_steal(data, name);
@@ -87,14 +83,10 @@ cache_req_user_by_filter_lookup(TALLOC_CTX *mem_ctx,
     const char *attr = (data->name.attr == NULL ? SYSDB_NAME : data->name.attr);
     errno_t ret;
 
-    /* The "files" provider updates the record if /etc/passwd or /etc/group
-     * is touched. It does not perform any per-request update.
-     * Therefore the last update flag is not updated if no file was touched
-     * and we cannot use this optimization.
-     * Neither it is possible to use it when asking for a non-"name" attribute
-     * as it could not be present in the timestamp cache.
+    /* It is impossible to use 'recent_filter' when asking for a non-"name"
+     * attribute as it could not be present in the timestamp cache.
      */
-    if (is_files_provider(domain) || data->name.attr != NULL) {
+    if (data->name.attr != NULL) {
         recent_filter = NULL;
     } else {
         recent_filter = talloc_asprintf(mem_ctx, "(%s>=%"SPRItime")", SYSDB_LAST_UPDATE,

@@ -54,18 +54,6 @@ ssh_check_non_sssd_user(const char *username)
 }
 
 
-static struct sss_domain_info *
-ssh_get_result_domain(struct resp_ctx *rctx,
-                      struct cache_req_result *result,
-                      const char *name)
-{
-    if (result != NULL) {
-        return result->domain;
-    }
-
-    return find_domain_by_name(rctx->domains, name, true);
-}
-
 static void ssh_cmd_get_user_pubkeys_done(struct tevent_req *subreq);
 
 static errno_t ssh_cmd_get_user_pubkeys(struct cli_ctx *cli_ctx)
@@ -85,8 +73,7 @@ static errno_t ssh_cmd_get_user_pubkeys(struct cli_ctx *cli_ctx)
 
     cmd_ctx->cli_ctx = cli_ctx;
 
-    ret = ssh_protocol_parse_user(cli_ctx, cli_ctx->rctx->default_domain,
-                                  &cmd_ctx->name, &cmd_ctx->domain);
+    ret = ssh_protocol_parse_user(cli_ctx, &cmd_ctx->name, &cmd_ctx->domain);
     if (ret != EOK) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Invalid request message!\n");
         goto done;
@@ -358,24 +345,13 @@ done:
 static void ssh_cmd_get_host_pubkeys_done(struct tevent_req *subreq)
 {
     struct cache_req_result *result = NULL;
-    struct sss_domain_info *domain;
     struct ssh_cmd_ctx *cmd_ctx;
-    struct ssh_ctx *ssh_ctx;
     errno_t ret;
 
     cmd_ctx = tevent_req_callback_data(subreq, struct ssh_cmd_ctx);
-    ssh_ctx = talloc_get_type(cmd_ctx->cli_ctx->rctx->pvt_ctx, struct ssh_ctx);
 
     ret = cache_req_ssh_host_id_by_name_recv(cmd_ctx, subreq, &result);
     talloc_zfree(subreq);
-
-    if (ret == EOK || ret == ENOENT) {
-        domain = ssh_get_result_domain(ssh_ctx->rctx, result, cmd_ctx->domain);
-
-        ssh_update_known_hosts_file(ssh_ctx->rctx->domains, domain,
-                                    cmd_ctx->name, ssh_ctx->hash_known_hosts,
-                                    ssh_ctx->known_hosts_timeout);
-    }
 
     if (ret != EOK) {
         ssh_protocol_done(cmd_ctx->cli_ctx, ret);

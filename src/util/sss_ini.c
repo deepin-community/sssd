@@ -23,7 +23,10 @@
 */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <talloc.h>
 
 #include "config.h"
@@ -41,7 +44,6 @@ struct sss_ini {
     struct ref_array *ra_error_list;
     struct ini_cfgobj *sssd_config;
     struct value_obj *obj;
-    const struct stat *cstat;
     struct ini_cfgfile *file;
     bool main_config_exists;
 };
@@ -145,56 +147,6 @@ static int sss_ini_config_file_from_mem(struct sss_ini *self,
                                    &self->file);
 }
 
-/* Check configuration file permissions */
-
-static int sss_ini_access_check(struct sss_ini *self)
-{
-    if (!self->main_config_exists) {
-        return EOK;
-    }
-
-    return ini_config_access_check(self->file,
-                                   INI_ACCESS_CHECK_MODE |
-                                   INI_ACCESS_CHECK_UID |
-                                   INI_ACCESS_CHECK_GID,
-                                   0, /* owned by root */
-                                   0, /* owned by root */
-                                   S_IRUSR, /* r**------ */
-                                   ALLPERMS & ~(S_IWUSR|S_IXUSR));
-}
-
-
-
-/* Get cstat */
-
-int sss_ini_get_stat(struct sss_ini *self)
-{
-    self->cstat = ini_config_get_stat(self->file);
-
-    if (!self->cstat) return EIO;
-
-    return EOK;
-}
-
-
-
-/* Get mtime */
-
-int sss_ini_get_mtime(struct sss_ini *self,
-                      size_t timestr_len,
-                      char *timestr)
-{
-    return snprintf(timestr, timestr_len, "%llu",
-                    (long long unsigned)self->cstat->st_mtime);
-}
-
-/* Get file_exists */
-
-bool sss_ini_exists(struct sss_ini *self)
-{
-    return self->main_config_exists;
-}
-
 /* Print ini_config errors */
 
 static void sss_ini_config_print_errors(char **error_list)
@@ -256,14 +208,12 @@ static int sss_ini_parse(struct sss_ini *self)
 static int sss_ini_add_snippets(struct sss_ini *self,
                                 const char *config_dir)
 {
-#ifdef HAVE_LIBINI_CONFIG_V1_3
     int ret;
     const char *patterns[] = { "^[^\\.].*\\.conf$", NULL };
     const char *sections[] = { ".*", NULL };
     uint32_t i = 0;
     char *msg = NULL;
     struct ini_cfgobj *modified_sssd_config = NULL;
-    struct access_check snip_check;
 
     if (self == NULL || self->sssd_config == NULL || config_dir == NULL) {
         return EINVAL;
@@ -271,18 +221,11 @@ static int sss_ini_add_snippets(struct sss_ini *self,
 
     sss_ini_free_ra_messages(self);
 
-    snip_check.flags = INI_ACCESS_CHECK_MODE | INI_ACCESS_CHECK_UID
-                       | INI_ACCESS_CHECK_GID;
-    snip_check.uid = 0; /* owned by root */
-    snip_check.gid = 0; /* owned by root */
-    snip_check.mode = S_IRUSR; /* r**------ */
-    snip_check.mask = ALLPERMS & ~(S_IWUSR | S_IXUSR);
-
     ret = ini_config_augment(self->sssd_config,
                              config_dir,
                              patterns,
                              sections,
-                             &snip_check,
+                             NULL,
                              INI_STOP_ON_ANY,
                              INI_MV1S_OVERWRITE,
                              INI_PARSE_NOWRAP,
@@ -292,17 +235,10 @@ static int sss_ini_add_snippets(struct sss_ini *self,
                              &self->ra_success_list);
     if (ret != EOK) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "Failed to augment configuration: Error %d",
-              ret);
+              "Failed to augment configuration [%d]: %s\n",
+              ret, sss_strerror(ret));
     }
 
-    while (ref_array_get(self->ra_success_list, i, &msg) != NULL) {
-        DEBUG(SSSDBG_TRACE_FUNC,
-              "Config merge success: %s\n", msg);
-        i++;
-    }
-
-    i = 0;
     while (ref_array_get(self->ra_error_list, i, &msg) != NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
               "Config merge error: %s\n", msg);
@@ -318,30 +254,18 @@ static int sss_ini_add_snippets(struct sss_ini *self,
               "Using only main configuration file due to errors in merging\n");
     }
     return ret;
-
-#else /* HAVE_LIBINI_CONFIG_V1_3 */
-    return EOK;
-#endif /* ! HAVE_LIBINI_CONFIG_V1_3 */
 }
 
 struct ref_array *
 sss_ini_get_ra_success_list(struct sss_ini *self)
 {
-#ifdef HAVE_LIBINI_CONFIG_V1_3
     return self->ra_success_list;
-#else
-    return NULL;
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */
 }
 
 struct ref_array *
 sss_ini_get_ra_error_list(struct sss_ini *self)
 {
-#ifdef HAVE_LIBINI_CONFIG_V1_3
     return self->ra_error_list;
-#else
-    return NULL;
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */
 }
 
 /* Get configuration object */
@@ -376,8 +300,8 @@ int sss_ini_get_int_config_value(struct sss_ini *self,
 
 /* Get string value */
 
-const char *sss_ini_get_string_config_value(struct sss_ini *self,
-                                            int *error)
+char *sss_ini_get_string_config_value(struct sss_ini *self,
+                                      int *error)
 {
     return ini_get_string_config_value(self->obj, error);
 }
@@ -385,12 +309,12 @@ const char *sss_ini_get_string_config_value(struct sss_ini *self,
 /* Create LDIF */
 
 int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
-                           struct sss_ini *self,
+                           const struct sss_ini *self,
                            const char *only_section,
                            const char **config_ldif)
 {
     int ret, i, j;
-    char *ldif;
+    char *ldif = NULL;
     char *tmp_ldif;
     char **sections;
     int section_count;
@@ -402,29 +326,15 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
     char *ldif_attr;
     TALLOC_CTX *tmp_ctx;
     size_t dn_size;
-    size_t ldif_len;
+    size_t ldif_len = 0;
     size_t attr_len;
     struct value_obj *obj = NULL;
-    bool section_handled = true;
 
-    if (only_section != NULL) {
-        /* If the section is specified, we must handle it, either by adding
-         * its contents or by deleting the section if it doesn't exist
-         */
-        section_handled = false;
-    }
-
-    ldif_len = strlen(CONFDB_INTERNAL_LDIF);
-    ldif = talloc_array(mem_ctx, char, ldif_len+1);
-    if (!ldif) return ENOMEM;
-
-    tmp_ctx = talloc_new(ldif);
+    tmp_ctx = talloc_new(mem_ctx);
     if (!tmp_ctx) {
         ret = ENOMEM;
         goto error;
     }
-
-    memcpy(ldif, CONFDB_INTERNAL_LDIF, ldif_len);
 
     /* Read in the collection and convert it to an LDIF */
     /* Get the list of sections */
@@ -436,7 +346,7 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
 
     for (i = 0; i < section_count; i++) {
         const char *rdn = NULL;
-        DEBUG(SSSDBG_TRACE_FUNC,
+        DEBUG(SSSDBG_TRACE_LDB,
                 "Processing config section [%s]\n", sections[i]);
         ret = parse_section(tmp_ctx, sections[i], &sec_dn, &rdn);
         if (ret != EOK) {
@@ -445,13 +355,8 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
 
         if (only_section != NULL) {
             if (strcasecmp(only_section, sections[i])) {
-                DEBUG(SSSDBG_TRACE_FUNC, "Skipping section %s\n", sections[i]);
+                DEBUG(SSSDBG_TRACE_LDB, "Skipping section %s\n", sections[i]);
                 continue;
-            } else {
-                /* Mark the requested section as handled so that we don't
-                 * try to re-add it later
-                 */
-                section_handled = true;
             }
         }
 
@@ -475,7 +380,7 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
         }
 
         for (j = 0; j < attr_count; j++) {
-            DEBUG(SSSDBG_TRACE_FUNC,
+            DEBUG(SSSDBG_TRACE_LDB,
                     "Processing attribute [%s]\n", attrs[j]);
             ret = sss_ini_get_config_obj(sections[i], attrs[j],
                                          self->sssd_config,
@@ -493,7 +398,7 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
 
             ldif_attr = talloc_asprintf(tmp_ctx,
                                         "%s: %s\n", attrs[j], value);
-            DEBUG(SSSDBG_TRACE_ALL, "%s\n", ldif_attr);
+            DEBUG(SSSDBG_TRACE_LDB, "%s\n", ldif_attr);
 
             attr_len = strlen(ldif_attr);
 
@@ -523,7 +428,7 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
         dn[dn_size-1] = '\n';
         dn[dn_size] = '\0';
 
-        DEBUG(SSSDBG_TRACE_ALL, "Section dn\n%s\n", dn);
+        DEBUG(SSSDBG_TRACE_LDB, "Section dn\n%s\n", dn);
 
         tmp_ldif = talloc_realloc(mem_ctx, ldif, char,
                                   ldif_len+dn_size+1);
@@ -541,39 +446,10 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
         talloc_free(dn);
     }
 
-
-    if (only_section != NULL && section_handled == false) {
-        /* If only a single section was supposed to be
-         * handled, but it wasn't found in the INI file,
-         * create an LDIF that would remove the section
-         */
-        ret = parse_section(tmp_ctx, only_section, &sec_dn, NULL);
-        if (ret != EOK) {
-            goto error;
-        }
-
-        dn = talloc_asprintf(tmp_ctx,
-                             "dn: %s,cn=config\n"
-                             "changetype: delete\n\n",
-                             sec_dn);
-        if (dn == NULL) {
-            ret = ENOMEM;
-            goto error;
-        }
-        dn_size = strlen(dn);
-
-        tmp_ldif = talloc_realloc(mem_ctx, ldif, char,
-                                  ldif_len+dn_size+1);
-        if (!tmp_ldif) {
-            ret = ENOMEM;
-            goto error;
-        }
-
-        ldif = tmp_ldif;
-        memcpy(ldif+ldif_len, dn, dn_size);
-        ldif_len += dn_size;
+    if (ldif == NULL) {
+        ret = ERR_INI_EMPTY_CONFIG;
+        goto error;
     }
-
     ldif[ldif_len] = '\0';
 
     free_section_list(sections);
@@ -584,10 +460,10 @@ int sss_confdb_create_ldif(TALLOC_CTX *mem_ctx,
 
 error:
     talloc_free(ldif);
+    talloc_free(tmp_ctx);
     return ret;
 }
 
-#ifdef HAVE_LIBINI_CONFIG_V1_3
 static errno_t check_domain_inherit_from(char *cfg_section,
                                          struct ini_cfgobj *config_obj,
                                          struct ini_errobj *errobj)
@@ -625,11 +501,7 @@ static errno_t check_domain_id_provider(char *cfg_section,
                                         struct ini_errobj *errobj)
 {
     struct value_obj *vo = NULL;
-    const char *valid_values[] = { "ad", "ipa", "ldap", "proxy",
-#ifdef BUILD_FILES_PROVIDER
-                                   "files",
-#endif
-                                   NULL };
+    const char *valid_values[] = { "ad", "ipa", "ldap", "proxy", NULL };
     const char **valid_value;
     const char *value;
     int ret;
@@ -737,14 +609,14 @@ static int sss_ini_call_validators_errobj(struct sss_ini *data,
     ret = ini_rules_read_from_file(rules_path, &rules_cfgobj);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE,
-              "Failed to read sssd.conf schema %d [%s]\n", ret, strerror(ret));
+              "Failed to read sssd.conf schema [%d]: %s\n", ret, strerror(ret));
         goto done;
     }
 
     ret = ini_rules_check(rules_cfgobj, data->sssd_config, sss_validators, errobj);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE,
-              "ini_rules_check failed %d [%s]\n", ret, strerror(ret));
+              "ini_rules_check failed [%d]: %s\n", ret, strerror(ret));
         goto done;
     }
 
@@ -753,12 +625,10 @@ done:
 
     return ret;
 }
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */
 
 int sss_ini_call_validators(struct sss_ini *data,
                             const char *rules_path)
 {
-#ifdef HAVE_LIBINI_CONFIG_V1_3
     int ret;
     struct ini_errobj *errobj = NULL;
 
@@ -789,11 +659,6 @@ int sss_ini_call_validators(struct sss_ini *data,
 done:
     ini_errobj_destroy(&errobj);
     return ret;
-#else
-    DEBUG(SSSDBG_TRACE_FUNC,
-          "libini_config does not support configuration file validataion\n");
-    return EOK;
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */
 }
 
 int sss_ini_call_validators_strs(TALLOC_CTX *mem_ctx,
@@ -802,7 +667,6 @@ int sss_ini_call_validators_strs(TALLOC_CTX *mem_ctx,
                                  char ***_errors,
                                  size_t *_num_errors)
 {
-#ifdef HAVE_LIBINI_CONFIG_V1_3
     TALLOC_CTX *tmp_ctx = NULL;
     struct ini_errobj *errobj = NULL;
     int ret;
@@ -861,18 +725,6 @@ done:
     ini_errobj_destroy(&errobj);
 
     return ret;
-
-#else
-    DEBUG(SSSDBG_TRACE_FUNC,
-          "libini_config does not support configuration file validation\n");
-
-    if (_num_errors == NULL || _errors == NULL) {
-        return EINVAL;
-    }
-
-    _num_errors = 0;
-    return EOK;
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */
 }
 
 int sss_ini_open(struct sss_ini *self,
@@ -905,18 +757,83 @@ int sss_ini_open(struct sss_ini *self,
                                            strlen(fallback_cfg));
         if (ret != EOK) {
             DEBUG(SSSDBG_FATAL_FAILURE,
-                  "sss_ini_config_file_from_mem failed. Error %d\n",
-                  ret);
+                  "sss_ini_config_file_from_mem() failed [%d]: %s\n",
+                  ret, sss_strerror(ret));
         }
         break;
     default:
         DEBUG(SSSDBG_CONF_SETTINGS,
-              "sss_ini_config_file_open failed: Error %d\n",
-              ret);
+              "sss_ini_config_file_open() failed [%d]: %s\n",
+              ret, sss_strerror(ret));
         sss_ini_config_print_errors(self->error_list);
         break;
     }
     return ret;
+}
+
+static int access_check_file(const char *filename)
+{
+    int ret;
+    struct stat st;
+    uid_t uid;
+    gid_t gid;
+
+    sss_sssd_user_uid_and_gid(&uid, &gid);
+
+    ret = stat(filename, &st);
+    if (ret != 0) {
+        ret = errno;
+        DEBUG(SSSDBG_CRIT_FAILURE, "stat(%s) failed: %s\n",
+              filename, strerror(ret));
+        return EINVAL;
+    }
+
+    if ((st.st_uid != 0) && (st.st_uid != uid)) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Unexpected user owner of '%s': %"SPRIuid"\n",
+              filename, st.st_uid);
+        return ERR_INI_INVALID_PERMISSION;
+    }
+
+    if ((st.st_gid != 0) && (st.st_gid != gid)) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Unexpected group owner of '%s': %"SPRIgid"\n",
+              filename, st.st_gid);
+        return ERR_INI_INVALID_PERMISSION;
+    }
+
+    if ((st.st_mode & (S_IROTH|S_IWOTH|S_IXOTH)) != 0) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Unexpected access to '%s' by other users\n",
+              filename);
+        return ERR_INI_INVALID_PERMISSION;
+    }
+
+    return EOK;
+}
+
+static int access_check_ini(struct sss_ini *self)
+{
+    int ret;
+    const char *path;
+    uint32_t i;
+    const char **snippet;
+    struct ref_array *used_snippets;
+
+    if (self->main_config_exists) {
+        path = ini_config_get_filename(self->file);
+        ret = access_check_file(path);
+        if (ret != EOK) {
+            return ret;
+        }
+    }
+
+    used_snippets = sss_ini_get_ra_success_list(self);
+    for (i = 0; (snippet = ref_array_get(used_snippets, i, NULL)) != NULL; ++i) {
+        ret = access_check_file(*snippet);
+        if (ret != EOK) {
+            return ret;
+        }
+    }
+
+    return EOK;
 }
 
 int sss_ini_read_sssd_conf(struct sss_ini *self,
@@ -929,41 +846,48 @@ int sss_ini_read_sssd_conf(struct sss_ini *self,
         return EINVAL;
     }
 
-    ret = sss_ini_open(self, config_file, CONFDB_FALLBACK_CONFIG);
+    /* "[sssd]\n" is supplied to `sss_ini_open()` to create empty context
+     * in case main config file ('sssd.conf') is missing. This is done in
+     * order to be able to add config snippets later - sss_ini_add_snippets()
+     * Take a note if both 'sssd.conf' and snippets are missing, then
+     * sss_ini_read_sssd_conf() returns ERR_INI_EMPTY_CONFIG, so there is no
+     * "fallback config" per se.
+     */
+    ret = sss_ini_open(self, config_file, "[sssd]\n");
     if (ret != EOK) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "The sss_ini_open failed %s: %d\n",
-              config_file,
-              ret);
+              "sss_ini_open() on '%s' failed [%d]: %s\n",
+              config_file, ret, sss_strerror(ret));
         return ERR_INI_OPEN_FAILED;
     }
 
-    if (sss_ini_exists(self)) {
-        ret = sss_ini_access_check(self);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "Permission check on config file failed.\n");
-            return ERR_INI_INVALID_PERMISSION;
-        }
-    } else {
+    if (!self->main_config_exists) {
         DEBUG(SSSDBG_CONF_SETTINGS,
-              "File %1$s does not exist.\n",
-              (config_file ? config_file : "NULL"));
+              "File %s does not exist.\n", config_file);
     }
 
     ret = sss_ini_parse(self);
     if (ret != EOK) {
         sss_ini_config_print_errors(self->error_list);
-        DEBUG(SSSDBG_FATAL_FAILURE, "Failed to parse configuration.\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Failed to parse configuration file %s: %d\n",
+              config_file, ret);
         return ERR_INI_PARSE_FAILED;
     }
 
     ret = sss_ini_add_snippets(self, config_dir);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE,
-              "Error while reading configuration directory.\n");
+              "Error while reading configuration directory '%s' [%d]: %s\n",
+              config_dir, ret, sss_strerror(ret));
         return ERR_INI_ADD_SNIPPETS_FAILED;
     }
+
+    if ((!self->main_config_exists) &&
+        (ref_array_len(sss_ini_get_ra_success_list(self)) == 0)) {
+        return ERR_INI_EMPTY_CONFIG;
+    }
+
+    ret = access_check_ini(self);
 
     return ret;
 }

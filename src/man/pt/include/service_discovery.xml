@@ -1,41 +1,44 @@
 <refsect1 id='service_discovery'>
     <title>DESCOBERTA DE SERVIÇOS</title>
     <para>
-        The service discovery feature allows back ends to automatically find the
-appropriate servers to connect to using a special DNS query. This feature is
-not supported for backup servers.
+        A funcionalidade de descoberta de serviços permite aos backends encontrarem
+automaticamente os servidores apropriados para ligarem para usarem uma
+consulta DNS especial. Esta funcionalidade não é suportada para servidores
+de salvaguarda (backup).
     </para>
     <refsect2 id='configuration'>
         <title>Configuração</title>
         <para>
-            If no servers are specified, the back end automatically uses service
-discovery to try to find a server. Optionally, the user may choose to use
-both fixed server addresses and service discovery by inserting a special
-keyword, <quote>_srv_</quote>, in the list of servers. The order of
-preference is maintained. This feature is useful if, for example, the user
-prefers to use service discovery whenever possible, and fall back to a
-specific server when no servers can be discovered using DNS.
+            Se nenhum servidor for especificado, o backend automaticamente usa a
+descoberta de serviços para tentar encontrar um servidor. Opcionalmente, o
+utilizador pode escolher usar ambos endereços de servidor fixos e a
+descoberta de serviços ao inserir uma palavra chave especial
+<quote>_srv_</quote>, na lista de servidores. A ordem de preferência é
+mantida. Esta funcionalidade é útil se, por exemplo, o utilizador prefere
+usar descoberta de serviços sempre que possível, e regressar a um servidor
+específico quando não se descobrem servidores usando DNS.
         </para>
     </refsect2>
     <refsect2 id='domain_name'>
         <title>O nome de domínio</title>
         <para>
-            Please refer to the <quote>dns_discovery_domain</quote> parameter in the
+            Por favor consulte o parâmetro <quote>dns_discovery_domain</quote> no manual
 <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> manual page for more details.
+<manvolnum>5</manvolnum> </citerefentry> para mais detalhes.
         </para>
     </refsect2>
     <refsect2 id='search_protocol'>
         <title>O protocolo</title>
         <para>
-            The queries usually specify _tcp as the protocol. Exceptions are documented
-in respective option description.
+            As consultas geralmente especificam _tcp como o protocolo. As excepções
+estão documentadas na descrição da opção respectiva.
         </para>
     </refsect2>
     <refsect2 id='reference'>
-        <title>Ver também</title>
+        <title>Veja também</title>
         <para>
-            For more information on the service discovery mechanism, refer to RFC 2782.
+            Para mais informação sobre o mecanismo de descoberta de serviços, consulte
+RFC 2782.
         </para>
     </refsect2>
 </refsect1>

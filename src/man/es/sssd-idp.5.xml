@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-idp</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-idp</refname>
+        <refpurpose>Proveedor SSSD IdP</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Este página de manual describe la configuración del proveedor IdP para
+<citerefentry> <refentrytitle>sssd</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>. Para una referencia de sintaxis detalladas, consulte la
+sección <quote>FORMATO DE ARCHIVO</quote> de la página del manual
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            El proveedor IdP es un backend utilizado para conectar a un OAuth 2.0 y REST
+basado en identidad de proveedor (IdP). Desde los productos podrían tener
+implementación individual del REST API para buscar atributos de usuario y
+grupo del código dedicado sería requerido, consulte la opción de
+<quote>idp_type</quote> para más detalles.
+        </para>
+        <para>
+            Típicamente los IdP no proporciona atributos POSIX como p. ej. Id (UID) de
+usuario o directorio home. El proveedor de IdP de SSSD auto-genera los
+atributos necesarios. El algoritmo por defecto para generar los ID de
+usuario (UID) y los ID de grupos (GID) se intentan para crear los ID
+reproducibles sobre sistemas diferentes. Como inconveniente puede suceder
+que el algoritmo asigne el mismo ID a objetos diferentes y sólo la primera
+solicitud por medio de SSSD estará disponible.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPCIONES DE CONFIGURACIÓN</title>
+        <para>Vea la sección  <quote>DOMAIN SECTIONS</quote> de la página de manual
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para detalles sobre la
+configuración de un dominio SSSD. <variablelist>
+                <varlistentry>
+                    <term>idp_type (cadena)</term>
+                    <listitem>
+                        <para>
+                            Requirió la opción que especifica el producto IdP. Actualmente Entre ID
+(entra_id) y Keycloak (keycloak) están admitidos.
+                        </para>
+                        <para>
+                             Dependiendo de las opciones específicas de la plataforma del producto IdP
+tal vez siga el nombre separado por un dos puntos (:). P.ej. para KeyCloak
+la URI base para el usuario y grupo REST API debe ser dado. Por ID Entra
+este no es necesario porque hay un punto final genérico para todos los
+rentistas.
+                        </para>
+                        <para>
+                            Por defecto: No definido (Requerido)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_client_id (cadena)</term>
+                    <listitem>
+                        <para>
+                            ID del cliente IdP que SSSD utiliza para autenticar usuarios y como cliente
+para consultar atributos de usuario y grupo. Este cliente debe ofrecer
+autorización de dispositivo según RFC-8628 y tener permisos para buscar y
+leer atributos de usuario y grupo.
+                        </para>
+                        <para>
+                            Por defecto: No definido (Requerido)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_client_secret (cadena)</term>
+                    <listitem>
+                        <para>
+                            Contraseña del IdP cliente. La contraseña está requerida para el
+id_proveedor. Si sólo utilizó como auth_provider depende del lado de
+configuración del servidor si está requerido o no.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_token_endpoint (cadena)</term>
+                    <listitem>
+                        <para>
+                            Punto final de IdP para solicitar tokens de acceso.
+                        </para>
+                        <para>
+                            Por defecto: No definido (Requerido)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_device_auth_endpoint (cadena)</term>
+                    <listitem>
+                        <para>
+                            IdP endpoint para autorización de dispositivo según RFC-8628. Esto es
+requerido para autentificación de usuario.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_userinfo_endpoint (cadena)</term>
+                    <listitem>
+                        <para>
+                            Punto final de informe de usuario del IdP para solicitar atributos de
+usuario tras una autenticación del usuario lograda. Necesario para la
+autenticación.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_id_scope (cadena)</term>
+                    <listitem>
+                        <para>
+                            El ámbito requerido para búsqueda de atributos de usuario y grupo con el API
+REST. Los ámbitos son utilizados por el servidor para determinar cuales
+atributos/requerimientos son devueltos al invocante.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_auth_scope (cadena)</term>
+                    <listitem>
+                        <para>
+                            Ámbito requerido durante autenticación. Los ámbitos son utilizados por el
+servidor para determinar cuales atributos/peticiones son devueltos al
+invocador.
+                        </para>
+                        <para>
+                            Actualmente los vales devueltos durante la autenticación del usuario no son
+utilizados para otro propósito, por tanto la solo importante afirmar es el
+identificador 'sub' del asunto el cual es utilizado para marcar si el
+usuario autenticado es el uno intentando de acceder.  Esto tal vez cambie en
+el futuro.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_request_timeout (entero)</term>
+                    <listitem>
+                        <para>
+                            Tiempo de espera en segundo para una solicitud individual para el IdP.
+                        </para>
+                        <para>
+                            Predeterminado: 10
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_min (entero)</term>
+                    <listitem>
+                        <para>
+                            Especifica el cotejo más inferior (inclusivo) del intervalo de los ID POSIX
+para utilizar en relacionar los usuarios y grupos de IdP a los ID de
+POSIX. Esto es el primer ID de POSIX el cual puede ser utilizado para la
+relación.
+                        </para>
+                        <para>
+                            The interval between <quote>idmap_range_min</quote> and
+<quote>idmap_range_max</quote> will be split into smaller ranges of size
+<quote>idmap_range_size</quote> which will be used by an individual IdP
+domain.
+                        </para>
+                        <para>
+                            Por defecto: 200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_max (entero)</term>
+                    <listitem>
+                        <para>
+                            Especifica el cotejo más superior (exclusivo) del intervalo de los ID de
+POSIX para utilizar para redistribuir los usuarios y grupos IdP a los ID
+POSIX. Es el primer ID POSIX el cual no será utilizado más para ID
+relacionado de POSIX.
+                        </para>
+                        <para>
+                            Por defecto: 2000200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_size (entero)</term>
+                    <listitem>
+                        <para>
+                            Especifica el número de los ID POSIX disponibles para un único dominio IdP.
+                        </para>
+                        <para>
+                            Por defecto: 200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EJEMPLO</title>
+        <para>
+<programlisting>
+[domain/entra_id]
+id_provider = idp
+idp_type = entra_id
+idp_client_id = 12345678-abcd-0101-efef-ba9876543210
+idp_client_secret = SU_CLIENTE_SECRETO
+idp_token_endpoint = https://login.microsoftonline.com/TENNANT-ID/oauth2/v2.0/token
+idp_userinfo_endpoint = https://graph.microsoft.com/v1.0/me
+idp_device_auth_endpoint = https://login.microsoftonline.com/TENNANT-ID/oauth2/v2.0/devicecode
+idp_id_scope = https%3A%2F%2Fgraph.microsoft.com%2F.default
+idp_auth_scope = perfil de correo electrónico openid
+</programlisting> <programlisting>
+[domain/keycloak]
+idp_type = keycloak:https://master.keycloak.test:8443/auth/admin/realms/master/
+id_provider = idp
+idp_client_id = myclient
+idp_client_secret = SU-CLIENTE-SECRETO
+idp_token_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/token
+idp_userinfo_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/userinfo
+idp_device_auth_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/auth/device
+idp_id_scope = perfil
+idp_auth_scope = perfil correo-e openid
+</programlisting>
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

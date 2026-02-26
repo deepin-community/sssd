@@ -70,37 +70,18 @@ struct cli_protocol {
     struct cli_protocol_version *cli_protocol_version;
 };
 
-struct resp_ctx;
-
-struct be_conn {
-    struct be_conn *next;
-    struct be_conn *prev;
-
-    struct resp_ctx *rctx;
-
-    const char *cli_name;
-    struct sss_domain_info *domain;
-
-    char *bus_name;
-    char *sbus_address;
-    struct sbus_connection *conn;
-};
-
 struct resp_ctx {
     struct tevent_context *ev;
     struct tevent_fd *lfde;
     int lfd;
-    struct tevent_fd *priv_lfde;
-    int priv_lfd;
+    mode_t lfd_umask;
     struct confdb_ctx *cdb;
     const char *sock_name;
-    const char *priv_sock_name;
 
     struct sss_nc_ctx *ncache;
     struct sss_names_ctx *global_names;
 
-    struct sbus_connection *mon_conn;
-    struct be_conn *be_conns;
+    struct sbus_connection *sbus_conn;
 
     struct sss_domain_info *domains;
     int domains_timeout;
@@ -141,7 +122,6 @@ struct resp_ctx {
 
     bool shutting_down;
     bool socket_activated;
-    bool dbus_activated;
     bool cache_first;
     bool enumeration_warn_logged;
 };
@@ -158,7 +138,7 @@ struct cli_ctx {
     int priv;
 
     struct cli_creds *creds;
-    char *cmd_line;
+    const char *cmd_line;
 
     void *protocol_ctx;
     void *state_ctx;
@@ -195,17 +175,13 @@ int sss_process_init(TALLOC_CTX *mem_ctx,
                      struct confdb_ctx *cdb,
                      struct sss_cmd_table sss_cmds[],
                      const char *sss_pipe_name,
-                     int pipe_fd,
-                     const char *sss_priv_pipe_name,
-                     int priv_pipe_fd,
+                     mode_t pipe_umask,
                      const char *confdb_service_path,
                      const char *conn_name,
                      const char *svc_name,
                      connection_setup_t conn_setup,
                      struct resp_ctx **responder_ctx);
 
-int sss_dp_get_domain_conn(struct resp_ctx *rctx, const char *domain,
-                           struct be_conn **_conn);
 struct sss_domain_info *
 responder_get_domain(struct resp_ctx *rctx, const char *domain);
 
@@ -385,12 +361,6 @@ errno_t sss_parse_inp_recv(struct tevent_req *req, TALLOC_CTX *mem_ctx,
 
 const char **parse_attr_list_ex(TALLOC_CTX *mem_ctx, const char *conf_str,
                                 const char **defaults);
-
-char *sss_resp_create_fqname(TALLOC_CTX *mem_ctx,
-                             struct resp_ctx *rctx,
-                             struct sss_domain_info *dom,
-                             bool name_is_upn,
-                             const char *orig_name);
 
 errno_t sss_resp_populate_cr_domains(struct resp_ctx *rctx);
 

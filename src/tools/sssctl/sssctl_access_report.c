@@ -383,15 +383,14 @@ sssctl_dom_access_reporter_fn get_report_fn(const char *provider)
 }
 
 errno_t sssctl_access_report(struct sss_cmdline *cmdline,
-                             struct sss_tool_ctx *tool_ctx,
-                             void *pvt)
+                             struct sss_tool_ctx *tool_ctx)
 {
     errno_t ret;
     const char *domname = NULL;
     sssctl_dom_access_reporter_fn reporter;
     struct sss_domain_info *dom;
 
-    ret = sss_tool_popt_ex(cmdline, NULL, SSS_TOOL_OPT_OPTIONAL,
+    ret = sss_tool_popt_ex(cmdline, NULL, NULL, SSS_TOOL_OPT_OPTIONAL,
                            NULL, NULL, "DOMAIN", _("Specify domain name."),
                            SSS_TOOL_OPT_REQUIRED, &domname, NULL);
     if (ret != EOK) {

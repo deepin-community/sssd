@@ -26,7 +26,6 @@
 #include "config.h"
 #include "util/util.h"
 #include "confdb/confdb.h"
-#include "confdb/confdb_setup.h"
 #include "db/sysdb.h"
 #include "tools/common/sss_tools.h"
 
@@ -88,31 +87,25 @@ static void sss_tool_common_opts(struct sss_tool_ctx *tool_ctx,
     poptFreeContext(pc);
 }
 
-static errno_t sss_tool_confdb_init(TALLOC_CTX *mem_ctx,
-                                    struct confdb_ctx **_confdb)
+errno_t sss_tool_confdb_init(TALLOC_CTX *mem_ctx, struct confdb_ctx **_confdb)
 {
-    struct confdb_ctx *confdb;
-    char *path;
+    static const char *path = DB_PATH"/"CONFDB_FILE;
     errno_t ret;
+    struct stat statbuf;
 
-    path = talloc_asprintf(mem_ctx, "%s/%s", DB_PATH, CONFDB_FILE);
-    if (path == NULL) {
-        return ENOMEM;
-    }
-
-    ret = confdb_setup(mem_ctx, path,
-                       SSSD_CONFIG_FILE, CONFDB_DEFAULT_CONFIG_DIR,
-                       NULL,
-                       &confdb);
-    talloc_zfree(path);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to setup ConfDB [%d]: %s\n",
-              ret, sss_strerror(ret));
+    ret = stat(path, &statbuf);
+    if (ret != 0) {
+        ret = errno;
+        DEBUG(SSSDBG_FATAL_FAILURE,
+              "Can't access '%s', probably SSSD isn't configured\n", path);
         return ret;
     }
 
-    if (_confdb != NULL) {
-        *_confdb = confdb;
+    ret = confdb_init(mem_ctx, _confdb, path);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to connect to config DB [%d]: %s\n",
+              ret, sss_strerror(ret));
+        return ret;
     }
 
     return EOK;
@@ -125,14 +118,6 @@ static errno_t sss_tool_domains_init(TALLOC_CTX *mem_ctx,
     struct sss_domain_info *domains;
     struct sss_domain_info *dom;
     errno_t ret;
-
-    ret = confdb_expand_app_domains(confdb);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "Unable to expand application domains [%d]: %s\n",
-              ret, sss_strerror(ret));
-        return ret;
-    }
 
     ret = confdb_get_domains(confdb, &domains);
     if (ret != EOK) {
@@ -208,16 +193,6 @@ static bool sss_tool_is_delimiter(struct sss_route_cmd *command)
     }
 
     return false;
-}
-
-static bool sss_tools_handles_init_error(struct sss_route_cmd *command,
-                                         errno_t init_err)
-{
-    if (init_err == EOK) {
-        return true;
-    }
-
-    return command->handles_init_err == init_err;
 }
 
 static size_t sss_tool_max_length(struct sss_route_cmd *commands)
@@ -320,8 +295,7 @@ done:
 
 static errno_t sss_tool_route(int argc, const char **argv,
                               struct sss_tool_ctx *tool_ctx,
-                              struct sss_route_cmd *commands,
-                              void *pvt)
+                              struct sss_route_cmd *commands)
 {
     struct sss_cmdline cmdline;
     const char *cmd;
@@ -352,16 +326,15 @@ static errno_t sss_tool_route(int argc, const char **argv,
 
             if (!tool_ctx->print_help) {
                 ret = tool_cmd_init(tool_ctx, &commands[i]);
-
-                if (!sss_tools_handles_init_error(&commands[i], ret)) {
+                if (ret != EOK) {
                     DEBUG(SSSDBG_FATAL_FAILURE,
-                          "Command %s does not handle initialization error [%d] %s\n",
+                          "Initialization of command %s failed [%d] %s\n",
                           cmdline.command, ret, sss_strerror(ret));
                     return ret;
                 }
             }
 
-            return commands[i].fn(&cmdline, tool_ctx, pvt);
+            return commands[i].fn(&cmdline, tool_ctx);
         }
     }
 
@@ -384,6 +357,7 @@ static struct poptOption *nonnull_popt_table(struct poptOption *options)
 
 errno_t sss_tool_popt_ex(struct sss_cmdline *cmdline,
                          struct poptOption *options,
+                         const char *extended_help,
                          enum sss_tool_opt require_option,
                          sss_popt_fn popt_fn,
                          void *popt_fn_pvt,
@@ -424,6 +398,14 @@ errno_t sss_tool_popt_ex(struct sss_cmdline *cmdline,
     if (help == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "talloc_asprintf() failed\n");
         return ENOMEM;
+    }
+
+    if (extended_help != NULL) {
+        help = talloc_asprintf_append(help, "\n\n%s", extended_help);
+        if (help == NULL) {
+            DEBUG(SSSDBG_CRIT_FAILURE, "talloc_asprintf_append() failed\n");
+            return ENOMEM;
+        }
     }
 
     /* Create popt context. This function is supposed to be called on
@@ -526,14 +508,13 @@ errno_t sss_tool_popt(struct sss_cmdline *cmdline,
                       sss_popt_fn popt_fn,
                       void *popt_fn_pvt)
 {
-    return sss_tool_popt_ex(cmdline, options, require_option,
+    return sss_tool_popt_ex(cmdline, options, NULL, require_option,
                             popt_fn, popt_fn_pvt, NULL, NULL,
                             SSS_TOOL_OPT_REQUIRED, NULL, NULL);
 }
 
 int sss_tool_main(int argc, const char **argv,
-                  struct sss_route_cmd *commands,
-                  void *pvt)
+                  struct sss_route_cmd *commands)
 {
     struct sss_tool_ctx *tool_ctx;
     errno_t ret;
@@ -544,7 +525,7 @@ int sss_tool_main(int argc, const char **argv,
         return EXIT_FAILURE;
     }
 
-    ret = sss_tool_route(argc, argv, tool_ctx, commands, pvt);
+    ret = sss_tool_route(argc, argv, tool_ctx, commands);
     SYSDB_VERSION_ERROR(ret);
     talloc_free(tool_ctx);
     if (ret != EOK) {
@@ -591,27 +572,5 @@ done:
         talloc_zfree(domname);
     }
 
-    return ret;
-}
-
-errno_t sss_tool_connect_to_confdb(TALLOC_CTX *ctx, struct confdb_ctx **cdb_ctx)
-{
-    int ret;
-    char *confdb_path = NULL;
-
-    confdb_path = talloc_asprintf(ctx, "%s/%s", DB_PATH, CONFDB_FILE);
-    if (confdb_path == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "Could not allocate memory for confdb path\n");
-        return ENOMEM;
-    }
-
-    ret = confdb_init(ctx, cdb_ctx, confdb_path);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "Could not initialize connection to the confdb\n");
-    }
-
-    talloc_free(confdb_path);
     return ret;
 }

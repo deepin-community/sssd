@@ -117,18 +117,10 @@ typedef char dp_no_output;
 
 /* Data provider initialization. */
 
-struct tevent_req *
-dp_init_send(TALLOC_CTX *mem_ctx,
-             struct tevent_context *ev,
-             struct be_ctx *be_ctx,
-             uid_t uid,
-             gid_t gid,
-             const char *sbus_name);
-
-errno_t dp_init_recv(TALLOC_CTX *mem_ctx,
-                     struct tevent_req *req);
-
-void dp_client_cancel_timeout(struct sbus_connection *conn);
+errno_t
+dp_init(struct tevent_context *ev,
+        struct be_ctx *be_ctx,
+        const char *sbus_name);
 
 bool _dp_target_enabled(struct data_provider *provider,
                         const char *module_name,
@@ -183,11 +175,6 @@ bool dp_method_enabled(struct data_provider *provider,
 
 void dp_terminate_domain_requests(struct data_provider *provider,
                                   const char *domain);
-
-void dp_sbus_domain_active(struct data_provider *provider,
-                           struct sss_domain_info *dom);
-void dp_sbus_domain_inconsistent(struct data_provider *provider,
-                                 struct sss_domain_info *dom);
 
 void dp_sbus_reset_users_ncache(struct data_provider *provider,
                                 struct sss_domain_info *dom);

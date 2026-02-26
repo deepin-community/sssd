@@ -23,29 +23,40 @@ secuencias: <variablelist>
             </varlistentry>
             <varlistentry>
                 <term>%l</term>
-                <listitem><para>The first letter of the login name.</para></listitem>
+                <listitem><para>La primera letra del nombre de inicio de sesión.</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%P</term>
-                <listitem><para>UPN - User Principal Name (name@REALM)</para></listitem>
+                <listitem><para>UPN - Nombre Principal de Usuario (nombre@REALM)</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%o</term>
-                <listitem><para>
-                    El directorio home original recuperado del proveedor de identidad.
-                    </para></listitem>
+                <listitem>
+                    <para>
+                        El valor de homedir que está definido en el directorio del proveedor de
+identidad.
+                    </para>
+                    <para>
+                        Esta sustitución está diseñada para usarse en un escenario de confianza
+IPA-AD. Si se usa para la opción <emphasis>subdomain_homedir</emphasis>, se
+propaga el valor del directorio principal del dominio AD a los clientes
+IPA. En este escenario, la opción debe estar establecida en la configuración
+de SSSD del servidor IPA donde SSSD se ejecuta en modo servidor.
+                    </para>
+                </listitem>
             </varlistentry>
             <varlistentry>
                 <term>%h</term>
                 <listitem><para>
-                    The original home directory retrieved from the identity provider, but in
-lower case.
+                    La ruta definida para el atributo del directorio homedir del proveedor de
+identidad, pero en minúsculas.  Para detalles de empleo, consulte
+<emphasis>%o</emphasis>.
                     </para></listitem>
             </varlistentry>
             <varlistentry>
                 <term>%H</term>
                 <listitem><para>
-                    The value of configure option <emphasis>homedir_substring</emphasis>.
+                    El valor de la opción <emphasis>homedir_substring</emphasis> a configurar.
                     </para></listitem>
             </varlistentry>
             <varlistentry>
@@ -67,12 +78,12 @@ override_homedir = /home/%u
         Por defecto: No fijado (SSSD usará el valor recuperado desde LDAP)
     </para>
     <para>
-        Please note, the home directory from a specific override for the user,
-either locally (see
+        Tenga en cuenta que el directorio de inicio de una anulación específica para
+el usuario, ya sea localmente (consulte
 <citerefentry><refentrytitle>sss_override</refentrytitle>
-<manvolnum>8</manvolnum></citerefentry>) or centrally managed IPA
-id-overrides, has a higher precedence and will be used instead of the value
-given by override_homedir.
+<manvolnum>8</manvolnum></citerefentry>) o anulaciones de identificación de
+IPA administradas centralmente, tiene una precedencia mayor y se usará en
+lugar del valor dado por override_homedir.
     </para>
 </listitem>
 </varlistentry>

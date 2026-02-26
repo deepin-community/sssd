@@ -28,65 +28,6 @@
 #include "responder/common/responder.h"
 #include "providers/data_provider.h"
 
-#ifdef BUILD_FILES_PROVIDER
-static errno_t
-sss_dp_account_files_params(struct sss_domain_info *dom,
-                            enum sss_dp_acct_type type_in,
-                            const char *opt_name_in,
-                            enum sss_dp_acct_type *_type_out,
-                            const char **_opt_name_out)
-{
-    if (type_in != SSS_DP_CERT) {
-        if (sss_domain_get_state(dom) != DOM_INCONSISTENT) {
-            DEBUG(SSSDBG_TRACE_INTERNAL,
-                  "The entries in the files domain are up-to-date\n");
-            return EOK;
-        }
-
-        if (sss_domain_fallback_to_nss(dom)) {
-            DEBUG(SSSDBG_TRACE_INTERNAL,
-                  "Domain files is not consistent, falling back to nss.\n");
-            return ENOENT;
-        }
-
-        DEBUG(SSSDBG_TRACE_INTERNAL,
-              "Domain files is not consistent, issuing update\n");
-    }
-
-    switch(type_in) {
-    case SSS_DP_USER:
-    case SSS_DP_GROUP:
-        *_type_out = type_in;
-        *_opt_name_out = NULL;
-        return EAGAIN;
-    case SSS_DP_INITGROUPS:
-        /* There is no initgroups enumeration so let's use a dummy
-         * name to let the DP chain the requests
-         */
-        *_type_out = type_in;
-        *_opt_name_out = DP_REQ_OPT_FILES_INITGR;
-        return EAGAIN;
-    case SSS_DP_CERT:
-        /* Let the backend handle certificate mapping for local users */
-        *_type_out = type_in;
-        *_opt_name_out = opt_name_in;
-        return EAGAIN;
-    /* These are not handled by the files provider, just fall back */
-    case SSS_DP_SUBID_RANGES:
-    case SSS_DP_NETGR:
-    case SSS_DP_SERVICES:
-    case SSS_DP_SECID:
-    case SSS_DP_USER_AND_GROUP:
-    case SSS_DP_WILDCARD_USER:
-    case SSS_DP_WILDCARD_GROUP:
-        return EOK;
-    }
-
-    DEBUG(SSSDBG_CRIT_FAILURE, "Unhandled type %d\n", type_in);
-    return EINVAL;
-}
-#endif
-
 static errno_t
 sss_dp_get_account_filter(TALLOC_CTX *mem_ctx,
                           enum sss_dp_acct_type type,
@@ -193,7 +134,6 @@ sss_dp_get_account_send(TALLOC_CTX *mem_ctx,
     struct sss_dp_get_account_state *state;
     struct tevent_req *subreq;
     struct tevent_req *req;
-    struct be_conn *be_conn;
     uint32_t entry_type;
     uint32_t dp_flags;
     char *filter;
@@ -216,38 +156,9 @@ sss_dp_get_account_send(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-#ifdef BUILD_FILES_PROVIDER
-    if (is_files_provider(dom)) {
-        /* This is a special case. If the files provider is just being updated,
-         * we issue an enumeration request. We always use the same request type
-         * (user enumeration) to make sure concurrent requests are just chained
-         * in the Data Provider */
-        ret = sss_dp_account_files_params(dom, type, opt_name,
-                                          &type, &opt_name);
-        if (ret == EOK) {
-            state->dp_error = DP_ERR_OK;
-            state->error = EOK;
-            state->error_message = talloc_strdup(state, "Success");
-            if (state->error_message == NULL) {
-                ret = ENOMEM;
-                goto done;
-            }
-            goto done;
-        } else if (ret != EAGAIN) {
-            DEBUG((ret == ENOENT) ? SSSDBG_MINOR_FAILURE : SSSDBG_OP_FAILURE,
-                  "Failed to set files provider update [%d]: %s\n",
-                  ret, sss_strerror(ret));
-            goto done;
-        }
-        /* EAGAIN, fall through to issuing the request */
-    }
-#endif
-
-    ret = sss_dp_get_domain_conn(rctx, dom->conn_name, &be_conn);
-    if (ret != EOK) {
+    if (rctx->sbus_conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "BUG: The Data Provider connection for %s is not available!\n",
-              dom->name);
+            "BUG: The D-Bus connection is not available!\n");
         ret = EIO;
         goto done;
     }
@@ -264,8 +175,8 @@ sss_dp_get_account_send(TALLOC_CTX *mem_ctx,
           dom->name, entry_type, be_req2str(entry_type),
           filter, extra == NULL ? "-" : extra);
 
-    subreq = sbus_call_dp_dp_getAccountInfo_send(state, be_conn->conn,
-                 be_conn->bus_name, SSS_BUS_PATH, dp_flags,
+    subreq = sbus_call_dp_dp_getAccountInfo_send(state, rctx->sbus_conn,
+                 dom->conn_name, SSS_BUS_PATH, dp_flags,
                  entry_type, filter, dom->name, extra,
                  sss_chain_id_get());
     if (subreq == NULL) {
@@ -351,7 +262,6 @@ sss_dp_resolver_get_send(TALLOC_CTX *mem_ctx,
     struct sss_dp_resolver_get_state *state;
     struct tevent_req *req;
     struct tevent_req *subreq;
-    struct be_conn *be_conn;
     uint32_t dp_flags;
     errno_t ret;
 
@@ -377,11 +287,9 @@ sss_dp_resolver_get_send(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    ret = sss_dp_get_domain_conn(rctx, dom->conn_name, &be_conn);
-    if (ret != EOK) {
+    if (rctx->sbus_conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "BUG: The Data Provider connection for %s is not available!\n",
-              dom->name);
+            "BUG: The D-Bus connection is not available!\n");
         ret = EIO;
         goto done;
     }
@@ -392,8 +300,8 @@ sss_dp_resolver_get_send(TALLOC_CTX *mem_ctx,
           filter_type, filter_value ? filter_value : "-");
 
     dp_flags = fast_reply ? DP_FAST_REPLY : 0;
-    subreq = sbus_call_dp_dp_resolverHandler_send(state, be_conn->conn,
-                                                  be_conn->bus_name,
+    subreq = sbus_call_dp_dp_resolverHandler_send(state, rctx->sbus_conn,
+                                                  dom->conn_name,
                                                   SSS_BUS_PATH,
                                                   dp_flags, entry_type,
                                                   filter_type, filter_value,

@@ -43,7 +43,6 @@ get_subdomains_send(TALLOC_CTX *mem_ctx,
     struct get_subdomains_state *state;
     struct tevent_req *subreq;
     struct tevent_req *req;
-    struct be_conn *be_conn;
     errno_t ret;
 
     req = tevent_req_create(mem_ctx, &state, struct get_subdomains_state);
@@ -52,31 +51,15 @@ get_subdomains_send(TALLOC_CTX *mem_ctx,
         return NULL;
     }
 
-    if (is_files_provider(dom)) {
-        DEBUG(SSSDBG_TRACE_INTERNAL, "Domain %s does not check DP\n",
-              dom->name);
-        state->dp_error = DP_ERR_OK;
-        state->error = EOK;
-        state->error_message = talloc_strdup(state, "Success");
-        if (state->error_message == NULL) {
-            ret = ENOMEM;
-            goto done;
-        }
-        ret = EOK;
-        goto done;
-    }
-
-    ret = sss_dp_get_domain_conn(rctx, dom->conn_name, &be_conn);
-    if (ret != EOK) {
+    if (rctx->sbus_conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "BUG: The Data Provider connection for %s is not available!\n",
-              dom->name);
+            "BUG: The D-Bus connection is not available!\n");
         ret = EIO;
         goto done;
     }
 
-    subreq = sbus_call_dp_dp_getDomains_send(state, be_conn->conn,
-                                             be_conn->bus_name,
+    subreq = sbus_call_dp_dp_getDomains_send(state, rctx->sbus_conn,
+                                             dom->conn_name,
                                              SSS_BUS_PATH, hint);
     if (subreq == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create subrequest!\n");
@@ -89,12 +72,6 @@ get_subdomains_send(TALLOC_CTX *mem_ctx,
     ret = EAGAIN;
 
 done:
-#ifdef BUILD_FILES_PROVIDER
-    if (ret == EOK) {
-        tevent_req_done(req);
-        tevent_req_post(req, rctx->ev);
-    } else
-#endif
     if (ret != EAGAIN) {
         tevent_req_error(req, ret);
         tevent_req_post(req, rctx->ev);
@@ -167,7 +144,6 @@ struct tevent_req *sss_dp_get_domains_send(TALLOC_CTX *mem_ctx,
     struct tevent_req *req;
     struct tevent_req *subreq;
     struct sss_dp_get_domains_state *state;
-    bool refresh_timeout = false;
 
     req = tevent_req_create(mem_ctx, &state, struct sss_dp_get_domains_state);
     if (req == NULL) {
@@ -192,7 +168,6 @@ struct tevent_req *sss_dp_get_domains_send(TALLOC_CTX *mem_ctx,
             goto immediately;
         }
     }
-    refresh_timeout = true;
 
     state->rctx = rctx;
     if (hint != NULL) {
@@ -206,22 +181,6 @@ struct tevent_req *sss_dp_get_domains_send(TALLOC_CTX *mem_ctx,
     }
 
     state->dom = rctx->domains;
-    while(is_files_provider(state->dom)) {
-        state->dom = get_next_domain(state->dom, 0);
-    }
-
-    if (state->dom == NULL) {
-        /* All domains were local */
-        ret = sss_resp_populate_cr_domains(state->rctx);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "sss_resp_populate_cr_domains() failed [%d]: [%s]\n",
-                  ret, sss_strerror(ret));
-            goto immediately;
-        }
-        ret = EOK;
-        goto immediately;
-    }
 
     subreq = get_subdomains_send(req, rctx, state->dom, state->hint);
     if (subreq == NULL) {
@@ -234,9 +193,6 @@ struct tevent_req *sss_dp_get_domains_send(TALLOC_CTX *mem_ctx,
 
 immediately:
     if (ret == EOK) {
-        if (refresh_timeout) {
-            set_time_of_last_request(rctx);
-        }
         tevent_req_done(req);
     } else {
         tevent_req_error(req, ret);
@@ -293,11 +249,6 @@ sss_dp_get_domains_process(struct tevent_req *subreq)
 
     /* Advance to the next domain */
     state->dom = get_next_domain(state->dom, 0);
-
-    /* Skip "files provider" */
-    while(is_files_provider(state->dom)) {
-        state->dom = get_next_domain(state->dom, 0);
-    }
 
     if (state->dom == NULL) {
         /* No more domains to check, refreshing the active configuration */
@@ -457,14 +408,6 @@ static void get_domains_at_startup_done(struct tevent_req *req)
         if (ret != EOK) {
             DEBUG(SSSDBG_MINOR_FAILURE,
                   "sss_ncache_reset_repopulate_permanent failed.\n");
-        }
-    }
-
-    if (is_files_provider(state->rctx->domains)) {
-        ret = sysdb_master_domain_update(state->rctx->domains);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_OP_FAILURE, "sysdb_master_domain_update failed, "
-                                     "ignored.\n");
         }
     }
 
@@ -706,7 +649,6 @@ sss_dp_get_account_domain_send(TALLOC_CTX *mem_ctx,
     struct sss_dp_get_account_domain_state *state;
     struct tevent_req *subreq;
     struct tevent_req *req;
-    struct be_conn *be_conn;
     uint32_t entry_type;
     char *filter;
     uint32_t dp_flags;
@@ -718,11 +660,9 @@ sss_dp_get_account_domain_send(TALLOC_CTX *mem_ctx,
         return NULL;
     }
 
-    ret = sss_dp_get_domain_conn(rctx, dom->conn_name, &be_conn);
-    if (ret != EOK) {
+    if (rctx->sbus_conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "BUG: The Data Provider connection for %s is not available!\n",
-              dom->name);
+            "BUG: The D-Bus connection is not available!\n");
         ret = EIO;
         goto done;
     }
@@ -765,8 +705,8 @@ sss_dp_get_account_domain_send(TALLOC_CTX *mem_ctx,
 
     dp_flags = fast_reply ? DP_FAST_REPLY : 0;
 
-    subreq = sbus_call_dp_dp_getAccountDomain_send(state, be_conn->conn,
-                                                   be_conn->bus_name,
+    subreq = sbus_call_dp_dp_getAccountDomain_send(state, rctx->sbus_conn,
+                                                   dom->conn_name,
                                                    SSS_BUS_PATH, dp_flags,
                                                    entry_type, filter,
                                                    sss_chain_id_get());

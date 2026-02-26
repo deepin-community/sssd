@@ -31,7 +31,8 @@
 <replaceable>allow_missing_name</replaceable> </arg> <arg choice='opt'>
 <replaceable>prompt_always</replaceable> </arg> <arg choice='opt'>
 <replaceable>try_cert_auth</replaceable> </arg> <arg choice='opt'>
-<replaceable>require_cert_auth</replaceable> </arg></cmdsynopsis>
+<replaceable>require_cert_auth</replaceable> </arg> <arg choice='opt'>
+<replaceable>allow_chauthtok_by_root</replaceable> </arg></cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1 id='description'>
@@ -203,6 +204,21 @@ tidsgränsen definierad av p11_wait_for_card_timeout har passerats, se
                         Om inget smartkort är tillgängligt efter att tidsgränsen passerats eller om
 certifikatbaserad autentisering inte är tillåten för den aktuella tjänsten
 returneras PAM_AUTHINFO_UNAVAIL.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>allow_chauthtok_by_root</option>
+                </term>
+                <listitem>
+                    <para>
+                        By default the chauthtok PAM action will short-circuit to returning
+PAM_SUCCESS when pam_sss.so is invoked by root user.
+                    </para>
+                    <para>
+                        This option disables this behavior allowing to change auth tokens when
+running as root.
                     </para>
                 </listitem>
             </varlistentry>

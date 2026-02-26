@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-session-recording</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-session-recording</refname>
+        <refpurpose>Configurando registo de sessão com o SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            Este manual descreve como configurar o <citerefentry>
+<refentrytitle>sssd</refentrytitle> <manvolnum>8</manvolnum> </citerefentry>
+para funcionar com <citerefentry>
+<refentrytitle>tlog-rec-session</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>, uma parte do pacote tlog, para implementar o registo de
+sessão de utilizador em terminais de texto.  Para uma referência de sintaxe
+de configuração detalhada, consulte a secção <quote>FORMATO DE
+FICHEIRO</quote> do manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            O SSSD pode ser configurado para activar o registo de tudo o que
+utilizadores específicos veem ou escrevem durante as suas sessões em
+terminais de texto. Ex, quando os utilizadores fazer login na consola, ou
+via SSH. O próprio SSSD não regista nada, mas garante que o tlog-rec-session
+é arrancado após o login do utilizador, para que possa registar de acordo
+com a sua configuração.
+        </para>
+        <para>
+            Para os utilizadores com registo de sessão activo, o SSSD substitui a shell
+do utilizador por tlog-rec-session em respostas NSS, e adiciona uma variável
+a especifica a shell original ao ambiente do utilizador, após a configuração
+da sessão PAM. Deste modo o tlog-rec-session pode ser arrancado no lugar da
+shell do utilizador, e sabe qual a shell real arrancar, após configurar a
+gravação do registo.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPÇÕES DE CONFIGURAÇÃO</title>
+            <para>
+                Estas opções podem ser usadas para configurar o registo de sessão.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>scope (string)</term>
+                    <listitem>
+                        <para>
+                            Uma das seguintes strings especificando o escopo de registo de sessão:
+<variablelist>
+                                <varlistentry>
+                                    <term>"none"</term>
+                                    <listitem>
+                                        <para>
+                                            Nenhum utilizador é registado.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"some"</term>
+                                    <listitem>
+                                        <para>
+                                            Os utilizadores/grupos especificados pelas opções
+<replaceable>users</replaceable> e <replaceable>groups</replaceable> são
+registados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>"all"</term>
+                                    <listitem>
+                                        <para>
+                                            Todos os utilizadores são registados.
+                                        </para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            Predefinição: "none"
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>users (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista separada por vírgulas de utilizadores que deverão ter registo de
+sessão activo. Corresponde a nomes de utilizadores como retornados pelo NSS,
+isto é, após a possível substituição de espaços, alterações de
+minúscula/maiúscula, etc.
+                        </para>
+                        <para>
+                            Predefinição: Vazio. Não corresponde a nenhum utilizador.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>groups (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista separada por vírgulas de grupos, cujos membros deverão ter registo
+de sessão activo. Corresponde a nomes de grupos como retornados pelo NSS,
+isto é, após a possível substituição de espaços, alterações de
+minúscula/maiúscula, etc.
+                        </para>
+                        <para>
+                            NOTA: usar esta opção (tê-la definida para qualquer coisa) tem um custo de
+performance considerável, porque cada pedido não-em-cache para um utilizador
+requer obter e corresponder os grupos do qual o utilizador é membro.
+                        </para>
+                        <para>
+                            Predefinição: Vazio. Não corresponde a nenhum grupo.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_users (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de utilizadores que devem a serem excluídos do registo, apenas
+aplicável com 'scope=all'.
+                        </para>
+                        <para>
+                            Predefinição: Empty. Nenhum utilizador excluído.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>exclude_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Uma lista de grupos separados por vírgulas, cujos membros devem ser
+excluídos do registo. Apenas aplicável com 'scope=all'.
+                        </para>
+                        <para>
+                            NOTA: usar esta opção (tê-la definida para qualquer coisa) tem um custo de
+performance considerável, porque cada pedido não-em-cache para um utilizador
+requer obter e corresponder os grupos do qual o utilizador é membro.
+                        </para>
+                        <para>
+                            Predefinição: Empty. Nenhum grupo excluído.
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EXEMPLO</title>
+        <para>
+            O seguinte trecho de sssd.conf activa o registo de sessão para os
+utilizadores "contractor1" e "contractor2", e grupo "students".
+        </para>
+        <para>
+<programlisting>
+[session_recording]
+scope = some
+users = contractor1, contractor2
+groups = students
+</programlisting>
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

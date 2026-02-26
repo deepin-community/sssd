@@ -46,6 +46,11 @@
 
 #define LDAP_ENUM_PURGE_TIMEOUT 10800
 
+enum ldap_child_command {
+    LDAP_CHILD_GET_TGT = 0,
+    LDAP_CHILD_SELECT_PRINCIPAL = 1
+};
+
 struct sdap_id_ctx;
 
 struct sdap_id_conn_ctx {
@@ -308,6 +313,8 @@ struct tevent_req *groups_by_user_send(TALLOC_CTX *memctx,
                                        const char *filter_value,
                                        int filter_type,
                                        const char *extra_value,
+                                       struct sdap_attr_map *user_map,
+                                       size_t user_map_cnt,
                                        bool noexist_delete,
                                        bool set_non_posix);
 
@@ -382,6 +389,11 @@ char *sdap_or_filters(TALLOC_CTX *mem_ctx,
 char *sdap_combine_filters(TALLOC_CTX *mem_ctx,
                            const char *base_filter,
                            const char *extra_filter);
+
+char *principal_string_to_samaccountname(TALLOC_CTX *mem_ctx,
+                                         const char *attr_name,
+                                         const char *princ,
+                                         const char *realm);
 
 char *get_enterprise_principal_string_filter(TALLOC_CTX *mem_ctx,
                                              const char *attr_name,
@@ -477,8 +489,7 @@ struct tevent_req *subid_ranges_get_send(TALLOC_CTX *memctx,
                                          struct sdap_id_ctx *ctx,
                                          struct sdap_domain *sdom,
                                          struct sdap_id_conn_ctx *conn,
-                                         const char* filter_value,
-                                         const char *extra_value);
+                                         const char* filter_value);
 
 int subid_ranges_get_recv(struct tevent_req *req, int *dp_error_out,
                           int *sdap_ret);

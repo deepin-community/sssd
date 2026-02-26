@@ -45,14 +45,6 @@
         </method>
     </interface>
 
-    <interface name="sssd.DataProvider.Client">
-        <annotation name="codegen.Name" value="dp_client" />
-        <annotation name="codegen.SyncCaller" value="false" />
-        <method name="Register">
-            <arg name="Name" type="s" direction="in" />
-        </method>
-    </interface>
-
     <interface name="sssd.DataProvider.Backend">
         <annotation name="codegen.Name" value="dp_backend" />
         <annotation name="codegen.SyncCaller" value="false" />
@@ -169,19 +161,19 @@
     <interface name="sssd.Responder.Domain">
         <annotation name="codegen.Name" value="resp_domain" />
         <annotation name="codegen.SyncCaller" value="false" />
-        <method name="SetActive">
-            <arg name="name" type="s" direction="in" key="1" />
-        </method>
-        <method name="SetInconsistent">
-            <arg name="name" type="s" direction="in" key="1" />
-        </method>
+        <signal name="SetActive">
+            <arg name="name" type="s" direction="in" />
+        </signal>
+        <signal name="SetInconsistent">
+            <arg name="name" type="s" direction="in" />
+        </signal>
     </interface>
 
     <interface name="sssd.Responder.NegativeCache">
         <annotation name="codegen.Name" value="resp_negcache" />
         <annotation name="codegen.SyncCaller" value="false" />
-        <method name="ResetUsers" key="True" />
-        <method name="ResetGroups" key="True" />
+        <signal name="ResetUsers" key="True" />
+        <signal name="ResetGroups" key="True" />
     </interface>
 
     <interface name="sssd.nss.MemoryCache">
@@ -192,11 +184,11 @@
             <arg name="domain" type="s" direction="in" />
             <arg name="groups" type="au" direction="in" />
         </method>
-        <method name="InvalidateAllUsers" key="True" />
-        <method name="InvalidateAllGroups" key="True" />
-        <method name="InvalidateAllInitgroups" key="True" />
-        <method name="InvalidateGroupById" key="True">
-            <arg name="gid" type="u" direction="in" key="1" />
-        </method>
+        <signal name="InvalidateAllUsers" />
+        <signal name="InvalidateAllGroups" />
+        <signal name="InvalidateAllInitgroups" />
+        <signal name="InvalidateGroupById">
+            <arg name="gid" type="u" key="1" />
+        </signal>
     </interface>
 </node>

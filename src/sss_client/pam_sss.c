@@ -41,6 +41,10 @@
 #include <gdm/gdm-pam-extensions.h>
 #endif
 
+#ifdef HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
+#include <gdm/gdm-custom-json-pam-extension.h>
+#endif
+
 #include "sss_pam_compat.h"
 #include "sss_pam_macros.h"
 
@@ -49,6 +53,7 @@
 #include "util/atomic_io.h"
 #include "util/authtok-utils.h"
 #include "util/dlinklist.h"
+#include "util/memory_erase.h"
 
 #include <libintl.h>
 #define _(STRING) dgettext (PACKAGE, STRING)
@@ -171,19 +176,19 @@ static void free_cert_list(struct cert_auth_info *list)
 static void overwrite_and_free_authtoks(struct pam_items *pi)
 {
     if (pi->pam_authtok != NULL) {
-        _pam_overwrite_n((void *)pi->pam_authtok, pi->pam_authtok_size);
+        sss_erase_mem_securely((void *)pi->pam_authtok, pi->pam_authtok_size);
         free((void *)pi->pam_authtok);
         pi->pam_authtok = NULL;
     }
 
     if (pi->pam_newauthtok != NULL) {
-        _pam_overwrite_n((void *)pi->pam_newauthtok,  pi->pam_newauthtok_size);
+        sss_erase_mem_securely((void *)pi->pam_newauthtok,  pi->pam_newauthtok_size);
         free((void *)pi->pam_newauthtok);
         pi->pam_newauthtok = NULL;
     }
 
     if (pi->first_factor != NULL) {
-        _pam_overwrite_n((void *)pi->first_factor, strlen(pi->first_factor));
+        sss_erase_mem_securely((void *)pi->first_factor, strlen(pi->first_factor));
         free((void *)pi->first_factor);
         pi->first_factor = NULL;
     }
@@ -304,10 +309,10 @@ static int do_pam_conversation(pam_handle_t *pamh, const int msg_style,
             if (state == SSS_PAM_CONV_REENTER) {
                 if (null_strcmp(answer, resp[0].resp) != 0) {
                     logger(pamh, LOG_NOTICE, "Passwords do not match.");
-                    _pam_overwrite((void *)resp[0].resp);
+                    sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
                     free(resp[0].resp);
                     if (answer != NULL) {
-                        _pam_overwrite((void *) answer);
+                        sss_erase_mem_securely((void *) answer, strlen(answer));
                         free(answer);
                         answer = NULL;
                     }
@@ -322,7 +327,7 @@ static int do_pam_conversation(pam_handle_t *pamh, const int msg_style,
                     ret = PAM_CRED_ERR;
                     goto failed;
                 }
-                _pam_overwrite((void *)resp[0].resp);
+                sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
                 free(resp[0].resp);
             } else {
                 if (resp[0].resp == NULL) {
@@ -330,7 +335,7 @@ static int do_pam_conversation(pam_handle_t *pamh, const int msg_style,
                     answer = NULL;
                 } else {
                     answer = strndup(resp[0].resp, MAX_AUTHTOK_SIZE);
-                    _pam_overwrite((void *)resp[0].resp);
+                    sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
                     free(resp[0].resp);
                     if(answer == NULL) {
                         D(("strndup failed"));
@@ -1349,6 +1354,19 @@ static int eval_response(pam_handle_t *pamh, size_t buflen, uint8_t *buf,
                     break;
                 }
                 break;
+            case SSS_PAM_JSON_AUTH_INFO:
+                if (buf[p + (len - 1)] != '\0') {
+                    D(("json auth info does not end with \\0."));
+                    break;
+                }
+
+                free(pi->json_auth_msg);
+                pi->json_auth_msg = strdup((char *) &buf[p]);
+                if (pi->json_auth_msg == NULL) {
+                    D(("strdup failed"));
+                    break;
+                }
+                break;
             default:
                 D(("Unknown response type [%d]", type));
         }
@@ -1463,6 +1481,10 @@ static int get_pam_items(pam_handle_t *pamh, uint32_t flags,
     pi->pc = NULL;
 
     pi->flags = flags;
+    if (pi->json_auth_msg == NULL) pi->json_auth_msg = strdup("");
+    pi->json_auth_msg_size = strlen(pi->json_auth_msg) + 1;
+    if (pi->json_auth_selected == NULL) pi->json_auth_selected = "";
+    pi->json_auth_selected_size = strlen(pi->json_auth_selected) + 1;
 
     return PAM_SUCCESS;
 }
@@ -1611,12 +1633,12 @@ static int send_and_receive(pam_handle_t *pamh, struct pam_items *pi,
             break;
         default:
             D(("Illegal task [%#x]", task));
-            return PAM_SYSTEM_ERR;
+            pam_status = PAM_SYSTEM_ERR;
     }
 
 done:
     if (buf != NULL ) {
-        _pam_overwrite_n((void *)buf, rd.len);
+        sss_erase_mem_securely((void *)buf, rd.len);
         free(buf);
     }
     free(repbuf);
@@ -1642,7 +1664,7 @@ static int prompt_password(pam_handle_t *pamh, struct pam_items *pi,
         pi->pam_authtok_size=0;
     } else {
         pi->pam_authtok = strdup(answer);
-        _pam_overwrite((void *)answer);
+        sss_erase_mem_securely((void *)answer, strlen(answer));
         free(answer);
         answer=NULL;
         if (pi->pam_authtok == NULL) {
@@ -1656,6 +1678,7 @@ static int prompt_password(pam_handle_t *pamh, struct pam_items *pi,
 }
 
 static int prompt_2fa(pam_handle_t *pamh, struct pam_items *pi,
+                      bool second_factor_optional,
                       const char *prompt_fa1, const char *prompt_fa2)
 {
     int ret;
@@ -1706,13 +1729,30 @@ static int prompt_2fa(pam_handle_t *pamh, struct pam_items *pi,
         goto done;
     }
 
-    if (resp[1].resp == NULL || *(resp[1].resp) == '\0'
-            || (pi->pam_service != NULL && strcmp(pi->pam_service, "sshd") == 0
-                    && strcmp(resp[0].resp, resp[1].resp) == 0)) {
+    if (resp[1].resp == NULL || *(resp[1].resp) == '\0') {
         /* Missing second factor, assume first factor contains combined 2FA
-         * credentials.
-         * Special handling for SSH with password authentication. Combined
-         * 2FA credentials are used but SSH puts them in both responses. */
+         * credentials if the second factor is not optional. If it is optional
+         * then it is assumed that the first factor contain the password. */
+        pi->pam_authtok = strndup(resp[0].resp, MAX_AUTHTOK_SIZE);
+        if (pi->pam_authtok == NULL) {
+            D(("strndup failed."));
+            ret = PAM_BUF_ERR;
+            goto done;
+        }
+        pi->pam_authtok_size = strlen(pi->pam_authtok) + 1;
+        pi->pam_authtok_type = second_factor_optional
+                                        ? SSS_AUTHTOK_TYPE_PASSWORD
+                                        : SSS_AUTHTOK_TYPE_2FA_SINGLE;
+    } else if (pi->pam_service != NULL && strcmp(pi->pam_service, "sshd") == 0
+                    && strcmp(resp[0].resp, resp[1].resp) == 0) {
+        /* Special handling for SSH with password authentication (ssh's
+         * 'PasswordAuthentication' option. In this mode the ssh client
+         * directly prompts the user for a password and the prompts we are
+         * sending are ignored. Since we send two prompts ssh * will create two
+         * response as well with the same content. We assume that the combined
+         * 2FA credentials are used even if the second factor is optional
+         * because there is no indication about the intention of the user. As a
+         * result we prefer the more secure variant. */
 
         pi->pam_authtok = strndup(resp[0].resp, MAX_AUTHTOK_SIZE);
         if (pi->pam_authtok == NULL) {
@@ -1721,7 +1761,7 @@ static int prompt_2fa(pam_handle_t *pamh, struct pam_items *pi,
             goto done;
         }
         pi->pam_authtok_size = strlen(pi->pam_authtok) + 1;
-        pi->pam_authtok_type = SSS_AUTHTOK_TYPE_PASSWORD;
+        pi->pam_authtok_type = SSS_AUTHTOK_TYPE_2FA_SINGLE;
     } else {
 
         ret = sss_auth_pack_2fa_blob(resp[0].resp, 0, resp[1].resp, 0, NULL, 0,
@@ -1763,11 +1803,11 @@ static int prompt_2fa(pam_handle_t *pamh, struct pam_items *pi,
 done:
     if (resp != NULL) {
         if (resp[0].resp != NULL) {
-            _pam_overwrite((void *)resp[0].resp);
+            sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
             free(resp[0].resp);
         }
         if (resp[1].resp != NULL) {
-            _pam_overwrite((void *)resp[1].resp);
+            sss_erase_mem_securely((void *)resp[1].resp, strlen(resp[1].resp));
             free(resp[1].resp);
         }
 
@@ -1796,7 +1836,7 @@ static int prompt_2fa_single(pam_handle_t *pamh, struct pam_items *pi,
         pi->pam_authtok_size=0;
     } else {
         pi->pam_authtok = strdup(answer);
-        _pam_overwrite((void *)answer);
+        sss_erase_mem_securely((void *)answer, strlen(answer));
         free(answer);
         answer=NULL;
         if (pi->pam_authtok == NULL) {
@@ -1977,7 +2017,8 @@ static int prompt_passkey(pam_handle_t *pamh, struct pam_items *pi,
 done:
     if (resp != NULL) {
         if (resp[pin_idx].resp != NULL) {
-            _pam_overwrite((void *)resp[pin_idx].resp);
+            sss_erase_mem_securely((void *)resp[pin_idx].resp,
+                                   strlen(resp[pin_idx].resp));
             free(resp[pin_idx].resp);
         }
 
@@ -1986,6 +2027,65 @@ done:
     }
 
     return ret;
+}
+
+static int auth_selection_conversation_gdm(pam_handle_t *pamh,
+                                           struct pam_items *pi)
+{
+#ifdef HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
+    const struct pam_conv *conv;
+    GdmPamExtensionJSONProtocol *request = NULL;
+    GdmPamExtensionJSONProtocol *response = NULL;
+    struct pam_message prompt_message;
+    const struct pam_message *prompt_messages[1];
+    struct pam_response *reply = NULL;
+    int ret;
+
+    ret = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
+    if (ret != PAM_SUCCESS) {
+        ret = EIO;
+        return ret;
+    }
+
+    request = calloc(1, GDM_PAM_EXTENSION_CUSTOM_JSON_SIZE);
+    if (request == NULL) {
+        ret = ENOMEM;
+        goto done;
+    }
+
+    GDM_PAM_EXTENSION_CUSTOM_JSON_REQUEST_INIT(request, "auth-mechanisms", 1,
+                                               pi->json_auth_msg);
+    GDM_PAM_EXTENSION_MESSAGE_TO_BINARY_PROMPT_MESSAGE(request,
+                                                       &prompt_message);
+    prompt_messages[0] = &prompt_message;
+
+    ret = conv->conv(1, prompt_messages, &reply, conv->appdata_ptr);
+    if (ret != PAM_SUCCESS) {
+        ret = EIO;
+        goto done;
+    }
+
+    response = GDM_PAM_EXTENSION_REPLY_TO_CUSTOM_JSON_RESPONSE(reply);
+    if (response->json == NULL) {
+        ret = EIO;
+        goto done;
+    }
+
+    pi->json_auth_msg_size = strlen(pi->json_auth_msg)+1;
+    pi->json_auth_selected = strdup(response->json);
+    pi->json_auth_selected_size = strlen(response->json)+1;
+    ret = EOK;
+
+done:
+    if (request != NULL) {
+        free(request);
+    }
+    free(response);
+
+    return ret;
+#else
+    return ENOTSUP;
+#endif /* HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION */
 }
 
 #define SC_PROMPT_FMT "PIN for %s: "
@@ -2260,7 +2360,7 @@ static int prompt_sc_pin(pam_handle_t *pamh, struct pam_items *pi)
         }
 
         answer = strndup(resp[0].resp, MAX_AUTHTOK_SIZE);
-        _pam_overwrite((void *)resp[0].resp);
+        sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
         free(resp[0].resp);
         resp[0].resp = NULL;
         if (answer == NULL) {
@@ -2350,17 +2450,19 @@ static int prompt_sc_pin(pam_handle_t *pamh, struct pam_items *pi)
     ret = PAM_SUCCESS;
 
 done:
-    _pam_overwrite((void *)answer);
-    free(answer);
-    answer=NULL;
+    if (answer != NULL) {
+        sss_erase_mem_securely((void *)answer, strlen(answer));
+        free(answer);
+        answer=NULL;
+    }
 
     if (resp != NULL) {
         if (resp[0].resp != NULL) {
-            _pam_overwrite((void *)resp[0].resp);
+            sss_erase_mem_securely((void *)resp[0].resp, strlen(resp[0].resp));
             free(resp[0].resp);
         }
         if (resp[1].resp != NULL) {
-            _pam_overwrite((void *)resp[1].resp);
+            sss_erase_mem_securely((void *)resp[1].resp, strlen(resp[1].resp));
             free(resp[1].resp);
         }
 
@@ -2390,7 +2492,7 @@ static int prompt_new_password(pam_handle_t *pamh, struct pam_items *pi)
         pi->pam_newauthtok_size=0;
     } else {
         pi->pam_newauthtok = strdup(answer);
-        _pam_overwrite((void *)answer);
+        sss_erase_mem_securely((void *)answer, strlen(answer));
         free(answer);
         answer=NULL;
         if (pi->pam_newauthtok == NULL) {
@@ -2450,6 +2552,8 @@ static void eval_argv(pam_handle_t *pamh, int argc, const char **argv,
             }
         } else if (strcmp(*argv, "quiet") == 0) {
             *quiet_mode = true;
+        } else if (strcmp(*argv, "allow_chauthtok_by_root") == 0) {
+            *flags |= PAM_CLI_FLAGS_ALLOW_CHAUTHTOK_BY_ROOT;
         } else if (strcmp(*argv, "ignore_unknown_user") == 0) {
             *flags |= PAM_CLI_FLAGS_IGNORE_UNKNOWN_USER;
         } else if (strcmp(*argv, "ignore_authinfo_unavail") == 0) {
@@ -2487,8 +2591,13 @@ static int prompt_by_config(pam_handle_t *pamh, struct pam_items *pi)
             ret = prompt_password(pamh, pi, pc_get_password_prompt(pi->pc[c]));
             break;
         case PC_TYPE_2FA:
-            ret = prompt_2fa(pamh, pi, pc_get_2fa_1st_prompt(pi->pc[c]),
-                             pc_get_2fa_2nd_prompt(pi->pc[c]));
+            if (pi->password_prompting) {
+                ret = prompt_2fa(pamh, pi, true, pc_get_2fa_1st_prompt(pi->pc[c]),
+                                 pc_get_2fa_2nd_prompt(pi->pc[c]));
+            } else {
+                ret = prompt_2fa(pamh, pi, false, pc_get_2fa_1st_prompt(pi->pc[c]),
+                                 pc_get_2fa_2nd_prompt(pi->pc[c]));
+            }
             break;
         case PC_TYPE_2FA_SINGLE:
             ret = prompt_2fa_single(pamh, pi,
@@ -2499,7 +2608,7 @@ static int prompt_by_config(pam_handle_t *pamh, struct pam_items *pi)
                                  pc_get_passkey_inter_prompt(pi->pc[c]),
                                  pc_get_passkey_touch_prompt(pi->pc[c]));
             break;
-        case PC_TYPE_SC_PIN:
+        case PC_TYPE_SMARTCARD:
             ret = prompt_sc_pin(pamh, pi);
             /* Todo: add extra string option */
             break;
@@ -2530,7 +2639,7 @@ static int get_authtok_for_authentication(pam_handle_t *pamh,
             || ( pi->pamstack_authtok != NULL
                     && *(pi->pamstack_authtok) != '\0'
                     && !(flags & PAM_CLI_FLAGS_PROMPT_ALWAYS))) {
-        pi->pam_authtok_type = SSS_AUTHTOK_TYPE_PASSWORD;
+        pi->pam_authtok_type = SSS_AUTHTOK_TYPE_PAM_STACKED;
         pi->pam_authtok = strdup(pi->pamstack_authtok);
         if (pi->pam_authtok == NULL) {
             D(("option use_first_pass set, but no password found"));
@@ -2564,10 +2673,10 @@ static int get_authtok_for_authentication(pam_handle_t *pamh,
                     || (pi->otp_vendor != NULL && pi->otp_token_id != NULL
                             && pi->otp_challenge != NULL)) {
                 if (pi->password_prompting) {
-                    ret = prompt_2fa(pamh, pi, _("First Factor: "),
+                    ret = prompt_2fa(pamh, pi, true, _("First Factor: "),
                                      _("Second Factor (optional): "));
                 } else {
-                    ret = prompt_2fa(pamh, pi, _("First Factor: "),
+                    ret = prompt_2fa(pamh, pi, false, _("First Factor: "),
                                      _("Second Factor: "));
                 }
             } else if (pi->passkey_prompt_pin) {
@@ -2593,7 +2702,8 @@ static int get_authtok_for_authentication(pam_handle_t *pamh,
         }
 
         if (flags & PAM_CLI_FLAGS_FORWARD_PASS) {
-            if (pi->pam_authtok_type == SSS_AUTHTOK_TYPE_PASSWORD) {
+            if (pi->pam_authtok_type == SSS_AUTHTOK_TYPE_PASSWORD
+                || pi->pam_authtok_type == SSS_AUTHTOK_TYPE_PAM_STACKED) {
                 ret = pam_set_item(pamh, PAM_AUTHTOK, pi->pam_authtok);
             } else if (pi->pam_authtok_type == SSS_AUTHTOK_TYPE_SC_PIN) {
                 pin = sss_auth_get_pin_from_sc_blob((uint8_t *) pi->pam_authtok,
@@ -2728,42 +2838,59 @@ static int get_authtok_for_password_change(pam_handle_t *pamh,
         exp_data = NULL;
     }
 
-    /* we query for the old password during PAM_PRELIM_CHECK to make
-     * pam_sss work e.g. with pam_cracklib */
     if (pam_flags & PAM_PRELIM_CHECK) {
-        if ( (getuid() != 0 || exp_data ) && !(flags & PAM_CLI_FLAGS_USE_FIRST_PASS)) {
-            if (flags & PAM_CLI_FLAGS_USE_2FA
-                    || (pi->otp_vendor != NULL && pi->otp_token_id != NULL
-                            && pi->otp_challenge != NULL)) {
-                if (pi->password_prompting) {
-                    ret = prompt_2fa(pamh, pi, _("First Factor (Current Password): "),
-                                     _("Second Factor (optional): "));
-                } else {
-                    ret = prompt_2fa(pamh, pi, _("First Factor (Current Password): "),
-                                     _("Second Factor: "));
-                }
+        if (!(flags & PAM_CLI_FLAGS_ALLOW_CHAUTHTOK_BY_ROOT) && getuid() == 0 && !exp_data )
+            return PAM_SUCCESS;
+
+        if (flags & PAM_CLI_FLAGS_USE_2FA
+                || (pi->otp_vendor != NULL && pi->otp_token_id != NULL
+                        && pi->otp_challenge != NULL)) {
+            if (pi->password_prompting) {
+                ret = prompt_2fa(pamh, pi, true,
+                                 _("First Factor (Current Password): "),
+                                 _("Second Factor (optional): "));
             } else {
-                ret = prompt_password(pamh, pi, _("Current Password: "));
+                ret = prompt_2fa(pamh, pi, false,
+                                 _("First Factor (Current Password): "),
+                                 _("Second Factor: "));
             }
-            if (ret != PAM_SUCCESS) {
-                D(("failed to get credentials from user"));
-                return ret;
-            }
-
-            ret = pam_set_item(pamh, PAM_OLDAUTHTOK, pi->pam_authtok);
-            if (ret != PAM_SUCCESS) {
-                D(("Failed to set PAM_OLDAUTHTOK [%s], "
-                   "oldauthtok may not be available",
-                   pam_strerror(pamh,ret)));
-                   return ret;
-            }
-
-            if (pi->pam_authtok_type == SSS_AUTHTOK_TYPE_2FA) {
-                ret = keep_authtok_data(pamh, pi);
-                if (ret != 0) {
-                    D(("Failed to store authtok data to pam handle. Password "
-                       "change might fail."));
+        } else if ((flags & PAM_CLI_FLAGS_USE_FIRST_PASS)
+                       && check_authtok_data(pamh, pi) != 0) {
+            if (pi->pamstack_oldauthtok == NULL) {
+                pi->pam_authtok_type = SSS_AUTHTOK_TYPE_EMPTY;
+                pi->pam_authtok = NULL;
+                pi->pam_authtok_size = 0;
+            } else {
+                pi->pam_authtok = strdup(pi->pamstack_oldauthtok);
+                if (pi->pam_authtok == NULL) {
+                    D(("strdup failed"));
+                    return PAM_BUF_ERR;
                 }
+                pi->pam_authtok_type = SSS_AUTHTOK_TYPE_PASSWORD;
+                pi->pam_authtok_size = strlen(pi->pam_authtok);
+            }
+            ret = PAM_SUCCESS;
+        } else {
+            ret = prompt_password(pamh, pi, _("Current Password: "));
+        }
+        if (ret != PAM_SUCCESS) {
+            D(("failed to get credentials from user"));
+            return ret;
+        }
+
+        ret = pam_set_item(pamh, PAM_OLDAUTHTOK, pi->pam_authtok);
+        if (ret != PAM_SUCCESS) {
+            D(("Failed to set PAM_OLDAUTHTOK [%s], "
+                "oldauthtok may not be available",
+               pam_strerror(pamh,ret)));
+               return ret;
+        }
+
+        if (pi->pam_authtok_type == SSS_AUTHTOK_TYPE_2FA) {
+            ret = keep_authtok_data(pamh, pi);
+            if (ret != 0) {
+                D(("Failed to store authtok data to pam handle. Password "
+                   "change might fail."));
             }
         }
 
@@ -2971,6 +3098,19 @@ static int pam_sss(enum sss_cli_command task, pam_handle_t *pamh,
                          * errors can be ignored here.
                          */
                     }
+
+                    if (pi.json_auth_msg != NULL
+                            && strcmp(pi.json_auth_msg, "") != 0) {
+                        ret = auth_selection_conversation_gdm(pamh, &pi);
+                        if (ret == EOK) {
+                            break;
+                        } else if (ret == ENOTSUP) {
+                            D(("gdm-custom-json-pam-extensions not supported."));
+                        } else {
+                            D(("auth_selection_conversation_gdm failed."));
+                            return ret;
+                        }
+                    }
                 }
 
                 if (flags & PAM_CLI_FLAGS_TRY_CERT_AUTH
@@ -2993,6 +3133,7 @@ static int pam_sss(enum sss_cli_command task, pam_handle_t *pamh,
                 if (ret != PAM_SUCCESS) {
                     D(("failed to get authentication token: %s",
                        pam_strerror(pamh, ret)));
+                    overwrite_and_free_pam_items(&pi);
                     return ret;
                 }
                 break;
@@ -3019,6 +3160,8 @@ static int pam_sss(enum sss_cli_command task, pam_handle_t *pamh,
                         && (pi.pam_authtok == NULL
                                 || (flags & PAM_CLI_FLAGS_PROMPT_ALWAYS))
                         && access(PAM_PREAUTH_INDICATOR, F_OK) == 0) {
+                    /* Set flag to indicate this preauth is for password change */
+                    pi.flags |= PAM_CLI_FLAGS_CHAUTHTOK_PREAUTH;
                     pam_status = send_and_receive(pamh, &pi, SSS_PAM_PREAUTH,
                                                   quiet_mode);
                     if (pam_status != PAM_SUCCESS) {
@@ -3047,6 +3190,7 @@ static int pam_sss(enum sss_cli_command task, pam_handle_t *pamh,
                          * would be invalid for the actual password change. So
                          * we are done. */
 
+                        overwrite_and_free_pam_items(&pi);
                         return PAM_SUCCESS;
                     }
                     task = SSS_PAM_CHAUTHTOK_PRELIM;
@@ -3059,6 +3203,7 @@ static int pam_sss(enum sss_cli_command task, pam_handle_t *pamh,
                 break;
             default:
                 D(("Illegal task [%#x]", task));
+                overwrite_and_free_pam_items(&pi);
                 return PAM_SYSTEM_ERR;
         }
 

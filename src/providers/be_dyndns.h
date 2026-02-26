@@ -27,6 +27,7 @@
 #define DP_DYNDNS_H_
 
 /* dynamic dns helpers */
+#include <stdbool.h>
 struct sss_iface_addr;
 
 typedef void (*nsupdate_timer_fn_t)(void *pvt);
@@ -54,15 +55,20 @@ enum dp_dyndns_opts {
     DP_OPT_DYNDNS_REFRESH_INTERVAL,
     DP_OPT_DYNDNS_REFRESH_OFFSET,
     DP_OPT_DYNDNS_IFACE,
+    DP_OPT_DYNDNS_ADDRESS,
     DP_OPT_DYNDNS_TTL,
     DP_OPT_DYNDNS_UPDATE_PTR,
     DP_OPT_DYNDNS_FORCE_TCP,
     DP_OPT_DYNDNS_AUTH,
     DP_OPT_DYNDNS_AUTH_PTR,
     DP_OPT_DYNDNS_SERVER,
+    DP_OPT_DYNDNS_DOT_CACERT,
+    DP_OPT_DYNDNS_DOT_CERT,
+    DP_OPT_DYNDNS_DOT_KEY,
 
     DP_OPT_DYNDNS /* attrs counter */
 };
+extern struct dp_option default_dyndns_opts[DP_OPT_DYNDNS + 1];
 
 #define DYNDNS_REMOVE_A     0x1
 #define DYNDNS_REMOVE_AAAA  0x2
@@ -75,7 +81,8 @@ be_nsupdate_init(TALLOC_CTX *mem_ctx, struct be_ctx *be_ctx,
                  struct be_nsupdate_ctx **_ctx);
 
 errno_t
-sss_iface_addr_list_get(TALLOC_CTX *mem_ctx, const char *ifname,
+sss_iface_addr_list_get(TALLOC_CTX *mem_ctx, const char *ifnames_filter,
+                        const char *network_filter,
                         struct sss_iface_addr **_addrlist);
 
 errno_t
@@ -85,7 +92,7 @@ sss_iface_addr_list_as_str_list(TALLOC_CTX *mem_ctx,
 
 errno_t
 be_nsupdate_create_fwd_msg(TALLOC_CTX *mem_ctx, const char *realm,
-                           const char *servername,
+                           struct sss_parsed_dns_uri *server_uri,
                            const char *hostname, const unsigned int ttl,
                            uint8_t remove_af, struct sss_iface_addr *addresses,
                            bool update_per_family,
@@ -93,7 +100,7 @@ be_nsupdate_create_fwd_msg(TALLOC_CTX *mem_ctx, const char *realm,
 
 errno_t
 be_nsupdate_create_ptr_msg(TALLOC_CTX *mem_ctx, const char *realm,
-                           const char *servername,
+                           struct sss_parsed_dns_uri *server_uri,
                            const char *hostname, const unsigned int ttl,
                            uint8_t remove_af, struct sss_iface_addr *addresses,
                            bool update_per_family,
@@ -109,7 +116,11 @@ struct tevent_req *be_nsupdate_send(TALLOC_CTX *mem_ctx,
                                     struct tevent_context *ev,
                                     enum be_nsupdate_auth auth_type,
                                     char *nsupdate_msg,
-                                    bool force_tcp);
+                                    bool force_tcp,
+                                    struct sss_parsed_dns_uri *server_uri,
+                                    const char *dot_cacert,
+                                    const char *dot_cert,
+                                    const char *dot_key);
 errno_t be_nsupdate_recv(struct tevent_req *req, int *child_status);
 
 struct tevent_req * nsupdate_get_addrs_send(TALLOC_CTX *mem_ctx,
@@ -129,6 +140,7 @@ sss_iface_addr_concatenate(struct sss_iface_addr **list,
 errno_t
 sss_get_dualstack_addresses(TALLOC_CTX *mem_ctx,
                             struct sockaddr *ss,
+                            const char *network_filter,
                             struct sss_iface_addr **_iface_addrs);
 
 struct sss_iface_addr *
@@ -136,5 +148,14 @@ sss_iface_addr_get_next(struct sss_iface_addr *address);
 
 struct sockaddr *
 sss_iface_addr_get_address(struct sss_iface_addr *address);
+
+bool
+sss_is_valid_dns_scheme(struct sss_parsed_dns_uri *uri);
+
+bool
+sss_is_dot_scheme(struct sss_parsed_dns_uri *uri);
+
+const char *
+sss_get_dns_port(struct sss_parsed_dns_uri *uri);
 
 #endif /* DP_DYNDNS_H_ */

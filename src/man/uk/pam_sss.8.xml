@@ -31,7 +31,8 @@
 <replaceable>allow_missing_name</replaceable> </arg> <arg choice='opt'>
 <replaceable>prompt_always</replaceable> </arg> <arg choice='opt'>
 <replaceable>try_cert_auth</replaceable> </arg> <arg choice='opt'>
-<replaceable>require_cert_auth</replaceable> </arg></cmdsynopsis>
+<replaceable>require_cert_auth</replaceable> </arg> <arg choice='opt'>
+<replaceable>allow_chauthtok_by_root</replaceable> </arg></cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1 id='description'>
@@ -210,6 +211,21 @@ p11_wait_for_card_timeout.
                         Якщо смарткартка виявиться недоступною на момент завершення часу очікування
 або розпізнавання за сертифікатом буде заборонено для поточної служби, буде
 повернуто PAM_AUTHINFO_UNAVAIL.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>allow_chauthtok_by_root</option>
+                </term>
+                <listitem>
+                    <para>
+                        Типово, результатом виконання команди PAM chauthtok є повернення
+PAM_SUCCESS, якщо pam_sss.so буде викликано користувачем root.
+                    </para>
+                    <para>
+                        Цей пункт вимикає таку поведінку, уможливлюючи зміну жетонів розпізнавання
+при запуску від імені root.
                     </para>
                 </listitem>
             </varlistentry>

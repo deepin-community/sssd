@@ -2,7 +2,7 @@
 
 # Additional options that are passed to the Daemon.
 # This is only used for /etc/init.d/sssd
-DAEMON_OPTS="-D -f"
+DAEMON_OPTS="-D --logger=files"
 
 # Where to direct debug output, valid options are 'files', 'journald', 'stderr'.
 #DEBUG_LOGGER=--logger=journald

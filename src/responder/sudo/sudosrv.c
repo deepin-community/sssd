@@ -30,8 +30,7 @@
 
 int sudo_process_init(TALLOC_CTX *mem_ctx,
                       struct tevent_context *ev,
-                      struct confdb_ctx *cdb,
-                      int pipe_fd)
+                      struct confdb_ctx *cdb)
 {
     struct resp_ctx *rctx;
     struct sss_cmd_table *sudo_cmds;
@@ -41,8 +40,7 @@ int sudo_process_init(TALLOC_CTX *mem_ctx,
     sudo_cmds = get_sudo_cmds();
     ret = sss_process_init(mem_ctx, ev, cdb,
                            sudo_cmds,
-                           SSS_SUDO_SOCKET_NAME, pipe_fd,   /* custom permissions on socket */
-                           NULL, -1,                   /* No private socket */
+                           SSS_SUDO_SOCKET_NAME, SSS_DFL_UMASK,
                            CONFDB_SUDO_CONF_ENTRY,
                            SSS_BUS_SUDO, SSS_SUDO_SBUS_SERVICE_NAME,
                            sss_connection_setup,
@@ -109,13 +107,13 @@ int sudo_process_init(TALLOC_CTX *mem_ctx,
     }
 
     /* The responder is initialized. Now tell it to the monitor. */
-    ret = sss_monitor_service_init(rctx, rctx->ev, SSS_BUS_SUDO,
-                                   SSS_SUDO_SBUS_SERVICE_NAME,
-                                   SSS_SUDO_SBUS_SERVICE_VERSION,
-                                   MT_SVC_SERVICE,
-                                   &rctx->last_request_time, &rctx->mon_conn);
+    ret = sss_monitor_register_service(rctx, rctx->sbus_conn,
+                                       SSS_SUDO_SBUS_SERVICE_NAME,
+                                       SSS_SUDO_SBUS_SERVICE_VERSION,
+                                       MT_SVC_SERVICE);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "fatal error setting up message bus\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register to the monitor "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto fail;
     }
 
@@ -137,18 +135,14 @@ int main(int argc, const char *argv[])
 {
     int opt;
     poptContext pc;
-    char *opt_logger = NULL;
+    const char *opt_logger = NULL;
     struct main_context *main_ctx;
     int ret;
-    int pipe_fd = -1;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
         POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_DEBUG_OPTS
+        SSSD_LOGGER_OPTS(&opt_logger)
         SSSD_RESPONDER_OPTS
         POPT_TABLEEND
     };
@@ -175,29 +169,8 @@ int main(int argc, const char *argv[])
     debug_log_file = "sssd_sudo";
     DEBUG_INIT(debug_level, opt_logger);
 
-    if (!is_socket_activated()) {
-        /* Create pipe file descriptors here with right ownerschip */
-        ret = create_pipe_fd(SSS_SUDO_SOCKET_NAME, &pipe_fd, SSS_DFL_UMASK);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_FATAL_FAILURE,
-                  "create_pipe_fd failed [%d]: %s.\n",
-                  ret, sss_strerror(ret));
-            return 4;
-        }
-
-        ret = chown(SSS_SUDO_SOCKET_NAME, uid, 0);
-        if (ret != 0) {
-            ret = errno;
-            close(pipe_fd);
-            DEBUG(SSSDBG_FATAL_FAILURE,
-                  "create_pipe_fd failed [%d]: %s.\n",
-                  ret, sss_strerror(ret));
-            return 5;
-        }
-    }
-
-    ret = server_setup("sudo", true, 0, uid, gid, CONFDB_SUDO_CONF_ENTRY,
-                       &main_ctx, true);
+    ret = server_setup("sudo", true, 0, CONFDB_FILE,
+                       CONFDB_SUDO_CONF_ENTRY, &main_ctx, true);
     if (ret != EOK) {
         return 2;
     }
@@ -211,7 +184,7 @@ int main(int argc, const char *argv[])
 
     ret = sudo_process_init(main_ctx,
                             main_ctx->event_ctx,
-                            main_ctx->confdb_ctx, pipe_fd);
+                            main_ctx->confdb_ctx);
     if (ret != EOK) {
         return 3;
     }

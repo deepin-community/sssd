@@ -36,9 +36,8 @@ Kerberos SSSD (Kerberos Cache Manager або KCM). KCM є процесом, як
 за допомогою сокета UNIX.
         </para>
         <para>
-            Сервер KCM стежити за кожним власником кешу реєстраційних даних і виконує
-перевірку прав доступу на основі UID і GID клієнта KCM. Користувач root має
-доступ до усіх кешів реєстраційних даних.
+            The KCM server keeps track of each credential caches's owner and performs
+access check control based on the UID and GID of the KCM client.
         </para>
         <para>
             Кеш реєстраційних даних KCM має декілька цікавих властивостей:

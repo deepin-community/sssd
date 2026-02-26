@@ -75,7 +75,8 @@ enum subid_status shadow_subid_list_owner_ranges(const char *user,
     ret = sss_cli_make_request_with_checks(SSS_NSS_GET_SUBID_RANGES, &rd,
                                            SSS_CLI_SOCKET_TIMEOUT,
                                            &repbuf, &replen, &errnop,
-                                           SSS_NSS_SOCKET_NAME);
+                                           SSS_NSS_SOCKET_NAME,
+                                           false, false);
     sss_nss_unlock();
 
     if ( (ret != SSS_STATUS_SUCCESS) || (errnop != EOK)
@@ -219,4 +220,11 @@ enum subid_status shadow_subid_find_subid_owners(unsigned long subid,
      * Currently there are no users of this function.
      */
     return SUBID_STATUS_ERROR;
+}
+
+/* Release memory allocated in shadow_subid_*() routines.
+ */
+void shadow_subid_free(void *ptr)
+{
+    free(ptr);
 }

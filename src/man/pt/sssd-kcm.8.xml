@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-kcm</refentrytitle>
+        <manvolnum>8</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-kcm</refname>
+        <refpurpose>Gestor de Cache Kerberos do SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            Este manual descreve a configuração do Gestor de Cache Kerberos do SSSD
+(KCM). KCM é um processo que guarda, acompanha e gere caches de credenciais
+do Kerberos. É originário do projecto Heimdal Kerberos, apenas da biblioteca
+MIT Kerberos também fornecer suporte no lado cliente para cache de
+credenciais KCM (mais detalhes sobre isso em baixo).
+        </para>
+        <para>
+            Numa configuração onde as caches do Kerberos são geridas por KCM, a
+biblioteca Kerberos (tipicamente usada através duma aplicação, como ex.,
+<citerefentry> <refentrytitle>kinit</refentrytitle><manvolnum>1</manvolnum>
+</citerefentry>, é uma <quote>"cliente KCM"</quote> e o daemon KCM é
+referido como sendo um <quote>"servidor KCM"</quote>. O cliente e servidor
+comunicam por um socket UNIX.
+        </para>
+        <para>
+            The KCM server keeps track of each credential caches's owner and performs
+access check control based on the UID and GID of the KCM client.
+        </para>
+        <para>
+            A cache de credenciais do KCM tem várias propriedades interessantes:
+            <itemizedlist>
+                <listitem>
+                    <para>
+                        como o processo corre no espaço-de-utilizador, está sujeito ao
+espaço-de-nomes do UID ao contrário do chaveiro do kernel
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        ao contrário da cache baseada-em-chaveiro do kernel, a qual é partilhada
+entre todos os contentores, o servidor KCM é um processo separado cujo ponto
+de entrada é um socket UNIX
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        a implementação SSSD guarda as ccaches numa base de dados, tipicamente
+localizada em <replaceable>/var/lib/sss/secrets</replaceable> permitindo às
+ccaches sobreviverem a reinícios to servidor KCM ou re-arranques da máquina.
+                    </para>
+                </listitem>
+            </itemizedlist>
+            Isto permite ao sistema usar uma cache de credenciais ciente-de-coleção, e
+no entanto partilhar a cache de credenciais entre alguns ou nenhum contentor
+ao vincular-montar o socket.
+        </para>
+        <para>
+            O tempo limite de inatividade predefinido do cliente KCM é 5 minutos, isto
+permite mais tempo para interação do utilizador com ferramentas de linha de
+comandos como o kinit.
+        </para>
+    </refsect1>
+
+    <refsect1 id='usage'>
+        <title>USANDO A CACHE DE CREDENCIAIS DO KCM</title>
+        <para>
+            De modo a usar a cache de credenciais KCM, tem de ser selecionada como o
+tipo de credencial predefinido em <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry>, O nome da cache de credenciais tem de ser apenas
+<quote>KCM:</quote> sem nenhumas expansões de modelo. Por exemplo:
+<programlisting>
+[libdefaults]
+    default_ccache_name = KCM:
+            </programlisting>
+        </para>
+        <para>
+            A seguir, certifique que as bibliotecas cliente Kerberos e o servidor KCM
+têm de concordar no caminho do socket UNIX. Por predefinição, ambos usam o
+mesmo caminho
+<replaceable>/var/run/.heim_org.h5l.kcm-socket</replaceable>. Para
+configurar a biblioteca Kerberos, modifique a sua opção
+<quote>kcm_socket</quote> que está descrita no manual <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            Finalmente, certifique que o servidor KCM do SSSD pode ser contactado. O
+serviço KCM é tipicamente activado por socket pelo <citerefentry>
+<refentrytitle>systemd</refentrytitle> <manvolnum>1</manvolnum>
+</citerefentry>. Ao contrário de outros serviços SSSD, este não pode ser
+arrancado ao adicionar a string <quote>kcm</quote> à directiva
+<quote>service</quote>. <programlisting>
+systemctl start sssd-kcm.socket
+systemctl enable sssd-kcm.socket
+            </programlisting> Por
+favor note que a sua distribuição pode já ter configurado as unidades para
+si.
+        </para>
+    </refsect1>
+
+    <refsect1 id='storage'>
+        <title>O ARMAZENAMENTO DE CACHE DE CREDENCIAIS</title>
+        <para>
+            As caches de credenciais são guardadas numa base de dados, muito como o SSSD
+põe em cache entradas de utilizadores e grupos. A base de dados é
+tipicamente colocada em <quote>/var/lib/sss/secrets</quote>.
+        </para>
+    </refsect1>
+
+    <refsect1 id='debugging'>
+        <title>OBTENDO RELATÓRIOS DE DEPURAÇÃO</title>
+        <para>
+            O serviço sssd-kcm tipicamente é activado por socket pelo <citerefentry>
+<refentrytitle>systemd</refentrytitle> <manvolnum>1</manvolnum>
+</citerefentry>. Para gerar registos de depuração, adicione o seguinte seja
+no ficheiro <filename>/etc/sssd/sssd.conf</filename> diretamente ou como
+trecho de configuração no directório <filename>/etc/sssd/conf.d/</filename>:
+<programlisting>
+[kcm]
+debug_level = 10
+            </programlisting> Depois, reinicie o serviço
+sssd-kcm: <programlisting>
+systemctl restart sssd-kcm.service
+            </programlisting> Finalmente, corra algo
+que não esteja a funcionar para si. Os registos do KCM serão gerados em
+<filename>/var/log/sssd/sssd_kcm.log</filename>. É recomendado desactivar os
+registos de depuração quando você já não precisar da depuração pois o
+serviço sssd-kcm pode gerar grandes quantidades de informação de depuração.
+        </para>
+        <para>
+            Por favor note que os trechos de configuração são, até ao momento, apenas
+processados se o ficheiro de configuração principal em
+<filename>/etc/sssd/sssd.conf</filename> existir realmente.
+        </para>
+    </refsect1>
+
+    <refsect1 id='renewals' condition="enable_kcm_renewal">
+        <title>RENOVAÇÕES</title>
+        <para>
+            O serviço sssd-kcm pode ser configurado para tentar renovações TGT para TGTs
+renováveis guardados na ccache do KCM. As renovações são tentadas quando
+metade do tempo de vida do bilhete foi alcançado. As renovações do KCM são
+configuradas quando as seguintes opções estão definidas na secção [kcm]:
+<programlisting>
+tgt_renewal = true
+krb5_renew_interval = 60m
+            </programlisting>
+        </para>
+        <para>
+            O SSSD também pode herdar opções krb5 para renovações a partir de um domínio
+existente.
+        </para>
+            <programlisting>
+tgt_renewal = true
+tgt_renewal_inherit = domain-name
+            </programlisting>
+        <para>
+            As seguintes opções krb5 pode ser configuradas na secção [kcm] para
+controlar o comportamento de renovação, estas opções estão descritas em
+detalhe mais abaixo <programlisting>
+krb5_renew_interval
+krb5_renewable_lifetime
+krb5_lifetime
+krb5_validate
+krb5_canonicalize
+krb5_auth_timeout
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES DE CONFIGURAÇÃO</title>
+        <para>
+            O serviço KCM é configurado na secção <quote>kcm</quote> do ficheiro
+sssd.conf. Por favor note que devido ao serviço KCM ser tipicamente activado
+por socket, basta apenas reiniciar o serviço <quote>sssd-kcm</quote> após
+modificar as opções na secção <quote>kcm</quote> do sssd.conf: <programlisting>
+systemctl restart sssd-kcm.service
+            </programlisting>
+        </para>
+        <para>
+            O serviço KCM é configurado em <quote>kcm</quote> Para uma referência
+detalhada de sintaxe, consulte a secção <quote>FORMATO DE FICHEIRO</quote>
+do manual <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            As opções de serviço SSSD genéricas como <quote>debug_level</quote> ou
+<quote>fd_limit</quote> são aceites pelo serviço kcm. Por favor consulte o
+manual <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para uma lista completa,
+Adicionalmente, existem também algumas opções específicas do KCM.
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term>socket_path (string)</term>
+                <listitem>
+                    <para>
+                        O socket que o serviço KCM irá escutar.
+                    </para>
+                    <para>
+                        Predefinição: <replaceable>/var/run/.heim_org.h5l.kcm-socket</replaceable>
+                    </para>
+                    <para>
+                        <phrase condition="have_systemd"> Nota: em plataformas onde o systemd é
+suportado, o caminho de socket é sobreposto por um definido no ficheiro de
+unidade sssd-kcm.socket.  </phrase>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>max_ccaches (inteiro)</term>
+                <listitem>
+                    <para>
+                        Quantas caches de credenciais a base de dados KCM permite para todos os
+utilizadores.
+                    </para>
+                    <para>
+                        Predefinição: 0 (ilimitado, apenas a quota por-UID é forçada)
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>max_uid_ccaches (inteiro)</term>
+                <listitem>
+                    <para>
+                        Quantas caches de credenciais a base de dados do KCM permite por UID. Isto é
+equivalente a <quote>com quantos principais você pode kinit</quote>.
+                    </para>
+                    <para>
+                        Predefinição: 64
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>max_ccache_size (inteiro)</term>
+                <listitem>
+                    <para>
+                        Quão grande pode ser uma cache de credenciais por ccache. Cada bilhete de
+serviço conta para esta cota.
+                    </para>
+                    <para>
+                        Predefinição: 65536
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="enable_kcm_renewal">
+                <term>tgt_renewal (booleano)</term>
+                <listitem>
+                    <para>
+                        Activa a funcionalidade de renovações TGT.
+                    </para>
+                    <para>
+                        Predefinição: False (Renovações automáticas desactivadas)
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="enable_kcm_renewal">
+                <term>tgt_renewal_inherit (string)</term>
+                <listitem>
+                    <para>
+                        Domínio de onde herdar opções krb5_*, para usar com renovações TGT.
+                    </para>
+                    <para>
+                        Predefinição: NULL
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+        <xi:include condition="enable_kcm_renewal" xmlns:xi="http://www.w3.org/2001/XInclude" href="include/krb5_options.xml" />
+    </refsect1>
+
+    <refsect1 id='see_also'>
+        <title>VEJA TAMBÉM</title>
+        <para>
+            <citerefentry> <refentrytitle>sssd</refentrytitle><manvolnum>8</manvolnum>
+</citerefentry>, <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry>,
+        </para>
+    </refsect1>
+</refentry>
+</reference>

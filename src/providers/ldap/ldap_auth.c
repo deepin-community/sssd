@@ -37,7 +37,21 @@
 #include <sys/time.h>
 #include <strings.h>
 
+#ifdef HAVE_SHADOW_H
 #include <shadow.h>
+#else
+struct spwd {
+    char          *sp_namp;
+    char          *sp_pwdp;
+    long int       sp_lstchg;
+    long int       sp_min;
+    long int       sp_max;
+    long int       sp_warn;
+    long int       sp_inact;
+    long int       sp_expire;
+    unsigned long int   sp_flag;
+};
+#endif
 #include <security/pam_modules.h>
 
 #include "util/util.h"
@@ -194,13 +208,15 @@ static errno_t check_pwexpire_shadow(struct spwd *spwd, time_t now,
 
 static errno_t check_pwexpire_ldap(struct pam_data *pd,
                                    struct sdap_ppolicy_data *ppolicy,
-                                   int pwd_exp_warning)
+                                   int pwd_exp_warning,
+                                   struct sdap_options *opts)
 {
     int ret = EOK;
 
     if (ppolicy->grace >= 0 || ppolicy->expire > 0) {
         uint32_t *data;
         uint32_t *ptr;
+        int pwd_change_thold;
 
         if (pwd_exp_warning < 0) {
             pwd_exp_warning = 0;
@@ -232,7 +248,19 @@ static errno_t check_pwexpire_ldap(struct pam_data *pd,
         ret = pam_add_response(pd, SSS_PAM_USER_INFO, 2* sizeof(uint32_t),
                                (uint8_t*)data);
         if (ret != EOK) {
-            DEBUG(SSSDBG_CRIT_FAILURE, "pam_add_response failed.\n");
+            DEBUG(SSSDBG_CRIT_FAILURE,
+                  "pam_add_response failed: %s\n",
+                  sss_strerror(ret));
+            return ret;
+        }
+
+        /*
+         * Either password is expired or this is a grace login.
+         * Check the grace loging password change threshold.
+         */
+        pwd_change_thold = dp_opt_get_int(opts->basic, SDAP_PPOLICY_PWD_CHANGE_THRESHOLD);
+        if (pwd_change_thold > 0 && ppolicy->grace > 0 && ppolicy->grace <= pwd_change_thold) {
+            ret = ERR_PASSWORD_EXPIRED;
         }
     }
 
@@ -243,7 +271,8 @@ done:
 errno_t check_pwexpire_policy(enum pwexpire pw_expire_type,
                               void *pw_expire_data,
                               struct pam_data *pd,
-                              int pwd_expiration_warning)
+                              int pwd_expiration_warning,
+                              struct sdap_options *opts)
 {
     errno_t ret;
 
@@ -257,7 +286,8 @@ errno_t check_pwexpire_policy(enum pwexpire pw_expire_type,
         break;
     case PWEXPIRE_LDAP_PASSWORD_POLICY:
         ret = check_pwexpire_ldap(pd, pw_expire_data,
-                                  pwd_expiration_warning);
+                                  pwd_expiration_warning,
+                                  opts);
         break;
     case PWEXPIRE_NONE:
         ret = EOK;
@@ -672,7 +702,8 @@ static struct tevent_req *auth_send(TALLOC_CTX *memctx,
     if (!req) return NULL;
 
     /* The token must be a password token */
-    if (sss_authtok_get_type(authtok) != SSS_AUTHTOK_TYPE_PASSWORD) {
+    if (sss_authtok_get_type(authtok) != SSS_AUTHTOK_TYPE_PASSWORD &&
+        sss_authtok_get_type(authtok) != SSS_AUTHTOK_TYPE_PAM_STACKED) {
         if (sss_authtok_get_type(authtok) == SSS_AUTHTOK_TYPE_SC_PIN
             || sss_authtok_get_type(authtok) == SSS_AUTHTOK_TYPE_SC_KEYPAD) {
             /* Tell frontend that we do not support Smartcard authentication */
@@ -891,12 +922,15 @@ static void auth_do_bind(struct tevent_req *req)
 {
     struct auth_state *state = tevent_req_data(req, struct auth_state);
     struct tevent_req *subreq;
+    bool use_ppolicy = dp_opt_get_bool(state->ctx->opts->basic,
+                                       SDAP_USE_PPOLICY);
+    int timeout = dp_opt_get_int(state->ctx->opts->basic, SDAP_OPT_TIMEOUT);
 
     subreq = sdap_auth_send(state, state->ev, state->sh,
                             NULL, NULL, state->dn,
                             state->authtok,
-                            dp_opt_get_int(state->ctx->opts->basic,
-                                           SDAP_OPT_TIMEOUT));
+                            timeout, use_ppolicy,
+                            state->ctx->opts->pwmodify_mode);
     if (!subreq) {
         tevent_req_error(req, ENOMEM);
         return;
@@ -969,6 +1003,7 @@ static errno_t auth_recv(struct tevent_req *req, TALLOC_CTX *memctx,
 struct sdap_pam_auth_handler_state {
     struct pam_data *pd;
     struct be_ctx *be_ctx;
+    struct sdap_auth_ctx *auth_ctx;
 };
 
 static void sdap_pam_auth_handler_done(struct tevent_req *subreq);
@@ -992,6 +1027,7 @@ sdap_pam_auth_handler_send(TALLOC_CTX *mem_ctx,
 
     state->pd = pd;
     state->be_ctx = params->be_ctx;
+    state->auth_ctx = auth_ctx;
     pd->pam_status = PAM_SYSTEM_ERR;
 
     switch (pd->cmd) {
@@ -1058,7 +1094,8 @@ static void sdap_pam_auth_handler_done(struct tevent_req *subreq)
 
     if (ret == EOK) {
         ret = check_pwexpire_policy(pw_expire_type, pw_expire_data, state->pd,
-                                state->be_ctx->domain->pwd_expiration_warning);
+                                state->be_ctx->domain->pwd_expiration_warning,
+                                state->auth_ctx->opts);
         if (ret == EINVAL) {
             /* Unknown password expiration type. */
             state->pd->pam_status = PAM_SYSTEM_ERR;
@@ -1160,6 +1197,7 @@ sdap_pam_change_password_send(TALLOC_CTX *mem_ctx,
     char *pwd_attr;
     int timeout;
     errno_t ret;
+    bool use_ppolicy;
 
     pwd_attr = opts->user_map[SDAP_AT_USER_PWD].name;
 
@@ -1186,9 +1224,11 @@ sdap_pam_change_password_send(TALLOC_CTX *mem_ctx,
 
     switch (opts->pwmodify_mode) {
     case SDAP_PWMODIFY_EXOP:
+    case SDAP_PWMODIFY_EXOP_FORCE:
+        use_ppolicy = dp_opt_get_bool(opts->basic, SDAP_USE_PPOLICY);
         subreq = sdap_exop_modify_passwd_send(state, ev, sh, user_dn,
                                               password, new_password,
-                                              timeout);
+                                              timeout, use_ppolicy);
         break;
     case SDAP_PWMODIFY_LDAP:
         subreq = sdap_modify_passwd_send(state, ev, sh, timeout, pwd_attr,
@@ -1229,6 +1269,7 @@ static void sdap_pam_change_password_done(struct tevent_req *subreq)
 
     switch (state->mode) {
     case SDAP_PWMODIFY_EXOP:
+    case SDAP_PWMODIFY_EXOP_FORCE:
         ret = sdap_exop_modify_passwd_recv(subreq, state,
                                            &state->user_error_message);
         break;

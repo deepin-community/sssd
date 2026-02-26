@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_authorizedkeys</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_authorizedkeys</refname>
+        <refpurpose>obter chaves autorizadas do OpenSSH</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_ssh_authorizedkeys</command> <arg choice='opt'>
+<replaceable>options</replaceable> </arg> <arg
+choice='plain'><replaceable>UTILIZADOR</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            O <command>sss_ssh_authorizedkeys</command> adquire chaves públicas SSH para
+o utilizador <replaceable>UTILIZADOR</replaceable> e coloca-as em formato
+authorized_keys de OpenSSH (veja a secção <quote>FORMATO DE FICHEIRO
+AUTHORIZED_KEYS</quote> do <citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> para mais informação).
+        </para>
+        <para>
+            O <citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> pode ser configurado para usar
+<command>sss_ssh_authorizedkeys</command> para autenticação de utilizador
+por chave pública se for compilado com suporte para a opção
+<quote>AuthorizedKeysCommand</quote>. Por favor consulte o manual
+<citerefentry> <refentrytitle>sshd_config</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para mais detalhes acerca desta
+opção.
+        </para>
+        <para>
+            Se <quote>AuthorizedKeysCommand</quote> for suportado, o
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> pode ser configurado para o usar ao
+colocar as seguintes diretivas em <citerefentry>
+<refentrytitle>sshd_config</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry>: <programlisting>
+  AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
+  AuthorizedKeysCommandUser nobody
+</programlisting>
+        </para>
+
+    <refsect2 id='cert_keys'>
+        <title>CHAVES A PARTIR DE CERTIFICADOS</title>
+        <para>
+            Adicionalmente às chaves SSH públicas para o utilizador
+<replaceable>UTILIZADOR</replaceable> o
+<command>sss_ssh_authorizedkeys</command> também pode retornar chaves SSH
+públicas derivadas da chave pública de um certificado X.509.
+        </para>
+        <para>
+            Para activar isto a opção <quote>ssh_use_certificate_keys</quote> tem de ser
+definida para true (predefinição) na secção [ssh] do
+<filename>sssd.conf</filename>. Se a entrada do utilizador conter
+certificados (veja <quote>ldap_user_certificate</quote> em
+<citerefentry><refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para detalhes) ou existir um
+certificado numa entrada de sobreposição para o utilizador (veja
+<citerefentry><refentrytitle>sss_override</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> ou
+<citerefentry><refentrytitle>sssd-ipa</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para detalhes) e o certificado for
+válido, o SSSD irá extrair a chave pública a partir do certificado e
+converte-lo num formato esperado pelo sshd.
+        </para>
+        <para>
+            Além de <quote>ssh_use_certificate_keys</quote> as opções
+            <itemizedlist>
+                <listitem><para>ca_db</para></listitem>
+                <listitem><para>p11_child_timeout</para></listitem>
+                <listitem><para>certificate_verification</para></listitem>
+            </itemizedlist>
+            pode ser usadas para controlar como o certificados são validados (veja
+<citerefentry><refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para detalhes).
+        </para>
+        <para>
+            A validação é o benefício de se usar certificados X.509 em vez de chaves SSH
+directamente porque, ex., oferece um melhor controle do tempo de vida das
+chaves. Quando o cliente ssh é configurado para usar as chaves privadas de
+uma Smartcard com a ajuda de uma biblioteca partilhada PKCS#11 (veja
+<citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> para detalhes) pode ser irritante
+ver a autenticação ainda a funcionar mesmo que o certificado X.509
+relacionado na Smartcard esteja já expirado porque nem o
+<command>ssh</command> nem o <command>sshd</command> irá olhar sequer olhar
+para o certificado.
+        </para>
+        <para>
+            Tem de ser notado que a chave SSH pública derivada pode ainda ser adicionada
+ao ficheiro <filename>authorized_keys</filename> do utilizador ao contornar
+a validação do certificado se a configuração do <command>sshd</command>
+permitir isto.
+        </para>
+    </refsect2>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMÍNIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Procura por chaves públicas de utilizador em domínio SSSD
+<replaceable>DOMÍNIO</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='exit_status'>
+        <title>ESTADO DE SAÍDA</title>
+        <para>
+            Em caso de sucesso, é retornado um valor de saída de 0. Caso contrário, é
+retornado 1.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

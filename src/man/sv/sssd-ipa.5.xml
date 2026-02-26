@@ -50,9 +50,10 @@ traditionella leverantörerna ldap och krb5 med några undantag.  Skillnaderna
 listas i avsnittet <quote>ÄNDRADE STANDARDINSTÄLLNINGAR</quote>.
         </para>
         <para>
-            As an access provider, the IPA provider has a minimal configuration (see
-<quote>ipa_access_order</quote>) as it mainly uses HBAC (host-based access
-control) rules. Please refer to freeipa.org for more information about HBAC.
+            Som en åtkomstleverantör har leverantören IPA en minimal konfiguration (se
+<quote>ipa_access_order</quote>) eftersom den huvudsakligen använder
+HBAC-regler (host-based access control, värdbaserad åtkomstkontroll). Se
+freeipa.org för mer information om HBAC.
         </para>
         <para>
             Om <quote>auth_provider=ipa</quote> eller <quote>access_provider=ipa</quote>
@@ -122,11 +123,6 @@ alternativet <quote>dyndns_iface</quote>.
 i /etc/krb5.conf för att detta beteende skall fungera pålitligt
                         </para>
                         <para>
-                            OBS: även om det fortfarande är möjligt att använda det gamla alternativet
-<emphasis>ipa_dyndns_update</emphasis> bör användare migrera till att
-använda <emphasis>dyndns_update</emphasis> i sin konfigurationsfil.
-                        </para>
-                        <para>
                             Standard: false
                         </para>
                     </listitem>
@@ -141,11 +137,6 @@ använda <emphasis>dyndns_update</emphasis> i sin konfigurationsfil.
 om det är satt av en administratör.
                         </para>
                         <para>
-                            OBS: även om det fortfarande är möjligt att använda det gamla alternativet
-<emphasis>ipa_dyndns_ttl</emphasis> bör användare migrera till att använda
-<emphasis>dyndns_ttl</emphasis> i sin konfigurationsfil.
-                        </para>
-                        <para>
                             Standard: 1200 (sekunder)
                         </para>
                     </listitem>
@@ -155,22 +146,40 @@ om det är satt av en administratör.
                     <term>dyndns_iface (sträng)</term>
                     <listitem>
                         <para>
-                            Valfri.  Endast tillämpligt när dyndns_update är sann.  Välj gränssnittet
-eller en lista av gränssnitt vars IP-adresser skall användas för dynamiska
-DNS-uppdateringar.  Specialvärdet <quote>*</quote> betyder att IP:n från
-alla gränssnitt skall användas.
-                        </para>
-                        <para>
-                            OBS: även om det fortfarande är möjligt att använda det gamla alternativet
-<emphasis>ipa_dyndns_iface</emphasis> bör användare migrera till att använda
-<emphasis>dyndns_iface</emphasis> i sin konfigurationsfil.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
                         </para>
                         <para>
                             Standard: använd IP-adresser för gränssnittet som används för IPA
 LDAP-förbindelsen
                         </para>
                         <para>
-                            Exempel: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -204,27 +213,6 @@ sätta detta alternativ till ”none”.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_enable_dns_sites (boolean)</term>
-                    <listitem>
-                        <para>
-                            Aktiverar DNS-sajter – platsbaserat tjänsteupptäckt.
-                        </para>
-                        <para>
-                            Om sant och tjänsteupptäckt (se stycket Tjänsteupptäckt i slutet av
-manualsidan) är aktiverat kommer SSSD först att försöka med platsbaserad
-upptäckt med en fråga som innehåller ”_location.hostname.example.com” och
-sedan falla tillbaka på traditionell SRV-upptäckt.  Om platsbaserad upptäckt
-lyckas betraktas IPA-servrarna som lokaliserats med platsbaserad upptäckt
-som primära servrar och IPA-servrarna som hittas med den traditionella
-SRV-upptäckten används som backup-servrar
-                        </para>
-                        <para>
-                            Standard: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
                     <term>dyndns_refresh_interval (heltal)</term>
                     <listitem>
                         <para>
@@ -250,8 +238,9 @@ uppdateras.  Tillämpligt endast när dyndns_update är sann.
 IPA-servern genererar PTR-posterna automatiskt när framåtposterna ändras.
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Observera att parametern <emphasis>dyndns_update_per_family</emphasis> inte
+gäller för uppdateringar av PTR-poster. Dessa uppdateringar skickas alltid
+separat.
                         </para>
                         <para>
                             Standard: False (avaktiverat)
@@ -280,13 +269,24 @@ med DNS-servern.
 flesta uppsättningar rekommenderas det att låta detta alternativ vara osatt.
                         </para>
                         <para>
-                            Att sätta detta alternativ är meningsfullt i miljöer där DNS-servern är
-skild från identitetsservern.
+                            Setting this option makes sense for environments where the DNS server is
+different from the identity server or when we use encrypted DNS.
                         </para>
                         <para>
-                            Observera att detta alternativ bara kommer användas i försök att falla
-tillbaka på när tidigare försök som använder automatiskt upptäckta
-inställningar misslyckas.
+                           The parameter can be a simple string containing DNS name or IP address. It
+can also be an URI.  The URI can look like
+<emphasis>dns://servername/</emphasis> or
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            The second example enables DNS-over-TLS protocol for DNS updates. The
+nsupdate utility must support DoT - check the <emphasis>man
+nsupdate</emphasis> before enabling it in SSSD.
+                        </para>
+                        <para>
+                            Please note that this option will be only used in fallback attempt when
+previous attempt using autodetected settings failed or when DNS-over-TLS is
+enabled.
                         </para>
                         <para>
                             Standard: Ingen (låt nsupdate välja servern)
@@ -309,13 +309,60 @@ och IPv6-uppdateringar i ett enda steg.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_access_order (string)</term>
+                    <term>dyndns_dot_cacert (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option specifies the file of the certificate authorities certificates
+(in PEM format) in order to verify the remote server TLS certificate when
+using DoT.
+                        </para>
+                        <para>
+                            Standard: Ingen (använd globalt certifikatlager)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option sets the certificate(s) file for authentication for the DoT
+transport to the remote server. The certificate chain file is expected to be
+in PEM format.
+                        </para>
+                        <para>
+                            The <emphasis>dyndns_dot_cert</emphasis> and
+<emphasis>dyndns_dot_key</emphasis> options must be both set to achieve
+mutual TLS authentication.
+                        </para>
+                        <para>
+                            Standard: Ingen (Använd inte TLS-autentisering)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (sträng)</term>
+                    <listitem>
+                        <para>
+                            This option sets the key file for authenticated encryption for the DoT
+transport to the remote server. The private key file is expected to be in
+PEM format.
+                        </para>
+                        <para>
+                            Standard: Ingen (Använd inte TLS-autentisering)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_access_order (sträng)</term>
                     <listitem>
                         <para>
                             Kommaseparerad lista över åtkomststyrningsalternativ.  Tillåtna värden är:
                         </para>
                         <para>
-                            <emphasis>expire</emphasis>: use IPA's account expiration policy.
+                            <emphasis>expire</emphasis>: använd IPA:s policy för konton som går ut.
                         </para>
                         <para>
                             <emphasis>pwd_expire_policy_reject, pwd_expire_policy_warn,
@@ -325,30 +372,30 @@ autentisering är baserat på användning av en annan metod än lösenord – ti
 exempel SSH-nycklar.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Skillnaden mellan dessa alternativ är åtgärden som vidtas om användarens
+lösenord gått ut:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_reject - user is denied to log in,
+                                    pwd_expire_policy_reject — användaren nekas att logga in,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_warn - user is still able to log in,
+                                    pwd_expire_policy_warn — användaren kan fortfarande logga in,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                    pwd_expire_policy_renew — användaren ombeds att ändra sitt lösenord
+omedelbart.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
-                            Please note that 'access_provider = ipa' must be set for this feature to
-work.
+                            Observera att ”access_provider = ipa” måste vara satt för att denna funktion
+skall fungera.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -370,11 +417,7 @@ skrivbordsprofilrelaterade objekt.
                     <term>ipa_subid_ranges_search_base (sträng)</term>
                     <listitem>
                         <para>
-                            Frivillig. Använd den givna strängen som sökbas för
-underordningsintervallsrelaterade objekt.
-                        </para>
-                        <para>
-                            Standard: värdet på <emphasis>cn=subids,%basedn</emphasis>
+                            Deprecated. Use ldap_subid_ranges_search_base instead.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -787,6 +830,12 @@ på huruvida man konfigurerar SSSD på en IPA-server eller en IPA-klient.
                         <para>ad_site</para>
                     </listitem>
                     <listitem>
+                        <para>ipa_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_backup_server</para>
+                    </listitem>
+                    <listitem>
                         <para>ldap_search_base</para>
                     </listitem>
                     <listitem>
@@ -800,11 +849,16 @@ på huruvida man konfigurerar SSSD på en IPA-server eller en IPA-klient.
                     </listitem>
                 </itemizedlist>
             </para>
+            <para>
+                Options prefixed with 'ad_' or 'ipa_' only apply to their respective
+subdomain type.
+            </para>
         </refsect2>
         <refsect2 id='client_configuration'>
             <title>ALTERNATIV ATT STÄLLA IN PÅ IPA-KLIENTER</title>
             <para>
-                Följande alternativ kan sättas i ett underdomänsavsnitt på en IPA-klient:
+                The following options can be set in an AD subdomain section on an IPA
+client:
                 <itemizedlist>
                     <listitem>
                         <para>ad_server</para>

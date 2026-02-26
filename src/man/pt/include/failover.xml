@@ -1,78 +1,81 @@
 <refsect1 id='failover'>
     <title>FAILOVER</title>
     <para>
-        The failover feature allows back ends to automatically switch to a different
-server if the current server fails.
+        A funcionalidade failover permite aos backends mudarem automaticamente para
+o servidor diferente se o servidor actual falhar.
     </para>
     <refsect2 id='failover_syntax'>
-        <title>Failover Syntax</title>
+        <title>Sintaxe do Failover</title>
         <para>
-            The list of servers is given as a comma-separated list; any number of spaces
-is allowed around the comma. The servers are listed in order of
-preference. The list can contain any number of servers.
+            A lista de servidores é dada como uma lista separada por vírgulas; é
+permitido qualquer número de espaços em volta das vírgulas. Os servidores
+são listados pela ordem de preferência. A lista pode conter qualquer número
+de servidores.
         </para>
         <para>
-            For each failover-enabled config option, two variants exist:
-<emphasis>primary</emphasis> and <emphasis>backup</emphasis>.  The idea is
-that servers in the primary list are preferred and backup servers are only
-searched if no primary servers can be reached. If a backup server is
-selected, a timeout of 31 seconds is set. After this timeout SSSD will
-periodically try to reconnect to one of the primary servers. If it succeeds,
-it will replace the current active (backup) server.
+            Para cada opção de configuração activa-failover, existem duas variantes:
+<emphasis>primary</emphasis> e <emphasis>backup</emphasis>.  A ideia é que
+os servidores na lista primária são preferidos e os servidores backup são
+apenas procurados se os servidores primários não puderem ser alcançados. Se
+um servidor backup for selecionado, é definido um tempo limite de 31
+segundos. Após este tempo limite o SSSD irá periodicamente tentar re-ligar a
+um dos servidores primários. Se tiver sucesso, irá substituir o servidor
+actualmente activo (backup).
         </para>
     </refsect2>
     <refsect2 id='failover_mechanism'>
-        <title>The Failover Mechanism</title>
+        <title>O Mecanismo Failover</title>
         <para>
-            The failover mechanism distinguishes between a machine and a service. The
-back end first tries to resolve the hostname of a given machine; if this
-resolution attempt fails, the machine is considered offline. No further
-attempts are made to connect to this machine for any other service. If the
-resolution attempt succeeds, the back end tries to connect to a service on
-this machine. If the service connection attempt fails, then only this
-particular service is considered offline and the back end automatically
-switches over to the next service.  The machine is still considered online
-and might still be tried for another service.
+            O mecanismo failover distingue entre uma máquina e um serviço. O backend
+primeiro tenta resolver o nome de máquina de uma dada máquina; se esta
+tentativa de resolução falhar, a máquina é considerada offline. Não são
+feitas mais tentativas de ligar a esta máquina para qualquer outro
+serviço. Se a tentativa de resolução tiver sucesso, o backend tenta ligar a
+um serviço nesta máquina. Se a tentativa de ligação a serviço falhar, então
+este serviço particular é considerado offline e o backend automaticamente
+muda para o próximo serviço.  A máquina continua a ser considerada online e
+pode ainda ser tentada para outro serviço.
         </para>
         <para>
-            Further connection attempts are made to machines or services marked as
-offline after a specified period of time; this is currently hard coded to 30
-seconds.
+            São feitas mais tentativas de ligação a máquinas ou serviços marcados como
+offline após um período de tempo especificado; isto é actualmente duramente
+codificado a 30 segundos.
         </para>
         <para>
-            If there are no more machines to try, the back end as a whole switches to
-offline mode, and then attempts to reconnect every 30 seconds.
+            Se não existirem mais máquinas para tentar, o backend muda todos para modo
+offline, e depois tenta re-ligar a cada 30 segundos.
         </para>
     </refsect2>
     <refsect2 id='failover_tuning'>
-        <title>Failover time outs and tuning</title>
+        <title>Tempo limite e afinação do Failover</title>
         <para>
-            Resolving a server to connect to can be as simple as running a single DNS
-query or can involve several steps, such as finding the correct site or
-trying out multiple host names in case some of the configured servers are
-not reachable. The more complex scenarios can take some time and SSSD needs
-to balance between providing enough time to finish the resolution process
-but on the other hand, not trying for too long before falling back to
-offline mode. If the SSSD debug logs show that the server resolution is
-timing out before a live server is contacted, you can consider changing the
-time outs.
+            Resolver um servidor a onde ligar pode ser tão simples como correr uma única
+consulta DNS ou pode invocar vários passos, tais como encontrar o sítio
+correto ou tentar múltiplos nomes de máquinas no caso de alguns dos
+servidores configurados não estarem alcançáveis. Os cenários mais complexos
+podem durar algum tempo e o SSSD precisa de equilibrar entre disponibilizar
+tempo suficiente para terminar o processo de resolução mas por outro lado,
+não demorar muito tempo antes de regressar ao modo offline. Se os registos
+de depuração do SSSD mostrarem que a resolução do servidor atingiu o tempo
+limite antes de ser contactado um servidor vivo, você pode considerar mudar
+os tempos limite.
         </para>
         <para>
-            This section lists the available tunables. Please refer to their description
-in the <citerefentry>
+            Esta secção lista as afinações disponíveis. Por favor consulte as suas
+descrições no manual <citerefentry>
 <refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum>
-</citerefentry>, manual page.  <variablelist>
+</citerefentry>.  <variablelist>
                 <varlistentry>
                     <term>
                         dns_resolver_server_timeout
                     </term>
                     <listitem>
                         <para>
-                            Time in milliseconds that sets how long would SSSD talk to a single DNS
-server before trying next one.
+                            Tempo em milissegundos que define quanto tempo deve o SSSD falar com um
+único servidor DNS antes de tentar o próximo.
                         </para>
                         <para>
-                            Padrão: 1000
+                            Predefinição: 1000
                         </para>
                     </listitem>
                 </varlistentry>
@@ -82,12 +85,12 @@ server before trying next one.
                     </term>
                     <listitem>
                         <para>
-                            Time in seconds to tell how long would SSSD try to resolve single DNS query
-(e.g. resolution of a hostname or an SRV record) before trying the next
-hostname or discovery domain.
+                            Tempo em segundos que diz quanto tempo deve o SSSD tentar resolver uma única
+consulta DNS (ex. resolução de um nome de máquina ou dum registo SRV) antes
+de tentar o próximo nome de máquina ou domínio de descoberta.
                         </para>
                         <para>
-                            Padrão: 3
+                            Predefinição: 3
                         </para>
                     </listitem>
                 </varlistentry>
@@ -97,24 +100,24 @@ hostname or discovery domain.
                     </term>
                     <listitem>
                         <para>
-                            How long would SSSD try to resolve a failover service. This service
-resolution internally might include several steps, such as resolving DNS SRV
-queries or locating the site.
+                            Quanto tempo deve o SSSD tentar resolver um serviço failover. Esta resolução
+de serviço internamente pode incluir vários passos, tal como resolver
+consultas SRV de DNS ou localizar o sítio.
                         </para>
                         <para>
-                            Padrão: 6
+                            Predefinição: 6
                         </para>
                     </listitem>
                 </varlistentry>
             </variablelist>
         </para>
         <para>
-            For LDAP-based providers, the resolve operation is performed as part of an
-LDAP connection operation. Therefore, also the
-<quote>ldap_opt_timeout</quote> timeout should be set to a larger value than
-<quote>dns_resolver_timeout</quote> which in turn should be set to a larger
-value than <quote>dns_resolver_op_timeout</quote> which should be larger
-than <quote>dns_resolver_server_timeout</quote>.
+            Para provedores baseados em LDAP, a operação de resolução é executada como
+parte de uma operação de ligação LDAP. Assim, também o tempo limite
+<quote>ldap_opt_timeout</quote> deve ser definido para um valor maior que
+<quote>dns_resolver_timeout</quote> que por sua vez deve ser definido para
+um valor maior que <quote>dns_resolver_op_timeout</quote> o qual deve ser
+maior que <quote>dns_resolver_server_timeout</quote>.
         </para>
     </refsect2>
 </refsect1>

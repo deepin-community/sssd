@@ -25,11 +25,14 @@
 #ifndef _SSSCLI_H
 #define _SSSCLI_H
 
+#include "config.h"
+
 #include <nss.h>
 #include <pwd.h>
 #include <grp.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <limits.h>
 
 #include "shared/safealign.h"
@@ -37,11 +40,16 @@
 #ifndef HAVE_ERRNO_T
 #define HAVE_ERRNO_T
 typedef int errno_t;
+#else
+#include <errno.h>
 #endif
-
 
 #ifndef EOK
 #define EOK 0
+#endif
+
+#ifndef NETDB_INTERNAL
+#define NETDB_INTERNAL (-1)
 #endif
 
 #define SSS_NSS_PROTOCOL_VERSION 1
@@ -387,6 +395,9 @@ enum sss_authtok_type {
     SSS_AUTHTOK_TYPE_PASSKEY_REPLY = 0x0010, /**< Authentication token contains
                                               * Passkey reply data presented as
                                               * a kerberos challenge answer */
+    SSS_AUTHTOK_TYPE_PAM_STACKED = 0x0011, /**< Authentication token contains
+                                            * either 2FA_SINGLE or PASSWORD
+                                            * via PAM use_first_pass */
 };
 
 /**
@@ -412,6 +423,8 @@ enum pam_item_type {
     SSS_PAM_ITEM_CHILD_PID,
     SSS_PAM_ITEM_REQUESTED_DOMAINS,
     SSS_PAM_ITEM_FLAGS,
+    SSS_PAM_ITEM_JSON_AUTH_INFO,
+    SSS_PAM_ITEM_JSON_AUTH_SELECTED,
 };
 
 #define PAM_CLI_FLAGS_USE_FIRST_PASS (1 << 0)
@@ -424,6 +437,8 @@ enum pam_item_type {
 #define PAM_CLI_FLAGS_PROMPT_ALWAYS (1 << 7)
 #define PAM_CLI_FLAGS_TRY_CERT_AUTH (1 << 8)
 #define PAM_CLI_FLAGS_REQUIRE_CERT_AUTH (1 << 9)
+#define PAM_CLI_FLAGS_ALLOW_CHAUTHTOK_BY_ROOT (1 << 10)
+#define PAM_CLI_FLAGS_CHAUTHTOK_PREAUTH (1 << 11)
 
 #define SSS_NSS_MAX_ENTRIES 256
 #define SSS_NSS_HEADER_SIZE (sizeof(uint32_t) * 4)
@@ -553,6 +568,11 @@ enum response_type {
                                *   - user verification (string)
                                *   - key (string)
                                */
+    SSS_PAM_JSON_AUTH_INFO, /**< A JSON formatted message containing the available
+                             * authentication mechanisms and their associated data.
+                             * @param
+                             *   - json_auth_msg
+                             */
 };
 
 /**
@@ -660,7 +680,8 @@ enum prompt_config_type {
     PC_TYPE_2FA,
     PC_TYPE_2FA_SINGLE,
     PC_TYPE_PASSKEY,
-    PC_TYPE_SC_PIN,
+    PC_TYPE_SMARTCARD,
+    PC_TYPE_EIDP,
     PC_TYPE_LAST
 };
 
@@ -673,6 +694,10 @@ const char *pc_get_2fa_2nd_prompt(struct prompt_config *pc);
 const char *pc_get_2fa_single_prompt(struct prompt_config *pc);
 const char *pc_get_passkey_inter_prompt(struct prompt_config *pc);
 const char *pc_get_passkey_touch_prompt(struct prompt_config *pc);
+const char *pc_get_eidp_init_prompt(struct prompt_config *pc);
+const char *pc_get_eidp_link_prompt(struct prompt_config *pc);
+const char *pc_get_smartcard_init_prompt(struct prompt_config *pc);
+const char *pc_get_smartcard_pin_prompt(struct prompt_config *pc);
 errno_t pc_list_add_passkey(struct prompt_config ***pc_list,
                             const char *inter_prompt,
                             const char *touch_prompt);
@@ -683,6 +708,10 @@ errno_t pc_list_add_2fa(struct prompt_config ***pc_list,
                         const char *prompt_1st, const char *prompt_2nd);
 errno_t pc_list_add_2fa_single(struct prompt_config ***pc_list,
                                const char *prompt);
+errno_t pc_list_add_eidp(struct prompt_config ***pc_list,
+                         const char *prompt_init, const char *prompt_link);
+errno_t pc_list_add_smartcard(struct prompt_config ***pc_list,
+                              const char *prompt_init, const char *prompt_pin);
 errno_t pam_get_response_prompt_config(struct prompt_config **pc_list, int *len,
                                        uint8_t **data);
 errno_t pc_list_from_response(int size, uint8_t *buf,
@@ -695,8 +724,7 @@ enum sss_netgr_rep_type {
 
 enum sss_cli_error_codes {
     ESSS_SSS_CLI_ERROR_START = 0x1000,
-    ESSS_BAD_PRIV_SOCKET,
-    ESSS_BAD_PUB_SOCKET,
+    ESSS_BAD_SOCKET,
     ESSS_BAD_CRED_MSG,
     ESSS_SERVER_NOT_TRUSTED,
     ESSS_NO_SOCKET,
@@ -712,7 +740,9 @@ enum sss_status sss_cli_make_request_with_checks(enum sss_cli_command cmd,
                                                  int timeout,
                                                  uint8_t **repbuf, size_t *replen,
                                                  int *errnop,
-                                                 const char *socket_name);
+                                                 const char *socket_name,
+                                                 bool check_server_creds,
+                                                 bool allow_custom_errors);
 
 enum nss_status sss_nss_make_request(enum sss_cli_command cmd,
                                      struct sss_cli_req_data *rd,
@@ -747,21 +777,6 @@ int sss_pac_make_request_with_lock(enum sss_cli_command cmd,
                                    struct sss_cli_req_data *rd,
                                    uint8_t **repbuf, size_t *replen,
                                    int *errnop);
-
-int sss_sudo_make_request(enum sss_cli_command cmd,
-                          struct sss_cli_req_data *rd,
-                          uint8_t **repbuf, size_t *replen,
-                          int *errnop);
-
-int sss_autofs_make_request(enum sss_cli_command cmd,
-                            struct sss_cli_req_data *rd,
-                            uint8_t **repbuf, size_t *replen,
-                            int *errnop);
-
-int sss_ssh_make_request(enum sss_cli_command cmd,
-                         struct sss_cli_req_data *rd,
-                         uint8_t **repbuf, size_t *replen,
-                         int *errnop);
 
 #if 0
 

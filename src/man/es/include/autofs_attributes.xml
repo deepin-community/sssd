@@ -3,7 +3,7 @@
         <term>ldap_autofs_map_object_class (cadena)</term>
         <listitem>
             <para>
-                El objeto clase de una entrada de mapa de automontaje en LDAP.
+                El objeto clase de un apunte de relación de automontaje en LDAP.
             </para>
             <para>
                 Predeterminado: nisMap (rfc2307, autofs_provider=ad), de otra manera
@@ -16,7 +16,7 @@ automountMap
         <term>ldap_autofs_map_name (cadena)</term>
         <listitem>
             <para>
-                El nombre de una entrada de mapa de automontaje en LDAP.
+                El nombre de una asignación de relación de automontaje en LDAP.
             </para>
             <para>
                 Predeterminado: nisMapName (rfc2307, autofs_provider=ad), de otra manera

@@ -14,40 +14,42 @@ usted necesita usar los valore asignados manualmente, TODOS los valores
 deben ser asignados manualmente.
     </para>
     <para>
-        Please note that changing the ID mapping related configuration options will
-cause user and group IDs to change. At the moment, SSSD does not support
-changing IDs, so the SSSD database must be removed. Because cached passwords
-are also stored in the database, removing the database should only be
-performed while the authentication servers are reachable, otherwise users
-might get locked out. In order to cache the password, an authentication must
-be performed. It is not sufficient to use <citerefentry>
+        Complacer nota que cambiando el ID mapeo opciones de configuración narrada
+causarán los ID de usuario y grupo para cambiar. En el momento, SSSD no
+apoya cambiando IDs, así que el SSSD la base de datos tiene que ser
+sacada. Porque cached las contraseñas son también almacenadas en la base de
+datos, sacando la base de datos sólo tendría que ser actuada mientras los
+servidores de autenticación son reachable, en otro caso los usuarios podrían
+obtener bloqueados externos. Para cache la contraseña, una autenticación
+tiene que ser actuada. No es suficiente de utilizar <citerefentry>
 <refentrytitle>sss_cache</refentrytitle> <manvolnum>8</manvolnum>
-</citerefentry> to remove the database, rather the process consists of:
+</citerefentry> para sacar la base de datos, bastante el proceso consta de:
             <itemizedlist>
                 <listitem>
                     <para>
-                        Making sure the remote servers are reachable
+                        Asegurarse de que los servidores remotos sean alcanzables
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Stopping the SSSD service
+                        Deteniendo el servicio SSSD
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Removing the database
+                        Eliminando la base de datos
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Starting the SSSD service
+                        Iniciando el servicio SSSD
                     </para>
                 </listitem>
             </itemizedlist>
-        Moreover, as the change of IDs might necessitate the adjustment of other
-system properties such as file and directory ownership, it's advisable to
-plan ahead and test the ID mapping configuration thoroughly.
+        Además, como el cambio de ID puede requerir el ajuste de otras propiedades
+del sistema, como la propiedad de archivos y directorios, es aconsejable
+planificar con anticipación y probar exhaustivamente la configuración de
+mapeo de ID.
     </para>
 
     <refsect2 id='idmap_algorithm'>
@@ -59,10 +61,10 @@ la identidad del dominio Active Directory y le identificador relativo (RID)
 del objeto usuario y grupo.
         </para>
         <para>
-            El algoritmo de asignación de ID de SSSD tiene un rango de UIDs disponibles
-y lo divide en secciones componente de igual tamaño – llamadas “rebanadas”
--. Cada rebanada representa el espacio disponible para un dominio Active
-Directory.
+            El algoritmo de asignación de ID de SSSD tiene un intervalo de los UID
+disponibles y lo divide en secciones componente de igual tamaño; nombrado
+como “rebanadas”. Cada rebanada representa el espacio disponible para un
+dominio Active Directory.
         </para>
         <para>
             Cuando se encuentra por primera vez una entrada de usuario o grupo para un
@@ -96,13 +98,15 @@ para garantizar que al menos uno sea siempre consistente. Vea
         </para>
         <para>
 <programlisting>
-ldap_id_mapping = True ldap_schema = ad 
+ldap_id_mapping = True
+ldap_schema = ad
 </programlisting>
         </para>
         <para>
-            The default configuration results in configuring 10,000 slices, each capable
-of holding up to 200,000 IDs, starting from 200,000 and going up to
-2,000,200,000. This should be sufficient for most deployments.
+            La configuración predeterminada implica configurar 10.000 segmentos, cada
+uno con capacidad para hasta 200.000 ID, comenzando con 200.000 y llegando
+hasta 2.000.200.000. Esto debería ser suficiente para la mayoría de las
+implementaciones.
         </para>
         <refsect3 id='idmap_advanced_config'>
             <title>Configuración Avanzada</title>
@@ -111,9 +115,9 @@ of holding up to 200,000 IDs, starting from 200,000 and going up to
                     <term>ldap_idmap_range_min (entero)</term>
                     <listitem>
                         <para>
-                            Specifies the lower (inclusive) bound of the range of POSIX IDs to use for
-mapping Active Directory user and group SIDs. It is the first POSIX ID which
-can be used for the mapping.
+                            Especifica el acotado inferior (inclusivo) del intervalo de los ID POXIS a
+usar para la asignación de usuario del Directorio Activo y grupo de los
+SID. Es el primer ID POSIX el cual puede ser utilizado para la asignación.
                         </para>
                         <para>
                             NOTA: Esta opción es diferente de <quote>min_id</quote> en esta
@@ -132,10 +136,11 @@ es una sutil diferencia, pero el buen consejo general sería que
                     <term>ldap_idmap_range_max (entero)</term>
                     <listitem>
                         <para>
-                            Specifies the upper (exclusive) bound of the range of POSIX IDs to use for
-mapping Active Directory user and group SIDs. It is the first POSIX ID which
-cannot be used for the mapping anymore, i.e. one larger than the last one
-which can be used for the mapping.
+                            Especifica la acotación más superior (exclusivo) del rango de ID POSIX que
+se usará para la asignación de SID de usuarios y grupos de Active
+Directory. Es el primer ID POSIX lo cual no puede ser utilizado para la
+asignación más, p.e., uno mayor que el anterior el cual puede ser utilizado
+para la asignación.
                         </para>
                         <para>
                             NOTA: Esta opción es diferente de <quote>max_id</quote> en esta
@@ -159,20 +164,23 @@ se divide de forma igual entre los valores mínimo y máximo, creará tantas
 rebanadas completas como sea posible.
                         </para>
                         <para>
-                            NOTE: The value of this option must be at least as large as the highest user
-RID planned for use on the Active Directory server. User lookups and login
-will fail for any user whose RID is greater than this value.
+                            NOTA: El valor de esta opción debe ser al menos igual al RID de usuario más
+alto previsto para el servidor de Active Directory. Las búsquedas y el
+inicio de sesión de cualquier usuario cuyo RID sea mayor que este valor
+fallarán.
                         </para>
                         <para>
-                            For example, if your most recently-added Active Directory user has
-objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
-<quote>ldap_idmap_range_size</quote> must be at least 1108 as range size is
-equal to maximal SID minus minimal SID plus one (e.g. 1108 = 1107 - 0 + 1).
+                            Por ejemplo, si el usuario de Active Directory agregado más recientemente
+tiene objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
+<quote>ldap_idmap_range_size</quote> debe ser al menos 1108, ya que el
+tamaño del rango es igual al RID máximo menos el RID mínimo más uno (p.e.,
+1108 = 1107 - 0 + 1).
                         </para>
                         <para>
-                            It is important to plan ahead for future expansion, as changing this value
-will result in changing all of the ID mappings on the system, leading to
-users with different local IDs than they previously had.
+                            Es importante planificar con anticipación la expansión futura, ya que
+cambiar este valor provocará cambios en todas las asignaciones de ID en el
+sistema, lo que dará lugar a usuarios con ID locales diferentes a los que
+tenían anteriormente.
                         </para>
                         <para>
                             Por defecto: 200000
@@ -212,8 +220,9 @@ comporte de un modo más similar al algoritmo <quote>idmap_autorid</quote> de
 winbind.
                         </para>
                         <para>
-                            When this option is configured, domains will be allocated starting with
-slice zero and increasing monotonically with each additional domain.
+                            Cuando esta opción está configurada, los dominios serán asignados empezando
+con la rebanada cero e incrementándose unívocamente con cada dominio
+adicional.
                         </para>
                         <para>
                             NOTA: Este algoritmo no es determinista (depende del orden en que usuario y
@@ -228,17 +237,18 @@ dominio está asignado consistentemente a la rebanada cero.
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>ldap_idmap_helper_table_size (integer)</term>
+                    <term>ldap_idmap_helper_table_size (entero)</term>
                     <listitem>
                         <para>
-                          Maximal number of secondary slices that is tried when performing mapping
-from UNIX id to SID.
+                          Número maximal de porciones secundarias que se prueban al realizar la
+asignación de ID de UNIX a SID.
                         </para>
                         <para>
-                          Note: Additional secondary slices might be generated when SID is being
-mapped to UNIX id and RID part of SID is out of range for secondary slices
-generated so far. If value of ldap_idmap_helper_table_size is equal to 0
-then no additional secondary slices are generated.
+                          Nota: Se podrían generar segmentos secundarios adicionales cuando el SID se
+asigna a un ID de UNIX y la parte RID del SID está fuera del rango de los
+segmentos secundarios generados hasta el momento. Si el valor de
+ldap_idmap_helper_table_size es igual a 0, no se generan segmentos
+secundarios adicionales.
                         </para>
                         <para>
                             Predeterminado: 10
@@ -250,39 +260,41 @@ then no additional secondary slices are generated.
     </refsect2>
 
     <refsect2 id='well_known_sids'>
-        <title>Well-Known SIDs</title>
+        <title>SID conocidos</title>
         <para>
-            SSSD supports to look up the names of Well-Known SIDs, i.e. SIDs with a
-special hardcoded meaning. Since the generic users and groups related to
-those Well-Known SIDs have no equivalent in a Linux/UNIX environment no
-POSIX IDs are available for those objects.
+            SSSD permite buscar los nombres de SID conocidos, es decir, SID con un
+significado especial codificado. Dado que los usuarios y grupos genéricos
+relacionados con estos SID conocidos no tienen equivalente en un entorno
+Linux/UNIX, no hay ID POSIX disponibles para esos objetos.
         </para>
         <para>
-            The SID name space is organized in authorities which can be seen as
-different domains. The authorities for the Well-Known SIDs are
+            El espacio de nombres SID está organizado en autoridades que pueden
+considerarse como dominios diferentes. Las autoridades para los SID bien
+conocidos son
             <itemizedlist>
-                <listitem><para>Null Authority</para></listitem>
-                <listitem><para>World Authority</para></listitem>
-                <listitem><para>Local Authority</para></listitem>
-                <listitem><para>Creator Authority</para></listitem>
-                <listitem><para>Mandatory Label Authority</para></listitem>
-                <listitem><para>Authentication Authority</para></listitem>
-                <listitem><para>NT Authority</para></listitem>
-                <listitem><para>Built-in</para></listitem>
+                <listitem><para>Autoridad Nula</para></listitem>
+                <listitem><para>Autoridad Mundial</para></listitem>
+                <listitem><para>Autoridad Local</para></listitem>
+                <listitem><para>Autoridad de Creador</para></listitem>
+                <listitem><para>Autoridad de Etiqueta Mandatoria</para></listitem>
+                <listitem><para>Autoridad de Autenticación</para></listitem>
+                <listitem><para>Autoridad NT</para></listitem>
+                <listitem><para>Empotrado</para></listitem>
             </itemizedlist>
-            The capitalized version of these names are used as domain names when
-returning the fully qualified name of a Well-Known SID.
+            Las versiones capitalinas de estos nombres se utilizan como nombres de
+dominio cuando se devuelve el nombre completo de un SID conocido.
         </para>
         <para>
-            Since some utilities allow to modify SID based access control information
-with the help of a name instead of using the SID directly SSSD supports to
-look up the SID by the name as well. To avoid collisions only the fully
-qualified names can be used to look up Well-Known SIDs. As a result the
-domain names <quote>NULL AUTHORITY</quote>, <quote>WORLD AUTHORITY</quote>,
-<quote>LOCAL AUTHORITY</quote>, <quote>CREATOR AUTHORITY</quote>,
-<quote>MANDATORY LABEL AUTHORITY</quote>, <quote>AUTHENTICATION
-AUTHORITY</quote>, <quote>NT AUTHORITY</quote> and <quote>BUILTIN</quote>
-should not be used as domain names in <filename>sssd.conf</filename>.
+            Dado que algunas utilidades permiten modificar la información de control de
+acceso basada en SID con un nombre, en lugar de usar el SID directamente,
+SSSD también permite buscar el SID por su nombre. Para evitar colisiones,
+solo se pueden usar nombres completos para buscar SID conocidos. Por lo
+tanto, los nombres de dominio <quote>AUTORIDAD NULA</quote>,
+<quote>AUTORIDAD MUNDIAL</quote>, <quote>AUTORIDAD LOCAL</quote>,
+<quote>AUTORIDAD CREADORA</quote>, <quote>AUTORIDAD ETIQUETADA
+MANDATARIA</quote>, <quote>AUTORIDAD AUTENTICADORA</quote>, <quote>AUTORIDAD
+NT</quote> y <quote>EMPOTRADO</quote> no serían utilizados como nombres de
+dominio en <filename>sssd.conf</filename>.
         </para>
     </refsect2>
 

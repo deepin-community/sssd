@@ -25,12 +25,12 @@
 
 #include "db/sysdb_selinux.h"
 #include "util/child_common.h"
-#include "util/sss_selinux.h"
 #include "util/sss_chain_id.h"
 #include "providers/ldap/sdap_async.h"
 #include "providers/ipa/ipa_common.h"
 #include "providers/ipa/ipa_config.h"
 #include "providers/ipa/ipa_selinux.h"
+#include "providers/ipa/ipa_selinux_helpers.h"
 #include "providers/ipa/ipa_hosts.h"
 #include "providers/ipa/ipa_hbac_rules.h"
 #include "providers/ipa/ipa_hbac_private.h"
@@ -564,12 +564,10 @@ struct selinux_child_state {
 };
 
 static errno_t selinux_child_create_buffer(struct selinux_child_state *state);
-static errno_t selinux_fork_child(struct selinux_child_state *state);
-static void selinux_child_step(struct tevent_req *subreq);
-static void selinux_child_done(struct tevent_req *subreq);
-static errno_t selinux_child_parse_response(uint8_t *buf, ssize_t len,
-                                            uint32_t *_child_result);
-
+static void selinux_child_write_finished(struct tevent_req *subreq);
+static void selinux_child_done(int child_status,
+                               struct tevent_signal *sige,
+                               void *pvt);
 static struct tevent_req *selinux_child_send(TALLOC_CTX *mem_ctx,
                                              struct tevent_context *ev,
                                              struct selinux_child_input *sci)
@@ -587,18 +585,7 @@ static struct tevent_req *selinux_child_send(TALLOC_CTX *mem_ctx,
 
     state->sci = sci;
     state->ev = ev;
-    state->io = talloc(state, struct child_io_fds);
     state->buf = talloc(state, struct io_buffer);
-    if (state->io == NULL || state->buf == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "talloc failed.\n");
-        ret = ENOMEM;
-        goto immediately;
-    }
-
-    state->io->write_to_child_fd = -1;
-    state->io->read_from_child_fd = -1;
-    talloc_set_destructor((void *) state->io, child_io_destructor);
-
     ret = selinux_child_create_buffer(state);
     if (ret != EOK) {
         DEBUG(SSSDBG_OP_FAILURE, "Failed to create the send buffer\n");
@@ -606,9 +593,14 @@ static struct tevent_req *selinux_child_send(TALLOC_CTX *mem_ctx,
         goto immediately;
     }
 
-    ret = selinux_fork_child(state);
+    ret = sss_child_start(state, ev,
+                          SELINUX_CHILD, NULL, false,
+                          SELINUX_CHILD_LOG_FILE, STDOUT_FILENO,
+                          selinux_child_done, req,
+                          0, NULL, NULL, false,
+                          &(state->io));
     if (ret != EOK) {
-        DEBUG(SSSDBG_OP_FAILURE, "Failed to fork the child\n");
+        DEBUG(SSSDBG_OP_FAILURE, "sss_child_start() failed\n");
         goto immediately;
     }
 
@@ -618,7 +610,7 @@ static struct tevent_req *selinux_child_send(TALLOC_CTX *mem_ctx,
         ret = ENOMEM;
         goto immediately;
     }
-    tevent_req_set_callback(subreq, selinux_child_step, req);
+    tevent_req_set_callback(subreq, selinux_child_write_finished, req);
 
     ret = EOK;
 immediately:
@@ -671,83 +663,11 @@ static errno_t selinux_child_create_buffer(struct selinux_child_state *state)
     return EOK;
 }
 
-static errno_t selinux_fork_child(struct selinux_child_state *state)
-{
-    int pipefd_to_child[2];
-    int pipefd_from_child[2];
-    pid_t pid;
-    errno_t ret;
-    const char **extra_args;
-    int c = 0;
-
-    extra_args = talloc_array(state, const char *, 2);
-
-    extra_args[c] = talloc_asprintf(extra_args, "--chain-id=%lu",
-                                    sss_chain_id_get());
-    if (extra_args[c] == NULL) {
-        DEBUG(SSSDBG_OP_FAILURE, "talloc_asprintf failed.\n");
-        ret = ENOMEM;
-        return ret;
-    }
-    c++;
-
-    extra_args[c] = NULL;
-
-    ret = pipe(pipefd_from_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (from) failed [%d][%s].\n", errno, sss_strerror(errno));
-        return ret;
-    }
-
-    ret = pipe(pipefd_to_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (to) failed [%d][%s].\n", errno, sss_strerror(errno));
-        return ret;
-    }
-
-    pid = fork();
-
-    if (pid == 0) { /* child */
-        exec_child_ex(state, pipefd_to_child, pipefd_from_child,
-                      SELINUX_CHILD, SELINUX_CHILD_LOG_FILE, extra_args,
-                      false, STDIN_FILENO, STDOUT_FILENO);
-        DEBUG(SSSDBG_CRIT_FAILURE, "Could not exec selinux_child: [%d][%s].\n",
-              ret, sss_strerror(ret));
-        return ret;
-    } else if (pid > 0) { /* parent */
-        state->io->read_from_child_fd = pipefd_from_child[0];
-        close(pipefd_from_child[1]);
-        state->io->write_to_child_fd = pipefd_to_child[1];
-        close(pipefd_to_child[0]);
-        sss_fd_nonblocking(state->io->read_from_child_fd);
-        sss_fd_nonblocking(state->io->write_to_child_fd);
-
-        ret = child_handler_setup(state->ev, pid, NULL, NULL, NULL);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_CRIT_FAILURE,
-                  "Could not set up child signal handler\n");
-            return ret;
-        }
-    } else { /* error */
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "fork failed [%d][%s].\n", errno, sss_strerror(errno));
-        return ret;
-    }
-
-    return EOK;
-}
-
-static void selinux_child_step(struct tevent_req *subreq)
+static void selinux_child_write_finished(struct tevent_req *subreq)
 {
     struct tevent_req *req;
     errno_t ret;
     struct selinux_child_state *state;
-
 
     req = tevent_req_callback_data(subreq, struct tevent_req);
     state = tevent_req_data(req, struct selinux_child_state);
@@ -762,67 +682,19 @@ static void selinux_child_step(struct tevent_req *subreq)
     close(state->io->write_to_child_fd);
     state->io->write_to_child_fd = -1;
 
-    subreq = read_pipe_send(state, state->ev, state->io->read_from_child_fd);
-    if (subreq == NULL) {
-        tevent_req_error(req, ENOMEM);
-        return;
-    }
-    tevent_req_set_callback(subreq, selinux_child_done, req);
+    /* selinux_child_done() to be called by sig handler */
 }
 
-static void selinux_child_done(struct tevent_req *subreq)
+static void selinux_child_done(int child_status,
+                               struct tevent_signal *,
+                               void *pvt)
 {
-    struct tevent_req *req;
-    struct selinux_child_state *state;
-    uint32_t child_result;
-    errno_t ret;
-    ssize_t len;
-    uint8_t *buf;
-
-    req = tevent_req_callback_data(subreq, struct tevent_req);
-    state = tevent_req_data(req, struct selinux_child_state);
-
-    ret = read_pipe_recv(subreq, state, &buf, &len);
-    talloc_zfree(subreq);
-    if (ret != EOK) {
-        tevent_req_error(req, ret);
+    struct tevent_req *req = (struct tevent_req *)pvt;
+    if (WIFEXITED(child_status) && (WEXITSTATUS(child_status) == 0)) {
+        tevent_req_done(req);
         return;
     }
-
-    close(state->io->read_from_child_fd);
-    state->io->read_from_child_fd = -1;
-
-    ret = selinux_child_parse_response(buf, len, &child_result);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "selinux_child_parse_response failed: [%d][%s]\n",
-              ret, strerror(ret));
-        tevent_req_error(req, ret);
-        return;
-    } else if (child_result != 0){
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "Error in selinux_child: [%d][%s]\n",
-              child_result, strerror(child_result));
-        tevent_req_error(req, ERR_SELINUX_CONTEXT);
-        return;
-    }
-
-    tevent_req_done(req);
-    return;
-}
-
-static errno_t selinux_child_parse_response(uint8_t *buf,
-                                            ssize_t len,
-                                            uint32_t *_child_result)
-{
-    size_t p = 0;
-    uint32_t child_result;
-
-    /* semanage retval */
-    SAFEALIGN_COPY_UINT32_CHECK(&child_result, buf + p, len, &p);
-
-    *_child_result = child_result;
-    return EOK;
+    tevent_req_error(req, EFAULT);
 }
 
 static errno_t selinux_child_recv(struct tevent_req *req)
@@ -1124,13 +996,15 @@ static void ipa_get_config_step(struct tevent_req *req)
     struct ipa_get_selinux_state *state = tevent_req_data(req,
                                                   struct ipa_get_selinux_state);
     struct ipa_id_ctx *id_ctx = state->selinux_ctx->id_ctx;
+    static const char *attrs[] = {IPA_CONFIG_SELINUX_DEFAULT_USER_CTX,
+                                  IPA_CONFIG_SELINUX_MAP_ORDER, NULL};
 
     domain = dp_opt_get_string(state->selinux_ctx->id_ctx->ipa_options->basic,
                                IPA_KRB5_REALM);
     subreq = ipa_get_config_send(state, state->be_ctx->ev,
                                  sdap_id_op_handle(state->op),
                                  id_ctx->sdap_id_ctx->opts,
-                                 domain, NULL, NULL, NULL);
+                                 domain, attrs, NULL, NULL);
     if (subreq == NULL) {
         tevent_req_error(req, ENOMEM);
     }
@@ -1148,8 +1022,8 @@ static void ipa_get_selinux_config_done(struct tevent_req *subreq)
 
     ret = ipa_get_config_recv(subreq, state, &state->defaults);
     talloc_free(subreq);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_IMPORTANT_INFO, "Could not get IPA config\n");
+    if (ret != EOK) { /* Expected to be configured so ENOENT is a real error */
+        DEBUG(SSSDBG_OP_FAILURE, "Could not get IPA config\n");
         goto done;
     }
 

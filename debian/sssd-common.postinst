@@ -53,6 +53,8 @@ case "$1" in
         chmod 750 /var/log/sssd
         chmod 700 /etc/sssd
         chmod 711 /etc/sssd
+        chmod 750 $LIBDIR/sssd_pam
+        setcap cap_dac_read_search=p $LIBDIR/sssd_pam
         if [ -f /etc/sssd/sssd.conf ]; then
             chown root:root /etc/sssd/sssd.conf
             chmod 0600 /etc/sssd/sssd.conf

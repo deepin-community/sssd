@@ -141,15 +141,16 @@ Directory.
                     <term>ad_enabled_domains (строка)</term>
                     <listitem>
                         <para>
-                            A comma-separated list of enabled Active Directory domains. If provided,
-SSSD will ignore any domains not listed in this option. If left unset, all
-discovered domains from the AD forest will be available.
+                            Разделённый запятыми список включённых доменов Active Directory. Если он
+предоставлен, SSSD будет игнорировать все домены, отсутствующие в этом
+списке. Если параметр не задан, будут доступны все обнаруженные домены из
+леса AD.
                         </para>
                         <para>
-                            During the discovery of the domains SSSD will filter out some domains where
-flags or attributes indicate that they do not belong to the local forest or
-are not trusted. If ad_enabled_domains is set, SSSD will try to enable all
-listed domains.
+                            Во время обнаружения доменов SSSD отфильтрует некоторые домены, флаги или
+атрибуты которых указывают на то, что они не принадлежат локальному лесу или
+не являются доверенными. Если установлено значение ad_enabled_domains, SSSD
+попытается включить все перечисленные домены.
                         </para>
                         <para>
                             Для корректной работы этот параметр должен быть указан полностью в нижнем
@@ -231,11 +232,13 @@ SRV DNS. Конфигурация SRV DNS, включая домен обнар�
                     <term>ad_access_filter (строка)</term>
                     <listitem>
                         <para>
-                            Этот параметр позволяет указать фильтр управления доступом LDAP, условиям
-которого должен соответствовать пользователь для получения доступа. Обратите
-внимание, что этот параметр будет работать только в том случае, если
-параметр <quote>access_provider</quote> явно установлен в значение
-<quote>ad</quote>.
+                            Определяет фильтр контроля доступа LDAP, которому должен соответствовать
+пользователь для получения доступа. Чтобы этот параметр вступил в силу, для
+параметра <quote>access_provider</quote> должно быть явно установлено
+значение <quote>ad</quote>. Если вы хотите использовать
+<quote>ad_access_filter</quote> как единственную схему контроля доступа,
+необходимо отключить контроль доступа на основе GPO (дополнительные сведения
+доступны в описании параметра <quote>ad_gpo_access_control</quote>).
                         </para>
                         <para>
                             Этот параметр также поддерживает указание разных фильтров для отдельных
@@ -987,14 +990,37 @@ PAM.
                     <listitem>
                         <para>
                             Этот параметр следует использовать только для тестирования задания по
-обновлению пароля учётной записи компьютера. Параметр ожидает 2 целых числа,
-разделённых двоеточием («:»). Первое целое число определяет интервал (в
-секундах) между последовательными запусками задания. Второе целое число
-указывает начальный тайм-аут (в секундах) перед первым запуском задания
-после перезапуска.
+обновлению пароля учётной записи компьютера. Параметр ожидает 3 целых числа
+и строку, разделённых двоеточием («:»). Первое целое число определяет
+интервал (в секундах) между последовательными запусками задания. Второе
+целое число указывает начальный тайм-аут (в секундах) перед первым запуском
+задания после перезапуска. Необязательное третье число указывает
+максимальное случайное смещение к первым двум значениям, чтобы избежать
+одновременного обновления большого количества узлов (проблема «громового
+стада»). Если это значение отсутствует или пустое, будет использоваться
+значение «0».
                         </para>
                         <para>
-                            По умолчанию: 86400:750 (24 часа и 15 минут)
+                            Необязательное четвёртое строковое значение указывает вспомогательную
+утилиту, которая должна использоваться для обновления. В настоящее время
+поддерживаются <command>adcli</command> и <command>realm</command>. Если это
+значение отсутствует или пустое, будет использоваться
+<command>realm</command>. Поскольку вспомогательная утилита запускается от
+имени пользователя, под которым работает SSSD, существует вероятность, что
+обновление завершится неудачей, если у этого пользователя нет прав на
+изменение файла keytab, в котором хранятся учётные данные учётной записи
+машины. Обычно это относится <command>adcli</command>.
+                        </para>
+                        <para>
+                            <command>realm</command> не обновляет keytab напрямую, а вызывает процесс
+<command>realmd</command>, который для этой задачи запускается от имени
+пользователя root . <command>realmd</command> может разрешить доступ
+непривилегированным пользователям с помощью PolicyKit, по умолчанию SSSD
+предоставляет подходящие правила для пользователя, от имени которого
+работает SSSD.
+                        </para>
+                        <para>
+                            По умолчанию: 86400:750:300:realm (24 часа, 12 минут 30 секунд и 5 минут)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1025,48 +1051,6 @@ LDAPS. Так как AD не разрешает использование не�
 одного подключения и всё ещё требуется использовать SASL/GSSAPI или
 SASL/GSS-SPNEGO для проверки подлинности, свойство безопасности SASL maxssf
 для таких подключений будет установлено в значение «0» (ноль).
-                        </para>
-                        <para>
-                            По умолчанию: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>ad_allow_remote_domain_local_groups (логическое значение)</term>
-                    <listitem>
-                        <para>
-                            Если этот параметр установлен в значение <quote>true</quote>, SSSD не будет
-отфильтровывать группы, локальные в домене, в удалённых доменах в лесу
-AD. По умолчанию они отфильтровываются (например, при следовании по иерархии
-вложенных групп в удалённых доменах), так не являются действительными в
-локальном домене. Этот параметр был добавлен для обеспечения совместимости с
-другими решениями, которые делают пользователей и группы AD доступными на
-клиенте Linux.
-                        </para>
-                        <para>
-                            Обратите внимание, что установка этого параметра в значение
-<quote>true</quote> идёт вразрез со смыслом локальной группы домена в Active
-Directory и <emphasis>ДОЛЖНА ВЫПОЛНЯТЬСЯ ТОЛЬКО ДЛЯ ОБЛЕГЧЕНИЯ ПЕРЕХОДА С
-ДРУГИХ РЕШЕНИЙ</emphasis>. Хотя эта группа существует и пользователь может
-быть её участником, смысл состоит в том, что группа должна использоваться
-только в том домене, где она определена, и ни в каких других. Так как
-существует только один тип групп POSIX, единственный способ добиться этого
-на стороне Linux — игнорировать эти группы. Active Directory делает то же
-самое: в PAC билета Kerberos для локальной службы и в запросах tokenGroups
-тоже отсутствуют удалённые группы, локальные в домене.
-                        </para>
-                        <para>
-                            Учитывая вышесказанное, при установке этого параметра в значение
-<quote>true</quote> необходимо отключить запрос tokenGroups путём установки
-параметра <quote>ldap_use_tokengroups</quote> в значение
-<quote>false</quote> для получения согласованных данных об участии
-пользователей в группах. Кроме того, также следует отключить поиск в
-глобальном каталоге путём установки параметра <quote>ad_enable_gc</quote> в
-значение <quote>false</quote>. И, наконец, может потребоваться изменить
-значение параметра <quote>ldap_group_nesting_level</quote>, если удалённые
-группы, локальные в домене, могут быть найдены только на более глубоком
-уровне вложенности.
                         </para>
                         <para>
                             По умолчанию: false
@@ -1115,18 +1099,46 @@ Kerberos в /etc/krb5.conf
                     <term>dyndns_iface (строка)</term>
                     <listitem>
                         <para>
-                            Необязательный параметр. Применимо только тогда, когда параметр
-dyndns_update установлен в значение «true». Выберите интерфейс или список
-интерфейсов, IP-адреса которых должны использоваться для динамических
-обновлений DNS. Специальное значение <quote>*</quote> подразумевает, что
-следует использовать IP-адреса всех интерфейсов.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
+                        </para>
+                        <para>
+                            ПРИМЕЧАНИЕ: прежнее имя параметра, <emphasis>ipa_dyndns_iface</emphasis>,
+всё ещё можно использовать, но пользователям рекомендуется перейти на
+использование нового имени, <emphasis>dyndns_iface</emphasis>, в файле
+конфигурации.
                         </para>
                         <para>
                             По умолчанию: использовать IP-адреса интерфейса, который используется для
 подключения LDAP AD
                         </para>
                         <para>
-                            Пример: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1158,8 +1170,9 @@ dyndns_update установлен в значение «true». Выберит�
 значение «true».
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Обратите внимание, что параметр
+<emphasis>dyndns_update_per_family</emphasis> не применяется для обновлений
+записей PTR.  Эти обновления всегда отправляются отдельно.
                         </para>
                         <para>
                             По умолчанию: true
@@ -1218,12 +1231,25 @@ apply for PTR record updates.  Those updates are always sent separately.
                         </para>
                         <para>
                             Установка этого параметра имеет смысл для сред, в которых сервер DNS
-отличается от сервера данных идентификации.
+отличается от сервера данных идентификации или если мы используем
+зашифрованный DNS.
+                        </para>
+                        <para>
+                           Параметр может быть простой строкой, содержащей DNS-имя или IP-адрес. Это
+также может быть URI. URI может выглядеть как
+<emphasis>dns://servername/</emphasis> или
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            Второй пример включает протокол DNS-over-TLS для обновлений DNS. Утилита
+nsupdate должна поддерживать DoT — проверьте <emphasis>man
+nsupdate</emphasis> перед её включением в SSSD.
                         </para>
                         <para>
                             Обратите внимание, что этот параметр используется только для резервной
 попытки, которая выполняется тогда, когда предыдущая попытка с
-использованием автоматически определённых параметров завершилась неудачей.
+использованием автоматически определённых параметров завершилась неудачей
+или когда включен DNS-over-TLS.
                         </para>
                         <para>
                             По умолчанию: none (разрешить nsupdate выбрать сервер)
@@ -1241,6 +1267,52 @@ apply for PTR record updates.  Those updates are always sent separately.
                         </para>
                         <para>
                             По умолчанию: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cacert (строка)</term>
+                    <listitem>
+                        <para>
+                            Этот параметр указывает файл сертификатов удостоверяющих центров (в формате
+PEM) для проверки TLS-сертификата удаленного сервера при использовании DoT.
+                        </para>
+                        <para>
+                            По умолчанию: none (использовать глобальное хранилище сертификатов)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (строка)</term>
+                    <listitem>
+                        <para>
+                            Эта опция задаёт файл сертификата(ов) для аутентификации при использовании
+транспорта DoT с удалённым сервером. Ожидается, что файл цепочки
+сертификатов будет в формате PEM.
+                        </para>
+                        <para>
+                            Для достижения взаимной аутентификации TLS необходимо установить оба
+параметра <emphasis>dyndns_dot_cert</emphasis> и
+<emphasis>dyndns_dot_key</emphasis>.
+                        </para>
+                        <para>
+                            По умолчанию: none (не использовать TLS-аутентификацию)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (строка)</term>
+                    <listitem>
+                        <para>
+                            Этот параметр устанавливает файл ключа для аутентифицированного шифрования
+при использовании транспорта DoT с удалённым сервером. Ожидается, что файл
+закрытого ключа будет в формате PEM.
+                        </para>
+                        <para>
+                            По умолчанию: none (не использовать TLS-аутентификацию)
                         </para>
                     </listitem>
                 </varlistentry>

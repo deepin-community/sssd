@@ -85,7 +85,7 @@ autofs_register_service_iface(struct autofs_ctx *autofs_ctx,
         )
     );
 
-    ret = sbus_connection_add_path(rctx->mon_conn, SSS_BUS_PATH, &iface_svc);
+    ret = sbus_connection_add_path(rctx->sbus_conn, SSS_BUS_PATH, &iface_svc);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register service interface"
               "[%d]: %s\n", ret, sss_strerror(ret));
@@ -107,7 +107,7 @@ autofs_process_init(TALLOC_CTX *mem_ctx,
     autofs_cmds = get_autofs_cmds();
     ret = sss_process_init(mem_ctx, ev, cdb,
                            autofs_cmds,
-                           SSS_AUTOFS_SOCKET_NAME, -1, NULL, -1,
+                           SSS_AUTOFS_SOCKET_NAME, SCKT_RSP_UMASK,
                            CONFDB_AUTOFS_CONF_ENTRY,
                            SSS_BUS_AUTOFS, SSS_AUTOFS_SBUS_SERVICE_NAME,
                            autofs_connection_setup,
@@ -151,13 +151,13 @@ autofs_process_init(TALLOC_CTX *mem_ctx,
     }
 
     /* The responder is initialized. Now tell it to the monitor. */
-    ret = sss_monitor_service_init(rctx, rctx->ev, SSS_BUS_AUTOFS,
-                                   SSS_AUTOFS_SBUS_SERVICE_NAME,
-                                   SSS_AUTOFS_SBUS_SERVICE_VERSION,
-                                   MT_SVC_SERVICE,
-                                   &rctx->last_request_time, &rctx->mon_conn);
+    ret = sss_monitor_register_service(rctx, rctx->sbus_conn,
+                                       SSS_AUTOFS_SBUS_SERVICE_NAME,
+                                       SSS_AUTOFS_SBUS_SERVICE_VERSION,
+                                       MT_SVC_SERVICE);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "fatal error setting up message bus\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register to the monitor "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto fail;
     }
 
@@ -178,17 +178,14 @@ int main(int argc, const char *argv[])
 {
     int opt;
     poptContext pc;
-    char *opt_logger = NULL;
+    const char *opt_logger = NULL;
     struct main_context *main_ctx;
     int ret;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
         POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_DEBUG_OPTS
+        SSSD_LOGGER_OPTS(&opt_logger)
         SSSD_RESPONDER_OPTS
         POPT_TABLEEND
     };
@@ -215,7 +212,7 @@ int main(int argc, const char *argv[])
     debug_log_file = "sssd_autofs";
     DEBUG_INIT(debug_level, opt_logger);
 
-    ret = server_setup("autofs", true, 0, uid, gid,
+    ret = server_setup("autofs", true, 0, CONFDB_FILE,
                        CONFDB_AUTOFS_CONF_ENTRY, &main_ctx, true);
     if (ret != EOK) {
         return 2;

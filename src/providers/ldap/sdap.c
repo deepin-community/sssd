@@ -648,11 +648,13 @@ static bool objectclass_matched(struct sdap_attr_map *map,
         len = strlen(objcl) + 1;
     }
 
-    if (strncasecmp(map[SDAP_OC_GROUP].name, objcl, len) == 0) {
+    if (strncasecmp(map[0].name, objcl, len) == 0) {
         return true;
     }
-
-    if (map[SDAP_OC_GROUP_ALT].name != NULL
+    /* first element is always object class, and for groups also the
+     * second element (SDAP_OC_GROUP_ALT) in the array */
+    if (strcmp(map[SDAP_OC_GROUP_ALT].sys_name, SYSDB_GROUP_CLASS) == 0
+        && map[SDAP_OC_GROUP_ALT].name != NULL
         && strncasecmp(map[SDAP_OC_GROUP_ALT].name, objcl, len) == 0) {
         return true;
     }
@@ -1224,6 +1226,11 @@ static errno_t sdap_set_search_base(struct sdap_options *opts,
     case SDAP_IPNETWORK_SEARCH_BASE:
         bases = &sdom->ipnetwork_search_bases;
         break;
+#ifdef BUILD_SUBID
+    case SDAP_SUBID_RANGES_SEARCH_BASE:
+        bases = &sdom->subid_ranges_search_bases;
+        break;
+#endif
     default:
         return EINVAL;
     }
@@ -1346,6 +1353,16 @@ errno_t sdap_set_config_options_with_rootdse(struct sysdb_attrs *rootdse,
                                    sdom->naming_context);
         if (ret != EOK) goto done;
     }
+
+#ifdef BUILD_SUBID
+    /* subid ranges */
+    if (!sdom->subid_ranges_search_bases) {
+        ret = sdap_set_search_base(opts, sdom,
+                                   SDAP_SUBID_RANGES_SEARCH_BASE,
+                                   sdom->naming_context);
+        if (ret != EOK) goto done;
+    }
+#endif
 
     ret = EOK;
 

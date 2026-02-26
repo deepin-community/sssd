@@ -50,9 +50,13 @@ semikolon (<quote>;</quote>).  Kommentarer inom raden stödjs inte.
 etikett för sektionen.
         </para>
 
-        <para>
-            <filename>sssd.conf</filename> måste vara en normal fil, ägd av root och
-endast root får läsa från eller skriva till filen.
+        <para condition="without_non_root_user_support">
+            <filename>sssd.conf</filename> måste vara en normal fil, som ägs av, är
+läsbar och skrivbar endast av ”root”.
+        </para>
+        <para condition="with_non_root_user_support">
+            <filename>sssd.conf</filename> måste vara en normal fil som är åtkomlig
+endast av användaren som används för att köra tjänsten SSSD eller root.
         </para>
     </refsect1>
 
@@ -61,9 +65,7 @@ endast root får läsa från eller skriva till filen.
 
         <para>
             Konfigurationsfilen <filename>sssd.conf</filename> kommer inkludera
-konfigurationssnuttar från include-katalogen
-<filename>conf.d</filename>. Denna funktion är tillgänglig om SSSD
-kompilerades med version 1.3.0 eller senare av libini.
+konfigurationssnuttar från include-katalogen <filename>conf.d</filename>.
         </para>
 
         <para>
@@ -86,7 +88,7 @@ prioriteten (högre tals betyder högre prioritet).
 
         <para>
             Snuttfilerna behöver samma ägare och rättigheter som
-<filename>sssd.conf</filename>. Vilket som standard är root:root och 0600.
+<filename>sssd.conf</filename>.
         </para>
     </refsect1>
 
@@ -199,15 +201,6 @@ Sektionen <quote>[sssd]</quote> används för att konfigurera övervakaren
 såväl som andra viktiga alternativ som identitetsdomänerna.  <variablelist>
                     <title>Sektionsparametrar</title>
                     <varlistentry>
-                        <term>config_file_version (heltal)</term>
-                        <listitem>
-                            <para>
-                                Indikerar vilken syntaxen är i konfigurationsfilen. SSSD 0.6.0 och senare
-använder version 2.
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
                         <term>services</term>
                         <listitem>
                             <para>
@@ -217,27 +210,15 @@ där systemd stödjs, eftersom de antingen kommer vara uttags- eller
 D-Bus-aktiverade vid behov. </phrase>
                             </para>
                             <para>
-                                Tjänster som stödjs: nss, pam <phrase condition="with_sudo">, sudo</phrase>
-<phrase condition="with_autofs">, autofs</phrase> <phrase
+                                Tjänster som stödjs: nss, pam, ifp <phrase condition="with_sudo">,
+sudo</phrase> <phrase condition="with_autofs">, autofs</phrase> <phrase
 condition="with_ssh">, ssh</phrase> <phrase condition="with_pac_responder">,
-pac</phrase> <phrase condition="with_ifp">, ifp</phrase>
+pac</phrase>
                             </para>
                             <para>
                                 <phrase condition="have_systemd"> Som standard är alla tjänster avaktiverade
 och administratören måste aktivera de tillåtna genom att köra: ”systemctl
 enable sssd-@service@.socket".  </phrase>
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
-                        <term>reconnection_retries (heltal)</term>
-                        <listitem>
-                            <para>
-                                Antal gånger som tjänster skall försöka återansluta i händelse av en
-dataleverantörskrasch eller -omstart innan de ger upp
-                            </para>
-                            <para>
-                                Standard: 3
                             </para>
                         </listitem>
                     </varlistentry>
@@ -303,8 +284,8 @@ direkt konfigurerade eller hittade via IPA-förtroenden.
                                 </variablelist>
                             </para>
                             <para>
-                                Varje domän kan ha en egen formatsträng konfigurerad. Se DOMÄNSEKTIONER för
-mer information om detta alternativ.
+                                Varje domän kan ha en egen formatsträng konfigurerad.  Se DOMÄNSEKTIONER för
+mer information om denna flagga.
                             </para>
                         </listitem>
                     </varlistentry>
@@ -361,31 +342,13 @@ byggtillfället. (__LIBKRB5_DEFAULTS__ om inte konfigurerat)
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry condition="with_non_root_user_support">
-                        <term>user (sträng)</term>
-                        <listitem>
-                            <para>
-                                The user to drop the privileges to where appropriate to avoid running as the
-root user.  Currently the only supported value is '&sssd_user_name;'.
-                            </para>
-
-                            <para condition="have_systemd">
-                                This option does not work when running socket-activated services, as the
-user set up to run the processes is set up during compilation time.  The way
-to override the systemd unit files is by creating the appropriate files in
-/etc/systemd/system/.  Keep in mind that any change in the socket user,
-group or permissions may result in a non-usable SSSD. The same may occur in
-case of changes of the user running the NSS responder.
-                            </para>
-
-                            <para>
-                                Standard: inte angivet, processer kommer köra som root
-                            </para>
-                        </listitem>
-                    </varlistentry>
                     <varlistentry>
                         <term>default_domain_suffix (sträng)</term>
                         <listitem>
+                            <para>
+                                Observera att denna flagga är föråldrad och att domain_resolution_order bör
+användas.
+                            </para>
                             <para>
                                 Strängen kommer användas som ett standardnamn för domänen för alla namn utan
 en domännamnsdel.  Det huvudsakliga användningsfallet är miljöer där
@@ -394,15 +357,11 @@ placerade i en betrodd domän.  Alternativet låter dessa användare att logga
 in med bara sitt användarnamn utan att dessutom ange ett domännamn.
                             </para>
                             <para>
-                                Please note that if this option is set all users from the primary domain
-have to use their fully qualified name, e.g. user@domain.name, to log
-in. Setting this option changes default of use_fully_qualified_names to
-True. It is not allowed to use this option together with
-use_fully_qualified_names set to False.  <phrase
-condition="with_files_provider"> One exception from this rule are domains
-with <quote>id_provider=files</quote> that always try to match the behaviour
-of nss_files and therefore their output is not qualified even when the
-default_domain_suffix option is used.  </phrase>
+                                Observera att om denna flagga är satt måste alla användare från den primära
+domänen använda sina fullständiga namn, t.ex. användare@domän.namn, för att
+logga in. Att sätta denna flagga ändrar standardvärdet till
+use_fully_qualified_names till Sant. Det är inte tillåtet att använda denna
+flagga tillsammans med use_fully_qualified_names satt till Falskt.
                             </para>
                             <para>
                                 Standard: inte satt
@@ -515,9 +474,11 @@ PEM-format, se <citerefentry> <refentrytitle>crl</refentrytitle>
                                     <term>soft_crl</term>
                                     <listitem>
                                         <para>
-                                        Om en certifikatåterkalleleselista (CRL) gått ut, ignorera CRL-kontroller
-för de relaterade certifikaten. Denna flagga skall användas för att tillåta
-autentisering när systemet är frånkopplat och CRL:en inte kan förnyas.</para>
+                                        Om en certifikatåterkalleleselista (CRL) gått ut, ignorera utgångsdatum för
+CRL:en och kontrollera de relaterade certifikaten med den utgångna
+CRL:en. Denna flagga skall användas för att tillåta autentisering när
+systemet är frånkopplat och CRL:en inte kan förnyas.
+                                        </para>
                                     </listitem>
                                 </varlistentry>
                                 </variablelist>
@@ -530,7 +491,7 @@ autentisering när systemet är frånkopplat och CRL:en inte kan förnyas.</para
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry>
+                    <varlistentry condition="have_libnl">
                         <term>disable_netlink (boolean)</term>
                         <listitem>
                             <para>
@@ -546,18 +507,6 @@ och kan avaktiveras genom att sätta detta alternativ till ”true”
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry condition="with_files_provider">
-                        <term>enable_files_domain (boolean)</term>
-                        <listitem>
-                            <para>
-                                När detta alternativ är aktiverat skjuter SSSD in en implicit domän med
-<quote>id_provider=files</quote> före några explicit konfigurerade domäner.
-                            </para>
-                            <para>
-                                Standard: false
-                            </para>
-                        </listitem>
-                    </varlistentry>
                     <varlistentry>
                         <term>domain_resolution_order</term>
                         <listitem>
@@ -570,19 +519,18 @@ Underdomäner som inte är listade som en del av <quote>lookup_order</quote>
 kommer slås upp i en slumpvis ordning för varje föräldradomän.
                             </para>
                             <para>
-                                Please, note that when this option is set the output format of all commands
-is always fully-qualified even when using short names for input <phrase
-condition="with_files_provider"> , for all users but the ones managed by the
-files provider </phrase>.  In case the administrator wants the output not
-fully-qualified, the full_name_format option can be used as shown below:
-<quote>full_name_format=%1$s</quote> However, keep in mind that during
-login, login applications often canonicalize the username by calling
+                                Observera att när detta alternativ är satt är alltid utmatningsformatet för
+alla kommandon helt kvalificerat även när kortnamn används för indata.
+Ifall administratören vill att utdata inte skall vara fullständigt
+kvalificerat kan alternativet full_name_format anges som visas nedan:
+<quote>full_name_format=%1$s</quote> Kom dock ihåg att under inloggningen
+kanoniserar inloggningsprogram ofta användarnamnet genom att anropa
 <citerefentry> <refentrytitle>getpwnam</refentrytitle>
-<manvolnum>3</manvolnum> </citerefentry> which, if a shortname is returned
-for a qualified input (while trying to reach a user which exists in multiple
-domains) might re-route the login attempt into the domain which uses
-shortnames, making this workaround totally not recommended in cases where
-usernames may overlap between domains.
+<manvolnum>3</manvolnum> </citerefentry> som, om ett kortnamn returneras för
+en kvalificerad inmatning (vid försök att nå en användare som finns i flera
+domäner) kan dirigera om inloggningsförsöket till domänen som använder
+kortnamn, vilket gör att denna metod absolut inte rekommenderas i fall där
+användarnamn kan överlappa mellan domäner.
                             </para>
                             <para>
                                 Standard: inte satt
@@ -606,9 +554,16 @@ alternativ till ”false”.
                         <term>core_dumpable (boolean)</term>
                         <listitem>
                             <para>
-                                Detta alternativ kan användas för allmän förstärkning: att sätta det till
-”false” förbjuder kärndumpar för alla SSSD-processer för att undvika att
-klartextlösenord läcker. Se manualsidan prctl:PR_SET_DUMPABLE för detaljer.
+                                Den här flaggan kan användas för allmän systemhärdning: om du ställer in det
+på ”false” förbjuds kärndumpar för alla SSSD-processer för att undvika
+läckage av lösenord i klartext. Se man-sidan prctl:PR_SET_DUMPABLE på Linux
+eller procctl:PROC_TRACE_CTL på FreeBSD för mer information.
+                            </para>
+                            <para>
+                                Observera att denna inställning inte har någon effekt för ’ldap_child’,
+’krb5_child’ och ’sssd_pam’, eftersom dessa privilegierade binärer kan ha en
+kopia av en värdkeytab-data i minnet och deras beteende i detta avseende
+styrs av systeminställningen /proc/sys/fs/suid_dumpable.
                             </para>
                             <para>
                                 Standard: true
@@ -616,21 +571,21 @@ klartextlösenord läcker. Se manualsidan prctl:PR_SET_DUMPABLE för detaljer.
                         </listitem>
                     </varlistentry>
                     <varlistentry condition="build_passkey">
-                        <term>passkey_verification (string)</term>
+                        <term>passkey_verification (sträng)</term>
                         <listitem>
                             <para>
-                                With this parameter the passkey verification can be tuned with a comma
-separated list of options. Supported options are: <variablelist>
+                                Med denna parameter kan verifieringen av lösennyckeln justeras med en
+kommaseparerad lista av alternativ. Alternativ som stödjs är <variablelist>
                                 <varlistentry>
-                                    <term>user_verification (boolean)</term>
+                                    <term>user_verification (sträng)</term>
                                     <listitem>
-                                        <para> Enable or disable the user verification (i.e. PIN, fingerprint)  during
-authentication. If enabled, the PIN will always be requested.
+                                        <para> Aktivera eller avaktivera användarverifiering (d.v.s. PIN, fingeravtryck)
+under autentisering. Om aktiverat kommer PIN:en alltid att begäras.
                                         </para>
                                         <para>
-                                        The default is that the key settings decide what to do. In the IPA or
-kerberos pre-authentication case, this value will be overwritten by the
-server.
+                                        Standard är att nyckelinställningarna bestämmer vad som skall göras. I
+fallet IPA och kerberos förautentisering kommer detta värde skrivas över av
+servern.
                                         </para>
                                     </listitem>
                                 </varlistentry>
@@ -659,18 +614,6 @@ sektionen vara <quote>[nss]</quote>
                 Dessa alternativ kan användas för att konfigurera alla tjänster.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>reconnection_retries (heltal)</term>
-                    <listitem>
-                        <para>
-                            Antal gånger som tjänster skall försöka återansluta i händelse av en
-dataleverantörskrasch eller -omstart innan de ger upp
-                        </para>
-                        <para>
-                            Standard: 3
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>fd_limit</term>
                     <listitem>
@@ -810,10 +753,7 @@ antingen uttags- eller D-Bus-aktiverade.
                             Detta alternativ anger huruvida respondenten skall fråga alla cachar före
 den frågar dataleverantörerna.
                         </para>
-                        <para condition="with_files_provider">
-                            Standard: false
-                        </para>
-                        <para condition="without_files_provider">
+                        <para>
                             Standard: true
                         </para>
                     </listitem>
@@ -876,19 +816,6 @@ bakänden tillfrågas igen.
                         </para>
                         <para>
                             Standard: 15
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>local_negative_timeout (heltal)</term>
-                    <listitem>
-                        <para>
-                            Anger hur många sekunder nss_sss skall hålla lokala användare och grupper i
-en negativ cache före den försöker slå upp dem i bakänden igen. Att ställa
-in alternativet till 0 avaktiverar denna funktion.
-                        </para>
-                        <para>
-                            Standard: 14400 (4 timmar)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1186,10 +1113,8 @@ returnera i fältet <quote>password</quote>.
 värdet i [nss]-sektionen.
                         </para>
                         <para>
-                            Default: <quote>not set</quote> (remote domains), <phrase
-condition="with_files_provider"> <quote>x</quote> (the files domain),
-</phrase> <quote>x</quote> (proxy domain with nss_files and sssd-shadowutils
-target)
+                            Standard: <quote>inte satt</quote> (fjärrdomäner), <quote>x</quote>
+(proxydomän med målet nss_files och sssd-shadowutils)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1460,7 +1385,7 @@ pam_account_locked_message = Kontot är låst, kontakta kundtjänsten.
                     <term>pam_passkey_auth (bool)</term>
                     <listitem>
                         <para>
-                            Enable passkey device based authentication.
+                            Aktivera autentisering baserad på lösennyckelsenhet.
                         </para>
                         <para>
                             Standard: True
@@ -1471,7 +1396,7 @@ pam_account_locked_message = Kontot är låst, kontakta kundtjänsten.
                     <term>passkey_debug_libfido2 (bool)</term>
                     <listitem>
                         <para>
-                            Enable libfido2 library debug messages.
+                            Aktivera biblioteket libfido2 felsökningsmeddelanden.
                         </para>
                         <para>
                             Standard: False
@@ -1542,10 +1467,11 @@ pam_cert_verification = partial_chain
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>passkey_child_timeout (integer)</term>
+                    <term>passkey_child_timeout (heltal)</term>
                     <listitem>
                         <para>
-                            How many seconds will the PAM responder wait for passkey_child to finish.
+                            Hur många sekunder PAM-respondenten kommer vänta på passkey_child att
+avsluta.
                         </para>
                         <para>
                             Standard: 15
@@ -1565,7 +1491,7 @@ pam_cert_verification = partial_chain
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>pam_p11_allowed_services (string)</term>
+                    <term>pam_p11_allowed_services (sträng)</term>
                     <listitem>
                         <para>
                             En kommaseparerad lista av PAM-tjänstenamn för vilka det kommer vara
@@ -1609,6 +1535,11 @@ pam_p11_allowed_services = +min_pam-tjänst, -login
                                 <listitem>
                                     <para>
                                         gdm-password
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-switchable-auth
                                     </para>
                                 </listitem>
                                 <listitem>
@@ -1814,6 +1745,30 @@ pam_gssapi_indicators_map = sudo:pkinit, sudo-i:pkinit
                         </para>
                     </listitem>
                 </varlistentry>
+                <varlistentry condition="build_json_pam">
+                    <term>pam_json_services (string)</term>
+                    <listitem>
+                        <para>
+                            Comma separated list of PAM services which can handle the JSON protocol for
+selecting authentication mechanisms
+                        </para>
+                        <para>
+                            To disable JSON protocol, set this option to <quote>-</quote> (dash).
+                        </para>
+                        <para>
+                            Exempel: <programlisting>
+pam_json_services = gdm-switchable-auth
+                            </programlisting>
+                        </para>
+                        <para>
+                            Default: - (JSON protocol is disabled)
+                        </para>
+                        <para>
+                           Note: 2-Factor Authentication (2FA) is not supported. If 2FA is required, do
+not activate the JSON protocol.
+                        </para>
+                    </listitem>
+                </varlistentry>
             </variablelist>
         </refsect2>
 
@@ -1890,30 +1845,6 @@ finns) innan bakänden tillfrågas igen.
                 Dessa alternativ kan användas för att konfigurera tjänsten SSH.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>ssh_hash_known_hosts (bool)</term>
-                    <listitem>
-                        <para>
-                            Huruvida värdnamn och adresser i den hanterade filen known_hosts skall göras
-till kontrollsummor eller inte.
-                        </para>
-                        <para>
-                            Standard: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>ssh_known_hosts_timeout (heltal)</term>
-                    <listitem>
-                        <para>
-                            Hur många sekunder en värd behålls i den hanterade filen known_hosts efter
-att dess värdnycklar begärdes.
-                        </para>
-                        <para>
-                            Standard: 180
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>ssh_use_certificate_keys (bool)</term>
                     <listitem>
@@ -2016,10 +1947,21 @@ användaren läggas till i dessa grupper.
 tillåts använda PAC-respondenten. Användarnamn slås upp till AID:er vid
 uppstart.
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            Standard: 0, &sssd_user_name; (endast root och SSSD:s tjänsteanvändaren
+tillåts komma åt PAC-respondenten)
+                        </para>
+                        <para condition="without_non_root_user_support">
                             Standard: 0 (endast root-användaren tillåts komma åt PAC-respondenten)
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            Observera att standardvärden kommer det att skrivas över av detta
+alternativ. Om du fortfarande vill tillåta root- och/eller
+”&sssd_user_name;”-användaren att komma åt PAC-respondenten, vilket är det
+typiska fallet, måste man uttryckligen lägga till dessa i listan av tillåtna
+AID:er.
+                        </para>
+                        <para condition="without_non_root_user_support">
                             Observera att även om AID 0 används som standard kommer det att skrivas över
 av detta alternativ. Om du fortfarande vill tillåta root-användaren att
 komma åt PAC-respondenten, vilket man typiskt vill, måste du lägga till även
@@ -2050,6 +1992,11 @@ för att kunna kontrollera PAC:en, d.v.s. alternativet krb5_validate måste
 vara satt till ”True” vilket är standardvärdet för leverantörerna IPA och
 AD. Om krb5_validate är satt till ”False” kommer PAC-kontrollerna hoppas
 över.
+			</para>
+			<para>
+                            Please note that the checks listed below only apply to PACs issued by Active
+Directory or recent versions of FreeIPA. PACs issued e.g. by a plain MIT
+Kerberos KDC will not contain the needed PAC data buffers to run the checks.
 			</para>
                         <para>
 			    Följande alternativ kan användas ensamma eller i en kommaseparerad lista:
@@ -2344,8 +2291,12 @@ visas. Denna parameter kan ha ett av följande värden:
                             Att räkna upp en domän tvingar SSSD att hämta och lagra ALLA användar- och
 grupposter från fjärrservern.
                         </para>
+                        <para condition="without_ext_enumeration">
+                            Funktionen stödjs bara för domäner med id_provider = ldap eller id_provider
+= proxy.
+                        </para>
                         <para>
-                            Obs: att aktivera uppräkning har en måttlig påverkan på prestandan hos SSSD
+                            Obs: att aktivera uppräkning har en kraftig påverkan på prestandan hos SSSD
 medan uppräkningen pågår.  Det kan ta upp till flera minuter efter att SSSD
 startat upp för att helt fullborda uppräkningar.  Under denna tid kommer
 enskilda begäranden om information att gå direkt till LDAP, fast det kan
@@ -2369,29 +2320,11 @@ information, se manualsidorna för den specifika id-leverantören som används.
                             Av ovan nämnda skäl rekommenderas inte att aktivera uppräkning, särskilt i
 stora miljöer.
                         </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>subdomain_enumerate (sträng)</term>
-                    <listitem>
                         <para>
-                            Huruvida några av de automatiskt upptäckta betrodda domänerna skall räknas
-upp. De värden som stödjs är <variablelist>
-                                <varlistentry>
-                                    <term>all</term>
-                                    <listitem><para>Alla upptäckta betrodda domäner kommer räknas upp</para></listitem>
-                                </varlistentry>
-                                <varlistentry>
-                                    <term>none</term>
-                                    <listitem><para>Inga upptäckta betrodda domäner kommer räknas upp</para></listitem>
-                                </varlistentry>
-                            </variablelist> Om så
-önskas kan en lista med en eller flera domännamn aktivera uppräkning bara
-för dessa betrodda domäner.
-                        </para>
-                        <para>
-                            Standard: none
+                            Observera: proxyleverantören testas med moduler i öppen källkod som
+”libnss_file” och ”libnss_ldap”. 3:e-partsmoduler måste följa det
+dokumenterade beteendet hos nss-moduler för att användas i denna
+konfiguration.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2574,18 +2507,18 @@ vilja manuellt invalidera den befintliga cachen.
                     <term>cache_credentials (bool)</term>
                     <listitem>
                         <para>
-                            Determines if user credentials are also cached in the local LDB cache. The
-cached credentials refer to passwords, which includes the first (long term)
-factor of two-factor authentication, not other authentication
-mechanisms. Passkey and Smartcard authentications are expected to work
-offline as long as a successful online authentication is recorded in the
-cache without additional configuration.
+                            Avgör huruvida användarkreditiv även cachas i den lokala LDB-cachen. Cachade
+kreditiv avser lösenord, vilket inkluderar den första (långlivade) faktorn i
+tvåfaktorautentisering, inte andra autentiseringsmekanismer. Autentiseringar
+med lösenfraser och smarta kort förväntas fungera frånkopplade så länge som
+en lyckad uppkopplad autentisering är registrerad i cachen utan ytterligare
+konfiguration.
                         </para>
                         <para>
-                            Take a note that while credentials are stored as a salted SHA512 hash, this
-still potentially poses some security risk in case an attacker manages to
-get access to a cache file (normally requires privileged access) and to
-break a password using brute force attack.
+                            Ta i beaktande att medan kreditiv sparas som en saltad SHA512-kontrollsumma
+medför detta ändå potentiellt en viss säkerhetsrisk ifall en angripare
+lyckas få åtkomst till en cache-fil (kräver normalt privilegierad åtkomst)
+och att knäcka ett lösenord med en råstyrkeattack.
                         </para>
                         <para>
                             Standard: FALSE
@@ -2657,27 +2590,27 @@ stödjs är:
                         <para>
                             <quote>proxy</quote>: Stöd en tidigare NSS-leverantör.
                         </para>
-                        <para condition="with_files_provider">
-                            <quote>files</quote>: FIL-leverantör. Se <citerefentry>
-<refentrytitle>sssd-files</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> för mer information om hur lokala användare och grupper kan
-speglas in i SSSD.
-                        </para>
                         <para>
                             <quote>ldap</quote>: LDAP-leverantör. Se <citerefentry>
 <refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry> för mer information om att konfigurera LDAP.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
+                            <quote>ipa</quote>: Leverantören FreeIPA och Red Hat Identity Management. Se
 <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+<manvolnum>5</manvolnum> </citerefentry> för mer information om att
+konfigurera FreeIPA.
                         </para>
                         <para>
                             <quote>ad</quote>: Active Directory-leverantör. Se <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry> för mer information om att konfigurera Active Directory.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: Leverantör för OAuth 2.0/OIDC-baserade
+identitetsleverantörer (IdP). Se <citerefentry>
+<refentrytitle>sssd-idp</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> för mer information.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2690,11 +2623,10 @@ FreeIPA.
 full_name_format) som användarens inloggningsnamn rapporterat till NSS.
                         </para>
                         <para>
-                            Om satt till TRUE måste alla begäranden till denna domän använda
-fullständigt kvalificerade namn. Till exempel, om använt i en domän LOKAL
-som innehåller en användare ”test”, skulle <command>getent passwd
-test</command> inte hitta användaren medan <command>getent passwd
-test@LOKAL</command> skulle det.
+                            If set to TRUE, all requests to this domain must use fully qualified
+names. For example, if used in EXAMPLE domain that contains a "test" user,
+<command>getent passwd test</command> wouldn't find the user while
+<command>getent passwd test@EXAMPLE</command> would.
                         </para>
                         <para>
                             OBSERVERA: Detta alternativ har ingen effekt på nätgruppsuppslagningar på
@@ -2755,15 +2687,20 @@ innehåller många medlemmar.
 </citerefentry> för mer information om att konfigurera Kerberos.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
+                            <quote>ipa</quote>: Leverantören FreeIPA och Red Hat Identity Management. Se
 <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+<manvolnum>5</manvolnum> </citerefentry> för mer information om att
+konfigurera FreeIPA.
                         </para>
                         <para>
                             <quote>ad</quote>: Active Directory-leverantör. Se <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry> för mer information om att konfigurera Active Directory.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: Provider for OAuth 2.0/OIDC based authentication. See
+<citerefentry> <refentrytitle>sssd-idp</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> for more information.
                         </para>
                         <para>
                             <quote>proxy</quote> för att skicka vidare autentiseringen till något annat
@@ -2787,8 +2724,7 @@ autentiseringsbegäranden.
 Interna specialleverantörer är:
                         </para>
                         <para>
-                            <quote>permit</quote> tillåt alltid åtkomst. Det är den enda tillåtna
-åtkomstleverantören för en lokal domän.
+                            <quote>permit</quote> always allow access.
                         </para>
                         <para>
                             <quote>deny</quote> neka alltid åtkomst.
@@ -2799,10 +2735,10 @@ Interna specialleverantörer är:
 </citerefentry> för mer information om att konfigurera LDAP.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
+                            <quote>ipa</quote>: Leverantören FreeIPA och Red Hat Identity Management. Se
 <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+<manvolnum>5</manvolnum> </citerefentry> för mer information om att
+konfigurera FreeIPA.
                         </para>
                         <para>
                             <quote>ad</quote>: Active Directory-leverantör. Se <citerefentry>
@@ -2848,10 +2784,10 @@ konfigurera LDAP.
 </citerefentry> för mer information om att konfigurera Kerberos.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
+                            <quote>ipa</quote>: Leverantören FreeIPA och Red Hat Identity Management. Se
 <citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+<manvolnum>5</manvolnum> </citerefentry> för mer information om att
+konfigurera FreeIPA.
                         </para>
                         <para>
                             <quote>ad</quote>: Active Directory-leverantör. Se <citerefentry>
@@ -2895,7 +2831,8 @@ standardsinställningar för AD.
                             <quote>none</quote> avaktiverar explicit SUDO.
                         </para>
                         <para>
-                            Standard: värdet på <quote>id_provider</quote> används om det är satt.
+                            Default: The value of <quote>id_provider</quote> is used if it is set and
+can handle sudo requests.
                         </para>
                         <para>
                             De detaljerade instruktionerna för att konfigurera sudo_provider finns i
@@ -2960,7 +2897,8 @@ konfigurera AD-leverantören.
                             <quote>none</quote> tillåter uttryckligen inte att hämta underdomäner.
                         </para>
                         <para>
-                            Standard: värdet på <quote>id_provider</quote> används om det är satt.
+                            Default: The value of <quote>id_provider</quote> is used if it is set and
+can handle subdomain requests.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2982,13 +2920,7 @@ användarsessioner.
 användarsessioner.
                         </para>
                         <para>
-                            Standard: <quote>id_provider</quote> används om det är satt och kan utföra
-sessionsrelaterade uppgifter.
-                        </para>
-                        <para>
-                            <emphasis>OBSERVERA:</emphasis> För att denna funktion skall fungera som
-förväntat måste SSSD köra som ”root” och inte som den oprivilegierade
-användaren.
+                            Default: <quote>none</quote>.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3021,7 +2953,8 @@ konfigurera AD-leverantören.
                             <quote>none</quote> avaktiverar explicit autofs.
                         </para>
                         <para>
-                            Standard: värdet på <quote>id_provider</quote> används om det är satt.
+                            Default: The value of <quote>id_provider</quote> is used if it is set and
+can handle autofs requests.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3043,7 +2976,8 @@ konfigurera IPA.
                             <quote>none</quote> avaktiverar explicit värd-id:n.
                         </para>
                         <para>
-                            Standard: värdet på <quote>id_provider</quote> används om det är satt.
+                            Default: The value of <quote>id_provider</quote> is used if it is set and
+can handle hostid requests.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3075,7 +3009,8 @@ konfigurera AD-leverantören.
                             <quote>none</quote> tillåter uttryckligen inte att hämta värdar och nätverk.
                         </para>
                         <para>
-                            Standard: värdet på <quote>id_provider</quote> används om det är satt.
+                            Default: The value of <quote>id_provider</quote> is used if it is set and
+can handle resolver requests.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3091,9 +3026,9 @@ betrodda underdomäner i IPA och Active Directory-domäner, det platta
 (NetBIOS) namnet på domänen.
                         </para>
                         <para>
-                            Default:
-<quote>^((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]*)|(?P&lt;name&gt;[^@]+))$</quote>
-which allows two different styles for user names:
+                            Standard:
+<quote>^((?P&lt;name&gt;+)@(?P&lt;domain&gt;[^@]*)|(^(?P&lt;name&gt;[^@]+))$</quote>
+vilket tillåter två olika stilar av användarnamn:
                             <itemizedlist>
                                 <listitem>
                                     <para>användarnamn</para>
@@ -3104,9 +3039,9 @@ which allows two different styles for user names:
                            </itemizedlist>
                         </para>
                         <para>
-                            Default for the AD and IPA provider:
+                            Standard för leverantörerna AD och IPA:
 <quote>^(((?P&lt;domain&gt;[^\\]+)\\(?P&lt;name&gt;.+))|((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]+))|((?P&lt;name&gt;[^@\\]+)))$</quote>
-which allows three different styles for user names:
+vilket tillåter tre olika stilar av användarnamn:
                             <itemizedlist>
                                 <listitem>
                                     <para>användarnamn</para>
@@ -3122,11 +3057,11 @@ which allows three different styles for user names:
 tredje för att tillåta enkel integration av användare från Windows-domäner.
                         </para>
                         <para>
-                            The default re_expression uses the <quote>@</quote> character as a separator
-between the name and the domain. As a result of this setting the default
-does not accept the <quote>@</quote> character in short names (as it is
-allowed in Windows group names). If a user wishes to use short names with
-<quote>@</quote> they must create their own re_expression.
+                            Standard re_expression använder tecknet <quote>@</quote> som en separator
+mellan namnet och domänen. På grund av denna inställning accepterar inte
+standardinställningen tecknet <quote>@</quote> i korta namn (så som det
+tillåts i Windows gruppnamn). Om en användare vill använda korta namn med
+<quote>@</quote> måste de skapa sin egen re_expression.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3285,18 +3220,18 @@ DNS-fråga om tjänsteupptäckt.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>failover_primary_timeout (integer)</term>
+                    <term>failover_primary_timeout (heltal)</term>
                     <listitem>
                         <para>
-                            When no primary server is currently available, SSSD fail overs to a backup
-server. This option defines the amount of time (in seconds) to wait before
-SSSD tries to reconnect to a primary server again.
+                            När ingen primärserver är tillgänglig faller SSSD tillbaka på en
+reservserver. Detta alternativ definierar antalet sekunder SSSD väntar före
+den försöker återansluta till primärservern.
                         </para>
                         <para>
-                            Note: The minimum value is 31.
+                            Observera: minimivärdet är 31.
                         </para>
                         <para>
-                            Default: 31
+                            Standard: 31
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3377,12 +3312,6 @@ följande alternativ ärvas:
                             ldap_offline_timeout
                         </para>
                         <para>
-                            ldap_enumeration_refresh_timeout
-                        </para>
-                        <para>
-                            ldap_enumeration_refresh_offset
-                        </para>
-                        <para>
                             ldap_purge_cache_timeout
                         </para>
                         <para>
@@ -3394,9 +3323,6 @@ ldap_krb5_keytab sätts särskilt)
                         </para>
                         <para>
                             ldap_krb5_ticket_lifetime
-                        </para>
-                        <para>
-                            ldap_enumeration_search_timeout
                         </para>
                         <para>
                             ldap_connection_expire_timeout
@@ -3494,31 +3420,32 @@ inte möjligt att ange olika värden för varje betrodd domän.
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>local_auth_policy (string)</term>
+                    <term>local_auth_policy (sträng)</term>
                     <listitem>
                         <para>
-                            Local authentication methods policy. Some backends (i.e. LDAP, proxy
-provider) only support a password based authentication, while others can
-handle PKINIT based Smartcard authentication (AD, IPA), two-factor
-authentication (IPA), or other methods against a central instance. By
-default in such cases authentication is only performed with the methods
-supported by the backend. With this option additional methods can be enabled
-which are evaluated and checked locally.
+                            Lokal policy för autentiseringsmetoder. Några bakändar (d.v.s. LDAP,
+proxy-leverantör) stödjer endast en lösenordsbaserad autentisering, medan
+andra kan hantera PKINIT-baserad smart-kort-autentisering (AD, IPA),
+tvåfaktorsautentisering (IPA) eller andra metoder mot en central
+instans. Som standard utförs i sådana fall autentiseringen endast med
+metoderna som stödjs av bakänden. Med detta alternativ kan ytterligare
+metoder aktiveras vilka utvärderas och kontrolleras lokalt.
                         </para>
                         <para>
-                            There are three possible values for this option: match, only,
-enable. <quote>match</quote> is used to match offline and online states for
-Kerberos methods. <quote>only</quote> ignores the online methods and only
-offer the local ones. enable allows explicitly defining the methods for
-local authentication. As an example, <quote>enable:passkey</quote>, only
-enables passkey for local authentication. Multiple enable values should be
-comma-separated, such as <quote>enable:passkey, enable:smartcard</quote>
+                            Den finns tre möjliga värden för denna flagga: match, only,
+enable. <quote>match</quote> används för att matcha frånkopplade och
+uppkopplade tillstånd för Kerberosmetoder. <quote>only</quote> ignorerar de
+uppkopplade metoderna och erbuder endast de lokala. enable tillåter explicit
+definition av metoderna för lokal autentisering. Till exempel aktiverar
+<quote>enable:passkey</quote> endast passkey för lokal autentisering. Flera
+enable-värden skall vara kommaseparerade, såsom
+<quote>enable:passkey,enable:smartcard</quote>
                         </para>
 
                         <para>
-                            The following table shows which authentication methods, if configured
-properly, are currently enabled or disabled for each backend, with the
-default local_auth_policy: <quote>match</quote>
+                            Följande tabell visar vilka autentiseringsmetoder, om rätt konfigurerade,
+som för närvarande är tillgängliga eller otillgängliga för varje bakände,
+med standard local_auth_policy: <quote>match</quote>
                         </para>
                         <informaltable frame='all'>
                         <tgroup cols='3'>
@@ -3528,30 +3455,30 @@ default local_auth_policy: <quote>match</quote>
 
                         <thead>
                         <row><entry namest='c1' nameend='c3' align='center'>
-                            local_auth_policy = match (default)</entry></row>
-                        <row><entry></entry><entry>Passkey</entry>
-                            <entry>Smartcard</entry></row>
+                            local_auth_policy = match (standard)</entry></row>
+                        <row><entry></entry><entry>Lösennyckel</entry>
+                            <entry>Smartkort</entry></row>
                         </thead>
                         <tbody>
                         <row><entry>IPA</entry><entry>aktiverat</entry>
                             <entry><para>aktiverat</para>
                             </entry></row>
-                        <row><entry>AD</entry><entry>disabled</entry>
+                        <row><entry>AD</entry><entry>avaktiverad</entry>
                             <entry><para>aktiverat</para></entry>
                             </row>
-                        <row><entry>LDAP</entry><entry>disabled</entry>
-                            <entry><para>disabled</para></entry>
+                        <row><entry>LDAP</entry><entry>avaktiverad</entry>
+                            <entry><para>avaktiverad</para></entry>
                             </row>
                         </tbody></tgroup></informaltable>
                         <para>
-                            Please note that if local Smartcard authentication is enabled and a
-Smartcard is present, Smartcard authentication will be preferred over the
-authentication methods supported by the backend.  I.e. there will be a PIN
-prompt instead of e.g. a password prompt.
+                            Observera att om lokal smart-korts-autentisering är aktiverat och ett
+smart-kort finns tillgängligt kommer smart-korts-autentisering att föredras
+framför autentiseringsmetoderna som stödjs av bakänden. D.v.s. det kommer
+vara en PIN-prompt istället för t.ex. en lösenordsprompt.
                         </para>
                         <para>
-                            The following configuration example allows local users to authenticate
-locally using any enabled method (i.e. smartcard, passkey).  <programlisting>
+                            Följande konfigurationsexempel tillåter lokala användare att autentisera
+lokalt med alla aktiverade metoder (d.v.s. smartkard, passkey). <programlisting>
 [domain/shadowutils]
 id_provider = proxy
 proxy_lib_name = files
@@ -3559,12 +3486,8 @@ auth_provider = none
 local_auth_policy = only
 </programlisting>
                         </para>
-                        <para condition="with_files_provider">
-                            It is expected that the <quote>files</quote> provider ignores the
-local_auth_policy option and supports Smartcard authentication by default.
-                        </para>
                         <para>
-                            Default: match
+                            Standard: match
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3621,6 +3544,12 @@ befintliga användarnas privata grupper.
                             </variablelist>
                         </para>
                         <para>
+                            For the LDAP based id providers (LDAP, IPA and AD) the default for the
+configured domain is typically False because the sources have the concept of
+a primary group.  <phrase condition="with_idp_provider">The IdP id provider
+is using True because IdPs typically do not have primary groups.</phrase>
+                        </para>
+                        <para>
                             För underdomäner är standardvärdet False för underdomäner som använder
 tilldelade POSIX ID:n och True för underdomäner som använder automatisk
 ID-översättning.
@@ -3652,9 +3581,9 @@ auto_private_groups = false
                             Proxymålet PAM är en proxy för.
                         </para>
                         <para>
-                            Default: not set by default, you have to take an existing pam configuration
-or create a new one and add the service name here. As an alternative you can
-enable local authentication with the local_auth_policy option.
+                            Standard: inte satt som standard, du måste ta en befintlig pam-konfiguration
+eller skapa en ny och lägga till tjänstenamnet här. Som ett alternativ kan
+man aktivera lokal autentisering med alternativet local_auth_policy.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3860,9 +3789,9 @@ Extended Key Usage <quote>clientAuth</quote>
                                 <para>LDAP:(userCertificate;binary={cert!bin})  för LDAP-baserade leverantörer som
 <quote>ldap</quote>, <quote>AD</quote> eller <quote>ipa</quote>.</para>
                             </listitem>
-                            <listitem condition="with_files_provider">
-                                <para>REGELNAMNet för leverantören <quote>files</quote> som försöker hitta en
-användare med samma namn.</para>
+                            <listitem>
+                                <para>If maprule is not set and provider is <quote>proxy</quote>, the RULE_NAME
+name is assumed to be the name of the matching user.</para>
                             </listitem>
                         </itemizedlist>
                     </para>
@@ -3896,32 +3825,6 @@ prioriteten medan <quote>4294967295</quote> är den lägsta.
                 </listitem>
             </varlistentry>
         </variablelist>
-        <para condition="with_files_provider">
-            För att göra konfigurationen enkel och reducera mängden
-konfigurationsalternativ har leverantören <quote>files</quote> några
-speciella egenskaper:
-            <itemizedlist>
-                <listitem>
-                    <para>
-                        om maprule inte är satt antas namnet REGELNAMN vara namnet på den matchande
-användaren
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        om en maprule används måste både ett ensamt användarnamn eller en mall som
-<quote>{subject_rfc822_name.short_name}</quote> vara i krullparenteser som
-t.ex. <quote>(username)</quote> eller
-<quote>({subject_rfc822_name.short_name})</quote>
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        alternativet <quote>domains</quote> ignoreras
-                    </para>
-                </listitem>
-            </itemizedlist>
-        </para>
     </refsect1>
 
     <refsect1 id='prompting_configuration'>
@@ -3941,8 +3844,8 @@ används av pam_sss för att välja fråga inte är lämplig för alla
 användarfall. Följande alternativ bör ge en bättre flexibilitet här.
         </para>
         <para>
-            Each supported authentication method has its own configuration subsection
-under <quote>[prompting/...]</quote>. Currently there are: <variablelist>
+            Varje autentiseringsmetod som stödjs har sin egen konfigurationsundersektion
+under <quote>[prompting/…]</quote>. För närvarande finns det: <variablelist>
             <varlistentry>
                 <term>[prompting/password]</term>
                 <listitem>
@@ -3972,6 +3875,14 @@ faktorn är frivillig.</para></listitem>
 frivillig och det skall vara möjligt att logga in antingen edast med
 lösenordet eller med båda faktorerna måste tvåstegsförfrågan användas.
                     </para>
+                    <para>
+                    Några klienter, såsom SSH med ”PasswordAuthentication yes”, skapar sina egna
+prompter och använder inte prompten som ges av SSSD eller andra
+PAM-moduler. Vidare, för SSH med PasswordAuthentication, om
+tvåfaktorsautentisering är tillgängligt förväntar sig SSSD att kreditiven
+som anges av användaren fid SSH-lösenordsprompten alltid kommer vara de två
+faktorerna som en enda sträng, även om tvåfaktorsautentisering är frivillig.
+                    </para>
                 </listitem>
             </varlistentry>
         </variablelist>
@@ -3979,36 +3890,36 @@ lösenordet eller med båda faktorerna måste tvåstegsförfrågan användas.
             <varlistentry condition="build_passkey">
                 <term>[prompting/passkey]</term>
                 <listitem>
-                    <para>to configure passkey authentication prompting, allowed options are:
-<variablelist>
+                    <para>för att konfigurera frågor för lösennyckelsautentisering är de tillåtna
+alternativen: <variablelist>
                     <varlistentry>
                         <term>interactive</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message and wait before testing the presence
-of a passkey device.  Recommended if your device doesn’t have a tactile
-trigger.
+                            <para>booleskt värde, om True skriv ett meddelande och vänta före test av närvaron
+av en lösennyckelsenhet. Rekommenderas om enheten inte har en taktil
+utlösare.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>interactive_prompt</term>
                         <listitem>
-                            <para>to change the message of the interactive prompt.
+                            <para>för att ändra meddelandet i den interaktiva frågan.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message to remind the user to touch the
-device.
+                            <para>booleskt värde, om sant skriv ett meddelande och påminn användaren att röra
+enheten.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch_prompt</term>
                         <listitem>
-                            <para>to change the message of the touch prompt.
+                            <para>för att ändra meddelandet i begäran om beröring.
                             </para>
                         </listitem>
                         </varlistentry>
@@ -4034,7 +3945,6 @@ domäner för fler detaljer. <programlisting>
 [sssd]
 domains = LDAP
 services = nss, pam
-config_file_version = 2
 
 [nss]
 filter_groups = root
@@ -4045,11 +3955,11 @@ filter_users = root
 [domain/LDAP]
 id_provider = ldap
 ldap_uri = ldap://ldap.example.com
-ldap_search_base = dc=example,dc=com
+ldap_search_base = dc=exempel,dc=se
 
 auth_provider = krb5
-krb5_server = kerberos.example.com
-krb5_realm = EXAMPLE.COM
+krb5_server = kerberos.exempel.se
+krb5_realm = EXEMPEL.SE
 cache_credentials = true
 
 min_id = 10000
@@ -4067,14 +3977,15 @@ use_fully_qualified_names = false
 </programlisting>
         </para>
         <para>
-            3. The following example shows the configuration of a certificate mapping
-rule. It is valid for the configured domain <quote>my.domain</quote> and
-additionally for the subdomains <quote>your.domain</quote> and uses the full
-certificate in the search filter.  <programlisting>
-[certmap/my.domain/rule_name]
-matchrule = &lt;ISSUER&gt;^CN=My-CA,DC=MY,DC=DOMAIN$
+            3. Följande exempel visar konfigurationen för en
+certifikatavbildningsregel. Den är giltig för den konfigurerade domänen
+<quote>min.domän</quote> och dessutom för underdomänerna
+<quote>din.domän</quote> och använder det fullständiga certifikatet i
+sökfiltret. <programlisting>
+[certmap/min.domän/rule_name]
+matchrule = &lt;ISSUER&gt;^CN=My-CA,DC=MIN,DC=DOMÄN$
 maprule = (userCertificate;binary={cert!bin})
-domains = my.domain, your.domain
+domains = min.domän, din.domän
 priority = 10
 </programlisting>
         </para>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd_krb5_localauth_plugin</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd_krb5_localauth_plugin</refname>
+        <refpurpose>Plugin de autorização local do Kerberos</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            O plugin de autorização local do Kerberos
+<command>sssd_krb5_localauth_plugin</command> é usado pelo libkrb5 para ou
+encontrar o nome local para um dado principal de Kerberos ou para verificar
+se um dado nome local e um dado principal Kerberos estão ambos relacionados.
+        </para>
+        <para>
+            O SSSD lida com nomes locais para utilizadores a partir de uma fonte remota
+e pode ler o nome principal de utilizador Kerberos a partir da fonte remota
+também. Com esta informação o SSSD pode facilmente lidar com os mapeamentos
+mencionados em cima mesmo que o nome local e o principal Kerberos sejam
+consideravelmente diferentes.
+        </para>
+        <para>
+            Adicionalmente com a informação lida a partir da fonte remota, o SSSD pode
+ajudar a prevenir mapeamentos inesperados ou indesejados no caso da parte
+utilizador do principal Kerberos corresponder acidentalmente a um nome local
+de um utilizador diferente. Por predefinição a libkrb5 pode apenas despir a
+parte de reino do principal Kerberos para obter o nome local o que poderia
+levar a mapeamentos errados neste caso.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration'>
+        <title>CONFIGURAÇÃO</title>
+        <para>
+            O plugin de autorização local do Kerberos tem de ser explicitamente activado
+na configuração do Kerberos, veja <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.  O SSSD irá criar um trecho de configuração com o conteúdo
+como ex. <programlisting>
+[plugins]
+ localauth = {
+  module = sssd:/usr/lib64/sssd/modules/sssd_krb5_localauth_plugin.so
+ }
+</programlisting> automaticamente no
+directório de trechos de configuração Kerberos público do SSSD. Se este
+directório estiver incluído na configuração Kerberos local o plugin será
+activado automaticamente.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

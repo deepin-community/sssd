@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <libintl.h>
 #include <locale.h>
 #include <time.h>
 #include <sys/types.h>
@@ -33,11 +32,21 @@
 #include <netinet/in.h>
 #include <limits.h>
 #include <sys/un.h>
+#ifdef HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
+#else
+typedef int cap_value_t;
+#define CAP_DAC_READ_SEARCH 0
+#define CAP_SETGID 0
+#define CAP_SETUID 0
+#endif
+#include <sys/param.h> /* for MIN()/MAX() */
 
 #include <talloc.h>
 #include <tevent.h>
 #include <ldb.h>
 #include <dhash.h>
+#include <krb5.h>
 
 #include "confdb/confdb.h"
 #include "shared/io.h"
@@ -47,6 +56,7 @@
 #include "util/sss_format.h"
 #include "util/sss_regexp.h"
 #include "util/debug.h"
+#include "util/memory_erase.h"
 
 /* name of the monitor server instance */
 #define SSSD_MONITOR_NAME        "sssd"
@@ -76,35 +86,25 @@
 #define NULL 0
 #endif
 
-#ifndef MIN
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
-#endif
-
-#ifndef MAX
-#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+/* We call it MAXHOSTNAMELEN on FreeBSD */
+#if !defined(HOST_NAME_MAX) && defined(MAXHOSTNAMELEN)
+#define HOST_NAME_MAX MAXHOSTNAMELEN
 #endif
 
 #ifndef ALLPERMS
 #define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)/* 07777 */
 #endif
 
-#define SSSD_MAIN_OPTS SSSD_DEBUG_OPTS
-
-#define SSSD_SERVER_OPTS(uid, gid) \
-        {"uid", 0, POPT_ARG_INT, &uid, 0, \
-          _("The user ID to run the server as"), NULL}, \
-        {"gid", 0, POPT_ARG_INT, &gid, 0, \
-          _("The group ID to run the server as"), NULL},
+#define SSSD_CONFIG_OPTS(opt_config_file) \
+        {"config", 'c', POPT_ARG_STRING, &opt_config_file, 0, \
+         _("Specify a non-default config file"), NULL}, \
 
 extern int socket_activated;
-extern int dbus_activated;
 
 #ifdef HAVE_SYSTEMD
 #define SSSD_RESPONDER_OPTS \
         { "socket-activated", 0, POPT_ARG_NONE, &socket_activated, 0, \
-          _("Informs that the responder has been socket-activated"), NULL }, \
-        { "dbus-activated", 0, POPT_ARG_NONE, &dbus_activated, 0, \
-          _("Informs that the responder has been dbus-activated"), NULL },
+          _("Informs that the responder has been socket-activated"), NULL },
 #else
 #define SSSD_RESPONDER_OPTS
 #endif
@@ -113,7 +113,7 @@ extern int dbus_activated;
 #define FLAGS_DAEMON 0x0001
 #define FLAGS_INTERACTIVE 0x0002
 #define FLAGS_PID_FILE 0x0004
-#define FLAGS_GEN_CONF 0x0008
+/* 0x0008 was used by FLAGS_GEN_CONF that was removed; can be reused */
 #define FLAGS_NO_WATCHDOG 0x0010
 
 enum sssd_exit_status {
@@ -122,18 +122,11 @@ enum sssd_exit_status {
     SSS_WATCHDOG_EXIT_CODE = 70 /* to match EX_SOFTWARE in sysexits.h */
 };
 
-#define PIPE_INIT { -1, -1 }
-
-#define PIPE_FD_CLOSE(fd) do {      \
+#define FD_CLOSE(fd) do {           \
     if (fd != -1) {                 \
         close(fd);                  \
         fd = -1;                    \
     }                               \
-} while(0);
-
-#define PIPE_CLOSE(p) do {          \
-    PIPE_FD_CLOSE(p[0]);            \
-    PIPE_FD_CLOSE(p[1]);            \
 } while(0);
 
 #ifndef talloc_zfree
@@ -188,9 +181,6 @@ void sss_log(int priority, const char *format, ...) SSS_ATTRIBUTE_PRINTF(2, 3);
 void sss_log_ext(int priority, int facility, const char *format, ...) SSS_ATTRIBUTE_PRINTF(3, 4);
 
 /* from server.c */
-#define DEBUG_CHAIN_ID_FMT_RID "[RID#%"PRIu64"] %s"
-#define DEBUG_CHAIN_ID_FMT_CID "[CID#%"PRIu64"] %s"
-
 struct main_context {
     struct tevent_context *event_ctx;
     struct confdb_ctx *confdb_ctx;
@@ -214,12 +204,15 @@ int check_pidfile(const char *file);
 int pidfile(const char *file);
 int server_setup(const char *name, bool is_responder,
                  int flags,
-                 uid_t uid, gid_t gid,
+                 const char *db_file,
                  const char *conf_entry,
                  struct main_context **main_ctx,
                  bool allow_sss_loop);
 void server_loop(struct main_context *main_ctx);
 void orderly_shutdown(int status);
+
+#define SSSSIG_RESET_WATCHDOG         SIGRTMIN
+#define SSSSIG_TIME_SHIFT_DETECTED    SIGRTMIN+1
 
 /* from signal.c */
 void BlockSignals(bool block, int signum);
@@ -240,7 +233,8 @@ int sss_mem_attach(TALLOC_CTX *mem_ctx, void *ptr, void_destructor_fn_t *fn);
  * to make it possible to use it as talloc destructor.
  */
 int sss_erase_talloc_mem_securely(void *p);
-void sss_erase_mem_securely(void *p, size_t size);
+void sss_erase_krb5_data_securely(krb5_data *data);
+void sss_erase_krb5_creds_securely(krb5_creds *cred);
 
 /* from usertools.c */
 char *get_uppercase_realm(TALLOC_CTX *memctx, const char *name);
@@ -324,6 +318,22 @@ errno_t sss_parse_internal_fqname(TALLOC_CTX *mem_ctx,
                                   char **_shortname,
                                   char **_dom_name);
 
+/* Accepts fqname in the format shortname@domname only
+ * and returns a pointer to domain part or NULL if not found.
+ */
+__attribute__((always_inline))
+static inline const char *sss_get_domain_internal_fqname(const char *fqname)
+{
+    const char *separator = strrchr(fqname, '@');
+
+    if (separator == NULL || *(separator + 1) == '\0' || separator == fqname) {
+        /*The name does not contain name or domain component. */
+        return NULL;
+    }
+
+    return (separator + 1);
+}
+
 /* Creates internal fqname in format shortname@domname.
  * The domain portion is lowercased. */
 char *sss_create_internal_fqname(TALLOC_CTX *mem_ctx,
@@ -391,8 +401,6 @@ const char * const * get_known_services(void);
 
 errno_t sss_user_by_name_or_uid(const char *input, uid_t *_uid, gid_t *_gid);
 void sss_sssd_user_uid_and_gid(uid_t *_uid, gid_t *_gid);
-void sss_set_sssd_user_eid(void);
-void sss_restore_sssd_user_eid(void);
 
 int split_on_separator(TALLOC_CTX *mem_ctx, const char *str,
                        const char sep, bool trim, bool skip_empty,
@@ -419,9 +427,6 @@ bool is_user_or_group_name(const char *sudo_user_value);
 
 /* Returns true if the responder has been socket-activated */
 bool is_socket_activated(void);
-
-/* Returns true if the responder has been dbus-activated */
-bool is_dbus_activated(void);
 
 /**
  * @brief Add two list of strings
@@ -566,9 +571,6 @@ bool is_valid_domain_name(const char *domain);
  */
 int sss_rand(void);
 
-/* from nscd.c */
-errno_t sss_nscd_parse_conf(const char *conf_path);
-
 /* from sss_tc_utf8.c */
 char *
 sss_tc_utf8_str_tolower(TALLOC_CTX *mem_ctx, const char *s);
@@ -609,9 +611,6 @@ struct sss_domain_info *find_domain_by_sid(struct sss_domain_info *domain,
 enum sss_domain_state sss_domain_get_state(struct sss_domain_info *dom);
 void sss_domain_set_state(struct sss_domain_info *dom,
                           enum sss_domain_state state);
-#ifdef BUILD_FILES_PROVIDER
-bool sss_domain_fallback_to_nss(struct sss_domain_info *dom);
-#endif
 bool sss_domain_is_forest_root(struct sss_domain_info *dom);
 const char *sss_domain_type_str(struct sss_domain_info *dom);
 
@@ -627,9 +626,6 @@ struct sss_domain_info *
 find_domain_by_object_name_ex(struct sss_domain_info *domain,
                               const char *object_name, bool strict,
                               uint32_t gnd_flags);
-
-bool subdomain_enumerates(struct sss_domain_info *parent,
-                          const char *sd_name);
 
 char *subdomain_create_conf_path_from_str(TALLOC_CTX *mem_ctx,
                                           const char *parent_name,
@@ -689,20 +685,6 @@ static inline bool is_domain_provider(struct sss_domain_info *domain,
            strcasecmp(domain->provider, provider) == 0;
 }
 
-/* Returns true if the provider used for the passed domain is the "files"
- * one. Otherwise returns false. */
-__attribute__((always_inline))
-static inline bool is_files_provider(struct sss_domain_info *domain)
-{
-#ifdef BUILD_FILES_PROVIDER
-    return domain != NULL &&
-           domain->provider != NULL &&
-           strcasecmp(domain->provider, "files") == 0;
-#else
-    return false;
-#endif
-}
-
 /* from util_lock.c */
 errno_t sss_br_lock_file(int fd, size_t start, size_t len,
                          int num_tries, useconds_t wait);
@@ -726,12 +708,10 @@ char *sss_replace_char(TALLOC_CTX *mem_ctx,
                        const char match,
                        const char sub);
 
-char * sss_replace_space(TALLOC_CTX *mem_ctx,
-                         const char *orig_name,
-                         const char replace_char);
-char * sss_reverse_replace_space(TALLOC_CTX *mem_ctx,
-                                 const char *orig_name,
-                                 const char replace_char);
+void sss_replace_space_inplace(char *orig_name,
+                               const char replace_char);
+void sss_reverse_replace_space_inplace(char *orig_name,
+                                       const char replace_char);
 
 #define GUID_BIN_LENGTH 16
 /* 16 2-digit hex values + 4 dashes + terminating 0 */
@@ -741,6 +721,8 @@ errno_t guid_blob_to_string_buf(const uint8_t *blob, char *str_buf,
                                 size_t buf_size);
 
 const char *get_last_x_chars(const char *str, size_t x);
+errno_t string_begins_with(const char *str, const char *prefix, bool *_result);
+errno_t string_ends_with(const char *str, const char *suffix, bool *_result);
 
 char **concatenate_string_array(TALLOC_CTX *mem_ctx,
                                 char **arr1, size_t len1,
@@ -749,27 +731,12 @@ char **concatenate_string_array(TALLOC_CTX *mem_ctx,
 errno_t mod_defaults_list(TALLOC_CTX *mem_ctx, const char **defaults_list,
                           char **mod_list, char ***_list);
 
-/* from become_user.c */
-errno_t become_user(uid_t uid, gid_t gid);
-struct sss_creds;
-errno_t switch_creds(TALLOC_CTX *mem_ctx,
-                     uid_t uid, gid_t gid,
-                     int num_gids, gid_t *gids,
-                     struct sss_creds **saved_creds);
-errno_t restore_creds(struct sss_creds *saved_creds);
-
-/* from sss_semanage.c */
-/* Please note that libsemange relies on files and directories created with
- * certain permissions. Therefore the caller should make sure the umask is
- * not too restricted (especially when called from the daemon code).
- */
-int sss_set_seuser(const char *login_name, const char *seuser_name,
-                   const char *mlsrange);
-int sss_del_seuser(const char *login_name);
-int sss_get_seuser(const char *linuxuser,
-                   char **selinuxuser,
-                   char **level);
-int sss_seuser_exists(const char *linuxuser);
+/* from capabilities.c */
+errno_t sss_log_caps_to_str(bool only_non_zero, char **_str);
+errno_t sss_set_cap_effective(cap_value_t cap, bool effective);
+errno_t sss_drop_cap(cap_value_t cap);
+void sss_drop_all_caps(void);
+void sss_log_process_caps(const char *stage);
 
 /* convert time from generalized form to unix time */
 errno_t sss_utc_to_time_t(const char *str, const char *format, time_t *unix_time);
@@ -816,21 +783,9 @@ void disarm_watchdog(void);
 int sss_remove_tree(const char *root);
 int sss_remove_subtree(const char *root);
 
-int sss_copy_tree(const char *src_root,
-                  const char *dst_root,
-                  mode_t mode_root,
-                  uid_t uid, gid_t gid);
-
-int sss_copy_file_secure(const char *src,
-                         const char *dest,
-                         mode_t mode,
-                         uid_t uid, gid_t gid,
-                         bool force);
-
 int sss_create_dir(const char *parent_dir_path,
                    const char *dir_name,
-                   mode_t mode,
-                   uid_t uid, gid_t gid);
+                   mode_t mode);
 
 /* from selinux.c */
 int selinux_file_context(const char *dst_name);
@@ -899,4 +854,20 @@ static inline struct timeval sss_tevent_timeval_current_ofs_time_t(time_t secs)
     uint32_t secs32 = (secs > UINT_MAX ? UINT_MAX : secs);
     return tevent_timeval_current_ofs(secs32, 0);
 }
+
+/* parsed uri */
+struct sss_parsed_dns_uri {
+    const char *scheme;
+    const char *address;
+    const char *port;
+    const char *host;
+    const char *path;
+
+    char *data;
+};
+
+errno_t sss_parse_dns_uri(TALLOC_CTX *ctx,
+                          const char *uri,
+                          struct sss_parsed_dns_uri **_parsed_uri);
+
 #endif /* __SSSD_UTIL_H__ */

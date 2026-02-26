@@ -35,6 +35,7 @@
 #include "responder/common/negcache.h"
 #include "providers/data_provider.h"
 #include "responder/pam/pamsrv.h"
+#include "responder/pam/pamsrv_json.h"
 #include "responder/pam/pamsrv_passkey.h"
 #include "responder/pam/pam_helpers.h"
 #include "responder/common/cache_req/cache_req.h"
@@ -210,6 +211,7 @@ static int extract_authtok_v2(struct sss_auth_token *tok,
     case SSS_AUTHTOK_TYPE_PASSKEY:
     case SSS_AUTHTOK_TYPE_PASSKEY_KRB:
     case SSS_AUTHTOK_TYPE_PASSKEY_REPLY:
+    case SSS_AUTHTOK_TYPE_PAM_STACKED:
         ret = sss_authtok_set(tok, auth_token_type,
                               auth_token_data, auth_token_length);
         break;
@@ -285,6 +287,8 @@ static int pam_parse_in_data_v2(struct pam_data *pd,
     uint32_t start;
     uint32_t terminator;
     char *requested_domains;
+    bool authtok_set = false;
+    bool json_auth_set = false;
 
     if (blen < 4*sizeof(uint32_t)+2) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Received data is invalid.\n");
@@ -362,6 +366,14 @@ static int pam_parse_in_data_v2(struct pam_data *pd,
                     if (ret != EOK) return ret;
                     break;
                 case SSS_PAM_ITEM_AUTHTOK:
+                    if (json_auth_set) {
+                        DEBUG(SSSDBG_CRIT_FAILURE,
+                              "Failing because SSS_PAM_ITEM_AUTHTOK and " \
+                              "SSS_PAM_ITEM_JSON_AUTH_SELECTED are mutually " \
+                              "exclusive.\n");
+                        return EPERM;
+                    }
+                    authtok_set = true;
                     ret = extract_authtok_v2(pd->authtok,
                                              size, body, blen, &c);
                     if (ret != EOK) return ret;
@@ -374,6 +386,24 @@ static int pam_parse_in_data_v2(struct pam_data *pd,
                 case SSS_PAM_ITEM_FLAGS:
                     ret = extract_uint32_t(&pd->cli_flags, size,
                                            body, blen, &c);
+                    if (ret != EOK) return ret;
+                    break;
+                case SSS_PAM_ITEM_JSON_AUTH_INFO:
+                    ret = extract_string(&pd->json_auth_msg, size, body,
+                                         blen, &c);
+                    if (ret != EOK) return ret;
+                    break;
+                case SSS_PAM_ITEM_JSON_AUTH_SELECTED:
+                    if (authtok_set) {
+                        DEBUG(SSSDBG_CRIT_FAILURE,
+                              "Failing because SSS_PAM_ITEM_AUTHTOK and " \
+                              "SSS_PAM_ITEM_JSON_AUTH_SELECTED are mutually " \
+                              "exclusive.\n");
+                        return EPERM;
+                    }
+                    json_auth_set = true;
+                    ret = extract_string(&pd->json_auth_selected, size, body,
+                                         blen, &c);
                     if (ret != EOK) return ret;
                     break;
                 default:
@@ -554,9 +584,22 @@ static errno_t set_local_auth_type(struct pam_auth_req *preq,
         goto fail;
     }
 
-    ret = sysdb_attrs_add_bool(attrs, SYSDB_LOCAL_SMARTCARD_AUTH, sc_allow);
-    if (ret != EOK) {
-        goto fail;
+    if (sc_allow) {
+        /* Only set SYSDB_LOCAL_SMARTCARD_AUTH to 'true' but never to
+         * 'false'. The krb5 backend will only returns that Smartcard
+         * authentication is available if a Smartcard is present. That means
+         * if the user authenticates with a different method and a Smartcard
+         * is not present at this time 'sc_allow' will be 'false' and might
+         * overwrite a 'true' value written during a previous authentication
+         * attempt where a Smartcard was present. To avoid this we only write
+         * 'true' values. Since the default if SYSDB_LOCAL_SMARTCARD_AUTH is
+         * missing is 'false' local Smartcard authentication (offline) will
+         * still only be enabled if online Smartcard authentication was
+         * detected. */
+        ret = sysdb_attrs_add_bool(attrs, SYSDB_LOCAL_SMARTCARD_AUTH, sc_allow);
+        if (ret != EOK) {
+            goto fail;
+        }
     }
 
     ret = sysdb_attrs_add_bool(attrs, SYSDB_LOCAL_PASSKEY_AUTH, passkey_allow);
@@ -950,16 +993,6 @@ static errno_t pam_eval_local_auth_policy(TALLOC_CTX *mem_ctx,
     char **opts;
     size_t c;
 
-#ifdef BUILD_FILES_PROVIDER
-    if (is_files_provider(preq->domain)) {
-        *_sc_allow = true;
-        *_passkey_allow = false;
-        *_local_policy = NULL;
-
-        return EOK;
-    }
-#endif
-
     tmp_ctx = talloc_new(NULL);
     if (tmp_ctx == NULL) {
         return ENOMEM;
@@ -1087,6 +1120,7 @@ static errno_t get_password_for_cache_auth(struct sss_auth_token *authtok,
 
     switch (sss_authtok_get_type(authtok)) {
     case SSS_AUTHTOK_TYPE_PASSWORD:
+    case SSS_AUTHTOK_TYPE_PAM_STACKED:
         ret = sss_authtok_get_password(authtok, password, NULL);
         break;
     case SSS_AUTHTOK_TYPE_2FA:
@@ -1214,8 +1248,10 @@ void pam_reply(struct pam_auth_req *preq)
     int pam_verbosity;
     bool local_sc_auth_allow = false;
     bool local_passkey_auth_allow = false;
+    struct prompt_config **pc_list = NULL;
 #ifdef BUILD_PASSKEY
     bool pk_preauth_done = false;
+    bool pk_kerberos = false;
 #endif /* BUILD_PASSKEY */
 
     pd = preq->pd;
@@ -1404,8 +1440,7 @@ void pam_reply(struct pam_auth_req *preq)
         preq->domain &&
         preq->domain->cache_credentials &&
         !pd->offline_auth &&
-        !pd->last_auth_saved &&
-        !is_files_provider(preq->domain)) {
+        !pd->last_auth_saved) {
         ret = set_last_login(preq);
         if (ret != EOK) {
             goto done;
@@ -1492,14 +1527,15 @@ void pam_reply(struct pam_auth_req *preq)
     }
 
     if (pd->cmd == SSS_PAM_PREAUTH) {
-        ret = pam_eval_prompting_config(pctx, pd);
+        ret = pam_eval_prompting_config(pctx, pd, &pc_list);
         if (ret != EOK) {
             DEBUG(SSSDBG_OP_FAILURE, "Failed to add prompting information, "
                                      "using defaults.\n");
         }
 
 #ifdef BUILD_PASSKEY
-        ret = pam_eval_passkey_response(pctx, pd, preq, &pk_preauth_done);
+        ret = pam_eval_passkey_response(pctx, pd, preq, &pk_preauth_done,
+                                        &pk_kerberos);
         if (ret != EOK) {
             DEBUG(SSSDBG_OP_FAILURE, "Failed to eval passkey response\n");
             goto done;
@@ -1507,6 +1543,7 @@ void pam_reply(struct pam_auth_req *preq)
 
         if (may_do_passkey_auth(pctx, pd)
             && !pk_preauth_done
+            && !pk_kerberos
             && preq->passkey_data_exists
             && local_passkey_auth_allow) {
             ret = passkey_local(cctx, cctx->ev, pctx, preq, pd);
@@ -1514,6 +1551,19 @@ void pam_reply(struct pam_auth_req *preq)
             return;
         }
 #endif /* BUILD_PASSKEY */
+
+#ifdef HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
+        if (is_pam_json_enabled(pctx->json_services, pd->service) &&
+            !(pd->cli_flags & PAM_CLI_FLAGS_CHAUTHTOK_PREAUTH)) {
+            ret = generate_json_auth_message(pctx->rctx->cdb, pc_list, pd);
+            if (ret != EOK) {
+                DEBUG(SSSDBG_CRIT_FAILURE,
+                      "failed to generate JSON message.\n");
+                goto done;
+            }
+        }
+#endif /* HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION */
+        pc_list_free(pc_list);
     }
 
     /*
@@ -1701,6 +1751,17 @@ static errno_t pam_forwarder_parse_data(struct cli_ctx *cctx, struct pam_data *p
     if (ret != EOK) {
         goto done;
     }
+
+#ifdef HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION
+    if (pd->cmd == SSS_PAM_AUTHENTICATE
+            && pd->json_auth_selected != NULL) {
+        ret = json_unpack_auth_reply(pd);
+        if (ret != EOK) {
+            DEBUG(SSSDBG_OP_FAILURE, "json_unpack_auth_reply failed.\n");
+            goto done;
+        }
+    }
+#endif /* HAVE_GDM_CUSTOM_JSON_PAM_EXTENSION */
 
     if (pd->logon_name != NULL) {
         ret = sss_parse_name_for_domains(pd, cctx->rctx->domains,

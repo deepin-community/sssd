@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-simple</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-simple</refname>
+        <refpurpose>o ficheiro de configuração para provedor de controle de acesso 'simples' do
+SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            Este manual descreve a configuração do provedor de controlo-de-acesso
+simples para <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>. Para uma referência detalhada da
+sintaxe, consulte a secção <quote>FORMATO DE FICHEIRO</quote> do manual
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            O provedor de acesso simples concede ou nega acesso com base numa lista de
+acesso ou negação de nomes de utilizadores e grupos.
+        </para>
+        <para>
+            Grupos de outros domínios configurados no sssd.conf, mesmo que o provedor de
+acesso simple seja usado lá também, e grupos geridos fora do SSSD não são
+avaliados.
+        </para>
+        <para>
+            Aplicam-se as seguintes regras:
+            <itemizedlist>
+                <listitem>
+                    <para>
+                        Não é recomendado deixar esta opção vazia, pode casuar erros. Se deseja
+permitir todos os utilizadores, não especifique nenhum `simple_allow_users`
+ou `simple_allow_groups`.
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        Se alguma lista for fornecida, a ordem de avaliação é: permitir ->
+negar. Isto significa que qualquer regra de negação correspondente irá
+sobrepor qualquer regra de permissão correspondente.
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        Se uma ou ambas listas "allow" forem fornecidas, todos os utilizadores têm o
+acesso negado a menos que apareçam pelo menos em uma destas listas (condição
+OU).
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        Se uma ou ambas listas "deny" forem fornecidas, todos os utilizadores têm
+acesso concedido a menos que apareçam em pelo menos uma destas na listas
+(condição OU).
+                    </para>
+                </listitem>
+            </itemizedlist>
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPÇÕES DE CONFIGURAÇÃO</title>
+        <para>Consulte a secção <quote>SECÇÕES DE DOMÍNIO</quote> do manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para detalhes da configuração de um domínio
+SSSD. <variablelist>
+                <varlistentry>
+                    <term>simple_allow_users (string)</term>
+                    <listitem>
+                        <para>
+                            Lista separada por vírgulas de utilizadores que têm permissão de fazer
+login. Se esta opção for especificada, todos os outros utilizadores são
+negados a menos que sejam membros dos grupos listados em
+`simple_allow_groups`.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>simple_deny_users (string)</term>
+                    <listitem>
+                        <para>
+                            Lista de utilizadores separados por vírgulas a quem foi explicitamente
+negado o acesso. Se esta opção for especificada, estes utilizadores serão
+negados independentemente de eles aparecerem em `simple_allow_users` ou
+`simple_allow_groups`.
+                        </para>
+                        <para>
+                            Aplica-se Lógica OR: Um utilizador terá acesso negado se estiver listado em
+`simple_deny_users` ou se for membro de um grupo em `simple_deny_groups`.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>simple_allow_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Lista de grupos separados por vírgulas que têm permissão de login. Se esta
+opção for especificada, todos os outros utilizadores são negados a menos que
+estejam explicitamente listados em `simple_allow_users`.
+                        </para>
+                        <para>
+                            Aplica-se Lógica OR: Um utilizador pode fazer login se estiver listado em
+`simple_allow_users` ou se pertencer a um grupo em `simple_allow_groups`.
+                        </para>
+                        <para>
+                            Isto aplica-se apenas aos grupos dentro deste domínio SSSD.  Os grupos
+locais não são avaliados.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>simple_deny_groups (string)</term>
+                    <listitem>
+                        <para>
+                            Lista separada por vírgulas de grupos que têm negação de acesso
+explícita. Isto aplica-se apenas aos grupos dentro deste domínio SSSD. Os
+grupos locais não são avaliados.
+                        </para>
+                        <para>
+                            Aplica-se Lógica OR: Um utilizador terá acesso engado s estiver listado em
+`simple_deny_users` ou se for membro de qualquer grupo em
+`simple_deny_groups`.
+                        </para>
+                        <para>
+                            Isto aplica-se apenas aos grupos dentro deste domínio SSSD.  Os grupos
+locais não são avaliados.
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+        <para>
+            Especificar nenhum valor para nenhuma das listas é equivalente a saltar
+todas inteiramente. Tenha cuidado com isto enquanto gera parâmetros para o
+provedor simples usando scripts automatizados.
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EXEMPLO</title>
+        <para>
+            O seguinte exemplo assume que o SSSD está actualmente configurado e
+example.com é um dos domínios na secção
+<replaceable>[sssd]</replaceable>. Este exemplo mostra apenas as opções
+específicas do provedor de acesso simples.
+        </para>
+        <para>
+<programlisting>
+[domain/example.com]
+access_provider = simple
+simple_allow_users = user1, user2
+simple_deny_users = user3, user4
+simple_allow_groups = allowed_group1
+simple_deny_groups = denied_group1
+</programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='notes'>
+        <title>NOTAS</title>
+        <para>
+          A hierarquia completa de membros do grupo é resolvida antes da verificação
+de acesso, assim até os grupos aninhados podem ser incluídos nas listas de
+acesso.  Por favor lembre-se que a opção
+<quote>ldap_group_nesting_level</quote> pode ter impacto nos resultados e
+deve ser definida para um valor suficiente.  Opção (<citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry>).
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

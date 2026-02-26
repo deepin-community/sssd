@@ -17,6 +17,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <sys/wait.h>
+
 #include "util/util.h"
 #include "util/cert.h"
 #include "util/crypto/sss_crypto.h"
@@ -33,10 +35,6 @@ struct cert_to_ssh_key_state {
     size_t cert_count;
     size_t iter;
     size_t valid_keys;
-
-    struct sss_child_ctx_old *child_ctx;
-    struct tevent_timer *timeout_handler;
-    struct child_io_fds *io;
 };
 
 static errno_t cert_to_ssh_key_step(struct tevent_req *req);
@@ -73,15 +71,6 @@ struct tevent_req *cert_to_ssh_key_send(TALLOC_CTX *mem_ctx,
     state->ev = ev;
     state->logfile = logfile;
     state->timeout = timeout;
-    state->io = talloc(state, struct child_io_fds);
-    if (state->io == NULL) {
-        DEBUG(SSSDBG_OP_FAILURE, "talloc failed.\n");
-        ret = ENOMEM;
-        goto done;
-    }
-    state->io->write_to_child_fd = -1;
-    state->io->read_from_child_fd = -1;
-    talloc_set_destructor((void *) state->io, child_io_destructor);
 
     state->keys = talloc_zero_array(state, struct ldb_val, cert_count);
     if (state->keys == NULL) {
@@ -91,7 +80,7 @@ struct tevent_req *cert_to_ssh_key_send(TALLOC_CTX *mem_ctx,
     }
     state->valid_keys = 0;
 
-    state->extra_args = talloc_zero_array(state, const char *, 8);
+    state->extra_args = talloc_zero_array(state, const char *, 10);
     if (state->extra_args == NULL) {
         DEBUG(SSSDBG_OP_FAILURE, "talloc_zero_array failed.\n");
         ret = ENOMEM;
@@ -108,6 +97,14 @@ struct tevent_req *cert_to_ssh_key_send(TALLOC_CTX *mem_ctx,
         state->extra_args[arg_c++] = "--verify";
     }
     state->extra_args[arg_c++] = "--verification";
+    if (timeout > 0) {
+        state->extra_args[arg_c++] = talloc_asprintf(state, "%lu", timeout);
+        if (state->extra_args[arg_c - 1] == NULL) {
+            ret = ENOMEM;
+            goto done;
+        }
+        state->extra_args[arg_c++] = "--timeout";
+    }
 
     state->certs = talloc_zero_array(state, const char *, cert_count);
     if (state->certs == NULL) {
@@ -157,29 +154,11 @@ done:
     return req;
 }
 
-static void p11_child_timeout(struct tevent_context *ev,
-                              struct tevent_timer *te,
-                              struct timeval tv, void *pvt)
-{
-    struct tevent_req *req = talloc_get_type(pvt, struct tevent_req);
-    struct cert_to_ssh_key_state *state =
-                             tevent_req_data(req, struct cert_to_ssh_key_state);
-
-    DEBUG(SSSDBG_MINOR_FAILURE, "Timeout reached for p11_child.\n");
-    child_handler_destroy(state->child_ctx);
-    state->child_ctx = NULL;
-    tevent_req_error(req, ERR_P11_CHILD_TIMEOUT);
-}
-
 static errno_t cert_to_ssh_key_step(struct tevent_req *req)
 {
     struct cert_to_ssh_key_state *state = tevent_req_data(req,
                                                   struct cert_to_ssh_key_state);
     int ret;
-    int pipefd_from_child[2] = PIPE_INIT;
-    int pipefd_to_child[2] = PIPE_INIT;
-    pid_t child_pid;
-    struct timeval tv;
 
     if (state->iter >= state->cert_count) {
         return EOK;
@@ -187,74 +166,22 @@ static errno_t cert_to_ssh_key_step(struct tevent_req *req)
 
     state->extra_args[0] = state->certs[state->iter];
 
-    ret = pipe(pipefd_from_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-    ret = pipe(pipefd_to_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-
-    child_pid = fork();
-    if (child_pid == 0) { /* child */
-        exec_child_ex(state, pipefd_to_child, pipefd_from_child, P11_CHILD_PATH,
-                      state->logfile, state->extra_args, false,
-                      STDIN_FILENO, STDOUT_FILENO);
-        /* We should never get here */
-        DEBUG(SSSDBG_CRIT_FAILURE, "BUG: Could not exec p11 child\n");
-    } else if (child_pid > 0) { /* parent */
-
-        state->io->read_from_child_fd = pipefd_from_child[0];
-        PIPE_FD_CLOSE(pipefd_from_child[1]);
-        sss_fd_nonblocking(state->io->read_from_child_fd);
-
-        state->io->write_to_child_fd = pipefd_to_child[1];
-        PIPE_FD_CLOSE(pipefd_to_child[0]);
-        sss_fd_nonblocking(state->io->write_to_child_fd);
-
-        /* Set up SIGCHLD handler */
-        ret = child_handler_setup(state->ev, child_pid, cert_to_ssh_key_done,
-                                  req, &state->child_ctx);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_OP_FAILURE, "Could not set up child handlers [%d]: %s\n",
-                ret, sss_strerror(ret));
-            ret = ERR_P11_CHILD;
-            goto done;
-        }
-
-        /* Set up timeout handler */
-        tv = sss_tevent_timeval_current_ofs_time_t(state->timeout);
-        state->timeout_handler = tevent_add_timer(state->ev, req, tv,
-                                                  p11_child_timeout,
-                                                  req);
-        if (state->timeout_handler == NULL) {
-            ret = ERR_P11_CHILD;
-            goto done;
-        }
-        /* Now either wait for the timeout to fire or the child to finish */
-    } else { /* error */
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "fork failed [%d][%s].\n",
-                                   ret, sss_strerror(ret));
-        goto done;
+    ret = sss_child_start(state, state->ev, P11_CHILD_PATH,
+                          state->extra_args, false, state->logfile,
+                          -1, /* ssh cares only about exit code, so no 'io' */
+                          cert_to_ssh_key_done, req,
+                          (unsigned)(state->timeout),
+                          sss_child_handle_timeout,
+                          sss_child_create_timeout_cb_pvt(req, ERR_P11_CHILD_TIMEOUT),
+                          true,
+                          NULL);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_OP_FAILURE, "sss_child_start failed [%d]: %s\n",
+              ret, sss_strerror(ret));
+        return ret;
     }
 
     return EAGAIN;
-
-done:
-    if (ret != EOK) {
-        PIPE_CLOSE(pipefd_from_child);
-        PIPE_CLOSE(pipefd_to_child);
-    }
-
-    return ret;
 }
 
 static void cert_to_ssh_key_done(int child_status,
@@ -266,9 +193,6 @@ static void cert_to_ssh_key_done(int child_status,
                                                   struct cert_to_ssh_key_state);
     int ret;
     bool valid = false;
-
-    PIPE_FD_CLOSE(state->io->read_from_child_fd);
-    PIPE_FD_CLOSE(state->io->write_to_child_fd);
 
     if (WIFEXITED(child_status)) {
         if (WEXITSTATUS(child_status) != 0) {
@@ -310,7 +234,6 @@ static void cert_to_ssh_key_done(int child_status,
 
     state->iter++;
     ret = cert_to_ssh_key_step(req);
-
     if (ret != EAGAIN) {
         if (ret == EOK) {
             tevent_req_done(req);
@@ -318,8 +241,6 @@ static void cert_to_ssh_key_done(int child_status,
             tevent_req_error(req, ret);
         }
     }
-
-    return;
 }
 
 errno_t cert_to_ssh_key_recv(struct tevent_req *req, TALLOC_CTX *mem_ctx,

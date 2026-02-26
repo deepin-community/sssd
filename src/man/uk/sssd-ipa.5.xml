@@ -51,9 +51,12 @@ IPA. Засіб надання даних IPA приймає ті самі па�
 наведено у розділі <quote>ЗМІНЕНІ ТИПОВІ ПАРАМЕТРИ</quote>.
         </para>
         <para>
-            As an access provider, the IPA provider has a minimal configuration (see
-<quote>ipa_access_order</quote>) as it mainly uses HBAC (host-based access
-control) rules. Please refer to freeipa.org for more information about HBAC.
+            Як інструмент надання доступу, інструмент надання даних IPA має мінімальні
+налаштування (див. <quote>ipa_access_order</quote>), оскільки в основному
+використовує для керування доступом використовує правила HBAC (host-based
+access control або керування доступом на основі даних щодо
+вузлів). Докладнішу інформацію щодо HBAC можна отримати на сайті
+freeipa.org.
         </para>
         <para>
             Якщо у sssd.conf вказано <quote>auth_provider=ipa</quote> або
@@ -125,11 +128,6 @@ Kerberos користувачів з довірених областей міс�
 /etc/krb5.conf
                         </para>
                         <para>
-                            ЗАУВАЖЕННЯ: хоча можна використовувати і попередню назву параметра,
-<emphasis>ipa_dyndns_update</emphasis>, користувачам слід переходити на нову
-назву, <emphasis>dyndns_update</emphasis>, у файлі налаштувань.
-                        </para>
-                        <para>
                             Типове значення: false
                         </para>
                     </listitem>
@@ -145,11 +143,6 @@ Kerberos користувачів з довірених областей міс�
 адміністратором.
                         </para>
                         <para>
-                            ЗАУВАЖЕННЯ: хоча можна використовувати і попередню назву параметра,
-<emphasis>ipa_dyndns_ttl</emphasis>, користувачам слід переходити на нову
-назву, <emphasis>dyndns_ttl</emphasis>, у файлі налаштувань.
-                        </para>
-                        <para>
                             Типове значення: 1200 (секунд)
                         </para>
                     </listitem>
@@ -159,23 +152,40 @@ Kerberos користувачів з довірених областей міс�
                     <term>dyndns_iface (рядок)</term>
                     <listitem>
                         <para>
-                            Необов'язковий. Застосовний, лише якщо dyndns_update має значення
-true. Виберіть інтерфейс або список інтерфейсів, чиї IP-адреси має бути
-використано для динамічних оновлень DNS. Спеціальне значення
-<quote>*</quote> означає, що слід використовувати IP-адреси з усіх
-інтерфейсів.
-                        </para>
-                        <para>
-                            ЗАУВАЖЕННЯ: хоча можна використовувати і попередню назву параметра,
-<emphasis>ipa_dyndns_iface</emphasis>, користувачам слід переходити на нову
-назву, <emphasis>dyndns_iface</emphasis>, у файлі налаштувань.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
                         </para>
                         <para>
                             Типове значення: використовувати IP-адреси інтерфейсу, який використовується
 для з’єднання LDAP IPA
                         </para>
                         <para>
-                            Приклад: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -209,28 +219,6 @@ GSS-TSIG для безпечних оновлень PTR за допомогою 
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_enable_dns_sites (булеве значення)</term>
-                    <listitem>
-                        <para>
-                            Вмикає сайти DNS — визначення служб на основі адрес.
-                        </para>
-                        <para>
-                            Якщо вказано значення true і увімкнено визначення служб (див. розділ щодо
-пошуку служб у нижній частині сторінки підручника (man)), SSSD спочатку
-спробує визначення на основі адрес за допомогою запиту, що містить
-"_location.hostname.example.com", а потім повертається до традиційного
-визначення SRV. Якщо визначення на основі адреси буде успішним, сервери IPA,
-виявлені на основі визначення за адресою, вважатимуться основним серверами,
-а сервери IPA, виявлені за допомогою традиційного визначення SRV,
-вважатимуться резервними серверами.
-                        </para>
-                        <para>
-                            Типове значення: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
                     <term>dyndns_refresh_interval (ціле число)</term>
                     <listitem>
                         <para>
@@ -258,8 +246,9 @@ DNS клієнта. Застосовується, лише якщо значен
 переспрямовування.
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Зауважте, що параметр <emphasis>dyndns_update_per_family</emphasis> не
+застосовується до оновлень записів PTR. Ці оновлення завжди надсилаються
+окремо.
                         </para>
                         <para>
                             Типове значення: False (вимкнено)
@@ -290,12 +279,24 @@ apply for PTR record updates.  Those updates are always sent separately.
                         </para>
                         <para>
                             Встановлення значення для цього параметра потрібне для середовищ, де сервер
-DNS відрізняється від сервера профілів.
+DNS відрізняється від сервера профілів, або якщо ми використовуємо
+шифрований DNS.
+                        </para>
+                        <para>
+                           Параметр може бути простим рядком, що містить ім'я DNS або IP-адресу. Він
+також може бути адресою. Адреса може бути подібною до
+<emphasis>dns://назва_сервера/</emphasis> або
+<emphasis>dns+tls://1.2.3.4:853#назва_сервера/</emphasis>.
+                        </para>
+                        <para>
+                            Другий приклад вмикає протокол DNS-через-TLS для оновлень DNS. У допоміжній
+програмі nsupdate має бути передбачено підтримку DoT — перевірте
+<emphasis>man nsupdate</emphasis> перед її увімкненням у SSSD.
                         </para>
                         <para>
                             Будь ласка, зауважте, що цей параметр буде використано лише для резервних
 спроб, якщо попередні спроби із використанням автовиявлення завершаться
-невдало.
+невдало або якщо увімкнено DNS-через-TLS.
                         </para>
                         <para>
                             Типове значення: немає (надати nsupdate змогу вибирати сервер)
@@ -318,14 +319,61 @@ DNS відрізняється від сервера профілів.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_access_order (string)</term>
+                    <term>dyndns_dot_cacert (рядок)</term>
+                    <listitem>
+                        <para>
+                            Цей параметр вказує файл сертифікатів служб сертифікації (у форматі PEM) для
+перевірки TLS-сертифіката віддаленого сервера при використанні DoT.
+                        </para>
+                        <para>
+                            Типове значення: немає (використовувати загальне сховище сертифікатів)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (рядок)</term>
+                    <listitem>
+                        <para>
+                            Цей параметр встановлює файл сертифікатів для розпізнавання у передаванні
+даних DoT на віддалений сервер. Файл ланцюжка сертифікатів повинен містити
+форматування PEM.
+                        </para>
+                        <para>
+                            Для досягнення взаємного розпізнавання TLS слід встановити значення для обох
+параметрів, <emphasis>dyndns_dot_cert</emphasis> та
+<emphasis>dyndns_dot_key</emphasis>.
+                        </para>
+                        <para>
+                            Типове значення: немає (не використовувати розпізнавання за допомогою TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (рядок)</term>
+                    <listitem>
+                        <para>
+                            Цей параметр встановлює файл ключів для шифрування з розпізнаванням для
+передавання даних DoT на віддалений сервер. Файл закритого ключа має бути
+записано у форматі PEM.
+                        </para>
+                        <para>
+                            Типове значення: немає (не використовувати розпізнавання за допомогою TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_access_order (рядок)</term>
                     <listitem>
                         <para>
                             Список відокремлених комами параметрів керування доступом. Можливі значення
 списку:
                         </para>
                         <para>
-                            <emphasis>expire</emphasis>: use IPA's account expiration policy.
+                            <emphasis>expire</emphasis>: використовувати правила строку дії облікового
+запису IPA.
                         </para>
                         <para>
                             <emphasis>pwd_expire_policy_reject, pwd_expire_policy_warn,
@@ -335,30 +383,30 @@ pwd_expire_policy_renew: </emphasis> Ці параметри корисні, я�
 наприклад на ключах SSH.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Відмінність між цими варіантами полягає у дії, яку буде виконано, якщо строк
+дії пароля буде вичерпано:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_reject - user is denied to log in,
+                                    pwd_expire_policy_reject — користувачу заборонено входити,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_warn - user is still able to log in,
+                                    pwd_expire_policy_warn — користувачу можна входити,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                    pwd_expire_policy_renew — програма попросить користувача негайно змінити
+пароль.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
-                            Please note that 'access_provider = ipa' must be set for this feature to
-work.
+                            Будь ласка, зауважте, що для того, щоб цим можна було скористатися, слід
+встановити «access_provider = ipa».
                         </para>
                     </listitem>
                 </varlistentry>
@@ -380,11 +428,7 @@ work.
                     <term>ipa_subid_ranges_search_base (рядок)</term>
                     <listitem>
                         <para>
-                            Необов’язковий. Використати вказаний рядок як основу пошуку пов’язаних з
-підлеглими діапазонами об’єктів.
-                        </para>
-                        <para>
-                            Типове значення: значення <emphasis>cn=subids,%basedn</emphasis>
+                            Deprecated. Use ldap_subid_ranges_search_base instead.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -806,6 +850,12 @@ ad_server = dc.ad.domain.com
                         <para>ad_site</para>
                     </listitem>
                     <listitem>
+                        <para>ipa_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_backup_server</para>
+                    </listitem>
+                    <listitem>
                         <para>ldap_search_base</para>
                     </listitem>
                     <listitem>
@@ -819,11 +869,15 @@ ad_server = dc.ad.domain.com
                     </listitem>
                 </itemizedlist>
             </para>
+            <para>
+                Параметри з префіксом «ad_» або «ipa_» застосовуються лише до відповідного
+типу піддоменів.
+            </para>
         </refsect2>
         <refsect2 id='client_configuration'>
             <title>ПАРАМЕТРИ, ЯКІ МОЖНА НАЛАШТУВАТИ НА КЛІЄНТАХ IPA</title>
             <para>
-                У розділі піддомену на клієнті IPA можна вказати такі параметри:
+                У розділі піддомену AD на клієнті IPA можна вказати такі параметри:
                 <itemizedlist>
                     <listitem>
                         <para>ad_server</para>

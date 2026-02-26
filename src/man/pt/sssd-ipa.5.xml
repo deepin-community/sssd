@@ -1,0 +1,928 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-ipa</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-ipa</refname>
+        <refpurpose>Provedor IPA do SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            Este manual descreve a configuração do provedor IPA <citerefentry>
+<refentrytitle>sssd</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>.  Para uma referência detalhada da sintaxe, consulte a
+secção <quote>FORMATO DE FICHEIRO</quote> do manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            O provedor IPA é um backend usado para ligar a um servidor IPA.  (Consulte o
+sitio web freeipa.org para informação sobre servidores IPA.) Este provedor
+requer que a máquina se junte ao domínio IPA; a configuração é quase
+inteiramente auto-descoberta e obtida directamente a partir do servidor.
+        </para>
+        <para>
+            O provedor IPA permite ao SSSD usar o provedor de identidade <citerefentry>
+<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> e o provedor de autenticação <citerefentry>
+<refentrytitle>sssd-krb5</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> com optimizações para ambientes IPA. O provedor IPA aceita
+as mesmas opções usadas pelos provedores sssd-ldap e sssd-krb5 com algumas
+excepções. No entanto, não é necessário nem recomendado definir estas
+opções.
+        </para>
+        <para>
+            O provedor IPA primariamente copia as opções predefinidas dos provedores
+ldap e krb5 tradicionais com algumas excepções, as diferenças são listadas
+na secção <quote>OPÇÕES PREDEFINIDAS MODIFICADAS</quote>.
+        </para>
+        <para>
+            Como um provedor de acesso, o provedor IPA tem uma configuração mínima (veja
+<quote>ipa_access_order</quote>) pois principalmente usa regras HBAC
+(controle de acesso baseado em máquina). Por favor consulte freeipa.org para
+mais informação acerca de HBAC.
+        </para>
+        <para>
+            Se <quote>auth_provider=ipa</quote> ou <quote>access_provider=ipa</quote>
+estiverem configurados no sssd.conf então o id_provider tem também de ser
+definido para <quote>ipa</quote>.
+        </para>
+        <para>
+            O provedor IPA irá usar o respondedor PAC se os bilhetes Kerberos de
+utilizadores de reinos de confiança conterem um PAC. Para facilitar a
+configuração o respondedor PAC é arrancado automaticamente se o provedor ID
+do IPA estiver configurado.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPÇÕES DE CONFIGURAÇÃO</title>
+        <para>Consulte a secção <quote>SECÇÕES DE DOMÍNIO</quote> do manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry> para detalhes da configuração de um domínio
+SSSD. <variablelist>
+                <varlistentry>
+                    <term>ipa_domain (string)</term>
+                    <listitem>
+                        <para>
+                            Especifica o nome do domínio IPA.  Isto é opcional. Se não for fornecido, é
+usado o nome de domínio da configuração.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_server, ipa_backup_server (string)</term>
+                    <listitem>
+                        <para>
+                            A lista separada por vírgulas de endereços IP e nomes de máquinas dos
+servidores IPA aos quais o SSSD deve ligar por ordem de preferência. Para
+mais informação sobre failover e redundância de servidores. veja a secção
+<quote>FAILOVER</quote>.  Isto é opcional se a auto-descoberta estiver
+activa.  Para mais informação sobre descoberta de serviços, consulte a
+secção <quote>DESCOBERTA DE SERVIÇOS</quote>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_hostname (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Pode ser definido em máquinas onde os nomes-de-máquinas(5) não
+refletem o nome totalmente qualificado usado no domínio IPA para identificar
+esta máquina.  O nome de máquina tem de ser totalmente qualificado.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update (booleano)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Esta opção diz ao SSSD para actualizar automaticamente o servidor
+DNS embutido FreeIPA com o endereço IP deste cliente. A actualização é
+segura usando GSS-TSIG. O endereço IP da ligação LDAP IPA é usado para as
+actualizações, se não for caso contrário especificado ao se usar a opção
+<quote>dyndns_iface</quote>.
+                        </para>
+                        <para>
+                            NOTA: Em sistemas antigos (como o RHEL 5), para este comportamento poder ter
+fiabilidade de funcionamento, o reino Kerberos predefinido tem de ser
+definido apropriadamente em /etc/krb5.conf
+                        </para>
+                        <para>
+                            Predefinição: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_ttl (inteiro)</term>
+                    <listitem>
+                        <para>
+                            O TTL a aplicar ao registo de cliente DNS quando o actualiza.  Se
+dyndns_update for false isto não tem efeito. Isto irá sobrepor o TTL do lado
+servidor se definido por um administrador.
+                        </para>
+                        <para>
+                            Predefinição: 1200 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_iface (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
+                        </para>
+                        <para>
+                            Predefinição: Usa o endereço IP da interface que é usada para ligação IPA
+LDAP
+                        </para>
+                        <para>
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_auth (string)</term>
+                    <listitem>
+                        <para>
+                            Se o utilitário nsupdate deve usar autenticação GSS-TSIG para actualizações
+de segurança com o servidor DNS, actualizações não seguras podem ser
+enviadas ao definir esta opção para 'none'.
+                        </para>
+                        <para>
+                            Predefinição: GSS-TSIG
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_auth_ptr (string)</term>
+                    <listitem>
+                        <para>
+                            Se o utilitário nsupdate deve usar autenticação GSS-TSIG para actualizações
+PTR de segurança com o servidor DNS, actualizações não seguras podem ser
+enviadas ao definir esta opção para 'none'.
+                        </para>
+                        <para>
+                            Predefinição: O mesmo que dyndns_auth
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_refresh_interval (inteiro)</term>
+                    <listitem>
+                        <para>
+                            Quão frequente deve o backend executar a actualização DNS periódica em
+adição à actualização automática executada quando o backend fica online.
+Esta opção é opcional e aplicável apenas quando dyndns_update é true.
+                        </para>
+                        <para>
+                            Predefinição: 0 (desactivado)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update_ptr (booleano)</term>
+                    <listitem>
+                        <para>
+                            Se o registo PTR também deve ser explicitamente actualizado quando se
+actualiza os registos de DNS dos clientes.  Aplicável apenas quando
+dyndns_update é true.
+                        </para>
+                        <para>
+                            Esta opção deve ser False na maioria de desenvolvimentos IPA pois o servidor
+IPA gera os registos PTR automaticamente quando os registos da frente são
+modificados.
+                        </para>
+                        <para>
+                            Note que o parâmetro <emphasis>dyndns_update_per_family</emphasis> não se
+aplica para atualizações de registo PTR  Essas atualizações são sempre
+enviadas em separado.
+                        </para>
+                        <para>
+                            Predefinição: False (desactivado)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_force_tcp (booleano)</term>
+                    <listitem>
+                        <para>
+                            Se o utilitário nsupdate deve por predefinição usar TCP para comunicar com o
+servidor DNS.
+                        </para>
+                        <para>
+                            Predefinição: False (deixa o nsupdate escolher o protocolo)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_server (string)</term>
+                    <listitem>
+                        <para>
+                            O servidor DNS a usar quando executa uma actualização de DNS. Na maioria das
+configurações, é recomendado deixar esta opção por definir.
+                        </para>
+                        <para>
+                            Definir esta opção faz sentido em ambientes onde o servidor DNS é diferente
+do servidor de identidade ou quando usamos DNS encriptado.
+                        </para>
+                        <para>
+                           O parâmetro ode ser uma string simples que contém um nome DNS ou um endereço
+IP. Também pode ser um URI.  O URI pode parecer-se com
+<emphasis>dns://servername/</emphasis> ou
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            O segundo exemplo ativa protocolo DNS-sobrer-TLS para atualizações de DNS. O
+utilitário nsupdate tem de suportar DoT - verifique o <emphasis>manual do
+nsupdate</emphasis> antes de o ativar no SSSD.
+                        </para>
+                        <para>
+                            Por favor note que esta opção só será usada em tentativas de recurso quando
+a tentativa anterior que usa definições se auto-detecção falhe ou quando
+DNS-sobre-TLS estiver ativo.
+                        </para>
+                        <para>
+                            Predefinição: None (deixa o nsupdate escolher o servidor)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update_per_family (booleano)</term>
+                    <listitem>
+                        <para>
+                            A actualização DNS é por predefinição feita em dois passos - actualização
+IPv4 e depois actualização IPv6. Nalguns casos pode ser desejável executar a
+actualização IPv4 e IPv6 num único passo.
+                        </para>
+                        <para>
+                            Predefinição: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cacert (string)</term>
+                    <listitem>
+                        <para>
+                            Esta opção especifica o ficheiro do certificado da autoridade de
+certificados (em formato PEM) de modo a verificar o certificado TLS do
+servidor remoto quando se usa DoT.
+                        </para>
+                        <para>
+                            Predefinição: Nenhum (usa o armazém de certificados global)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (string)</term>
+                    <listitem>
+                        <para>
+                            Esta opção define o ficheiro de certificado(s) para autenticação para o
+transporte DoT para o servidor remoto. É esperado que o ficheiro de cadeia
+de certificados esteja em formato PEM.
+                        </para>
+                        <para>
+                            As opções <emphasis>dyndns_dot_cert</emphasis> e
+<emphasis>dyndns_dot_key</emphasis> têm de ser ambas definidas para se
+conseguir autenticação TLS mútua.
+                        </para>
+                        <para>
+                            Predefinição: Nenhuma (Não usa autenticação TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (string)</term>
+                    <listitem>
+                        <para>
+                            Esta opção define o ficheiro chave para encriptação autenticada para o
+transporte DoT ao servidor remoto. É esperado que o ficheiro da chave
+privada esteja em formato PEM.
+                        </para>
+                        <para>
+                            Predefinição: Nenhuma (Não usa autenticação TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_access_order (string)</term>
+                    <listitem>
+                        <para>
+                            Lista separada por vírgulas de opções de controlo de acesso.  Os valores
+permitidos são:
+                        </para>
+                        <para>
+                            <emphasis>expire</emphasis>: usa política de expiração de conta do IPA.
+                        </para>
+                        <para>
+                            <emphasis>pwd_expire_policy_reject, pwd_expire_policy_warn,
+pwd_expire_policy_renew: </emphasis> Estas opções são úteis se os
+utilizadores estiverem interessados em serem avisados que a palavra passe
+está prestes a expirar e a autenticação é baseada em se usar um método
+diferente que palavras passe - por exemplo chaves SSH.
+                       </para>
+                       <para>
+                            A diferença entre estas opções é a acção tomada se a palavra passe do
+utilizador estiver expirada:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                    pwd_expire_policy_reject - é negado o login ao utilizador,
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                    pwd_expire_policy_warn - o utilizador ainda é capaz de fazer login,
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                    pwd_expire_policy_renew - o utilizador é incitado a mudar a sua palavra
+passe imediatamente.
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para>
+                            Por favor note que 'access_provider = ipa' tem de estar definido para esta
+funcionalidade funcionar.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_deskprofile_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string dada como base de busca para objectos relacionados
+com Desktop Profile.
+                        </para>
+                        <para>
+                            Predefinição: Usa base DN
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_subid">
+                    <term>ipa_subid_ranges_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Deprecated. Use ldap_subid_ranges_search_base instead.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_hbac_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string dada como base de busca para objectos relacionados
+com HBAC.
+                        </para>
+                        <para>
+                            Predefinição: Usa base DN
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_host_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Descontinuado. Use ldap_host_search_base em vez disto.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_selinux_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string fornecida como base de busca para mapas de utilizador
+SELinux.
+                        </para>
+                        <para>
+                            Veja <quote>ldap_search_base</quote> para informação acerca de configurar
+múltiplas bases de busca.
+                        </para>
+                        <para>
+                            Predefinição: o valor de <emphasis>ldap_search_base</emphasis>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_subdomains_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string fornecida como base de busca para domínios de
+confiança.
+                        </para>
+                        <para>
+                            Veja <quote>ldap_search_base</quote> para informação acerca de configurar
+múltiplas bases de busca.
+                        </para>
+                        <para>
+                            Predefinição: o valor de <emphasis>cn=trusts,%basedn</emphasis>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_master_domain_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string fornecida como base de busca para objecto de domínio
+mestre.
+                        </para>
+                        <para>
+                            Veja <quote>ldap_search_base</quote> para informação acerca de configurar
+múltiplas bases de busca.
+                        </para>
+                        <para>
+                            Predefinição: o valor de <emphasis>cn=ad,cn=etc,%basedn</emphasis>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_views_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Usa a string fornecida como base de busca para recipientes de
+visualizações.
+                        </para>
+                        <para>
+                            Veja <quote>ldap_search_base</quote> para informação acerca de configurar
+múltiplas bases de busca.
+                        </para>
+                        <para>
+                            Predefinição: o valor de <emphasis>cn=views,cn=accounts,%basedn</emphasis>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_realm (string)</term>
+                    <listitem>
+                        <para>
+                            O nome do reino Kerberos. Isto é opcional e predefinido para o valor de
+<quote>ipa_domain</quote>.
+                        </para>
+                        <para>
+                            O nome do reino Kerberos tem um significado especial em IPA - é convertido
+num DN base a usar para executar operações de LDAP.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_confd_path (string)</term>
+                    <listitem>
+                        <para>
+                            Caminho absoluto de um directório onde o SSSD deve colocar trechos de
+configuração do Kerberos.
+                        </para>
+                        <para>
+                            Para desactivar a criação de trechos de configuração defina o parâmetro para
+'none'.
+                        </para>
+                        <para>
+                            Predefinição: não definida (sub-directório krb5.include.d do directório
+pubconf do SSSD)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_deskprofile_refresh (inteiro)</term>
+                    <listitem>
+                        <para>
+                            A quantidade de tempo entre procuras das regras Desktop Profile contra o
+servidor IPA. Isto irá reduzir a latência e carga no servidor IPA se
+existirem muitos pedidos de perfil de desktop feitos num curto período.
+                        </para>
+                        <para>
+                            Predefinição: 5 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_deskprofile_request_interval (inteiro)</term>
+                    <listitem>
+                        <para>
+                            A quantidade de tempo entre procuras das regras Desktop Profile contra o
+servidor IPA no caso do último pedido não ter retornado nenhuma regra.
+                        </para>
+                        <para>
+                            Predefinição: 60 (minutos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_hbac_refresh (inteiro)</term>
+                    <listitem>
+                        <para>
+                            A quantidade de tempo entre procuras das regras HBAC contra o servidor
+IPA. Isto irá reduzir a latência e carga no servidor IPA se existirem muitos
+pedidos de controle de acesso feitos num curto período.
+                        </para>
+                        <para>
+                            Predefinição: 5 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_hbac_selinux (inteiro)</term>
+                    <listitem>
+                        <para>
+                            A quantidade de tempo entre procuras de mapas SELinux contra o servidor
+IPA. Isto irá reduzir a latência e carga no servidor IPA se existirem muitos
+pedidos de login de utilizador feitos num curto período.
+                        </para>
+                        <para>
+                            Predefinição: 5 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_server_mode (booleano)</term>
+                    <listitem>
+			<para>
+                            Esta opção será definida automaticamente pelo instalador do IPA
+(ipa-server-install) e denota se o SSSD está a correr num servidor IPA ou
+não.
+                        </para>
+			<para>
+                            Num servidor IPA o SSSD irá procurar utilizadores e grupos de domínios de
+confiança directamente enquanto que num cliente irá perguntar ao servidor
+IPA.
+                        </para>
+                        <para>
+                            NOTA: Existem actualmente algumas suposições que têm de ser respeitadas
+quando o SSSD corre num servidor IPA.
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        A opção <quote>ipa_server</quote> tem de ser configurada para apontar para o
+próprio servidor IPA. Esta é sempre a predefinição definida pelo instalador
+do IPA, portanto não é requerida nenhuma alteração manual.
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        A opção <quote>full_name_format</quote> não pode ser ajustada a apenas
+escrever nomes curtos para utilizadores de domínios de confiança.
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para>
+                            Predefinição: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry condition="with_autofs">
+                    <term>ipa_automount_location (string)</term>
+                    <listitem>
+                        <para>
+                            A localização de automounter que este cliente IPA irá usar
+                        </para>
+                        <para>
+                            Predefinição: A localização chamada "default"
+                        </para>
+                        <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/autofs_restart.xml" />
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+        <refsect2 id='views'>
+            <title>VISUALIZAÇÕES E SOBREPOSIÇÕES</title>
+            <para>
+                O SSSD consegue lidar com vistas e sobreposições que são oferecidas pelo
+FreeIPA 4.1 e versões posteriores. Como todos os caminhos e objectclasses
+são fixados no lado do servidor, não há basicamente nenhuma necessidade de
+configurar nada. Para complemento as opções relacionadas estão listadas aqui
+com os seus valores predefinidos.  <variablelist>
+                    <varlistentry>
+                        <term>ipa_view_class (string)</term>
+                        <listitem>
+                            <para>
+                                Objectclass do recipiente de vista.
+                            </para>
+                            <para>
+                                Predefinição: nsContainer
+                            </para>
+                        </listitem>
+                    </varlistentry>
+
+                    <varlistentry>
+                        <term>ipa_view_name (string)</term>
+                        <listitem>
+                            <para>
+                                Nome do atributo que contém o nome da vista.
+                            </para>
+                            <para>
+                                Predefinição: NC
+                            </para>
+                        </listitem>
+                    </varlistentry>
+
+                    <varlistentry>
+                        <term>ipa_override_object_class (string)</term>
+                        <listitem>
+                            <para>
+                                Objectclass dos objectos de sobreposição.
+                            </para>
+                            <para>
+                                Predefinição: ipaOverrideAnchor
+                            </para>
+                        </listitem>
+                    </varlistentry>
+
+                    <varlistentry>
+                        <term>ipa_anchor_uuid (string)</term>
+                        <listitem>
+                            <para>
+                                Nome do atributo que contém a referência ao objecto original num domínio
+remoto.
+                            </para>
+                            <para>
+                                Predefinição: ipaAnchorUUID
+                            </para>
+                        </listitem>
+                    </varlistentry>
+
+                    <varlistentry>
+                        <term>ipa_user_override_object_class (string)</term>
+                        <listitem>
+                            <para>
+                                Nome do objectclass para sobreposições do utilizador. É usado para
+determinar se o objecto de sobreposição encontrado está relacionado com um
+utilizador ou um grupo.
+                            </para>
+                            <para>
+                                As sobreposições de utilizador podem conter atributos dados por
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>ldap_user_name</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_uid_number</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_gid_number</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_gecos</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_home_directory</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_shell</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_user_ssh_public_key</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </para>
+                            <para>
+                                Predefinição: ipaUserOverride
+                            </para>
+                        </listitem>
+                    </varlistentry>
+
+                    <varlistentry>
+                        <term>ipa_group_override_object_class (string)</term>
+                        <listitem>
+                            <para>
+                                Nome do objectclass para sobreposições do grupo. É usado para determinar se
+o objecto de sobreposição encontrado está relacionado com um utilizador ou
+um grupo.
+                            </para>
+                            <para>
+                                As sobreposições de grupo podem conter atributos dados por
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>ldap_group_name</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>ldap_group_gid_number</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </para>
+                            <para>
+                                Predefinição: ipaGroupOverride
+                            </para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </para>
+        </refsect2>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ipa_modified_defaults.xml" />
+
+    <refsect1 id='subdomains_provider'>
+        <title>FORNECEDOR DE SUBDOMÍNIOS</title>
+        <para>
+            O provedor de sub-domínios do IPA comporta-se de modo levemente diferente se
+for configurado explicitamente ou implicitamente.
+        </para>
+        <para>
+            Se a opção 'subdomains_provider = ipa' existir na secção domain do
+sssd.conf, o provedor de sub-domínios do IPA está configurado
+explicitamente, e todos os pedidos de sub-domínio são enviados para o
+servidor IPA se tal for necessário.
+        </para>
+        <para>
+            Se a opção 'subdomains_provider' não estiver definida na secção domain do
+sssd.conf mas existir a opção 'id_provider = ipa', o provedor de
+sub-domínios do IPA está configurado implicitamente. Neste caso, se um
+pedido de sub-domínio falhar e indicar que o servidor não suporta
+sub-domínios, isto é, não está configurado para confianças, o provedor de
+sub-domínios do IPA é desactivado. Após uma hora ou após o provedor IPA ir
+online, o provedor de sub-domínios é activado de novo.
+        </para>
+    </refsect1>
+
+    <refsect1 id='trusted_domains'>
+        <title>CONFIGURAÇÃO DE DOMÍNIOS DE CONFIANÇA</title>
+        <para>
+            Algumas opções de configuração também podem ser definidas para um domínio de
+confiança. Uma configuração de domínio de confiança pode ser definida usando
+a secção trusted domain como mostrado no exemplo em baixo. Em alternativa, a
+opção <quote>subdomain_inherit</quote> pode ser usada no domínio pai.
+<programlisting>
+[domain/ipa.domain.com/ad.domain.com]
+ad_server = dc.ad.domain.com
+</programlisting>
+        </para>
+        <para>
+            Para mais detalhes, veja o manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            Opções de configuração diferentes são afinadas para um domínio de confiança
+dependendo de se você está a configurar o SSSD num servidor IPA ou num
+cliente IPA.
+        </para>
+        <refsect2 id='server_configuration'>
+            <title>OPÇÕES AFINÁVEIS EM MESTRES IPA</title>
+            <para>
+                As seguinte opções podem ser definidas na secção subdomain dum mestre IPA:
+                <itemizedlist>
+                    <listitem>
+                        <para>ad_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ad_backup_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ad_site</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_backup_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ldap_search_base</para>
+                    </listitem>
+                    <listitem>
+                        <para>ldap_user_search_base</para>
+                    </listitem>
+                    <listitem>
+                        <para>ldap_group_search_base</para>
+                    </listitem>
+                    <listitem>
+                        <para>use_fully_qualified_names</para>
+                    </listitem>
+                </itemizedlist>
+            </para>
+            <para>
+                Opções prefixadas com 'ad_' ou 'ipa_' apenas se aplicam nos seus tipos de
+sub-domínio respectivos.
+            </para>
+        </refsect2>
+        <refsect2 id='client_configuration'>
+            <title>OPÇÕES AFINÁVEIS EM CLIENTES IPA</title>
+            <para>
+                As seguinte opções podem ser definidas numa secção subdomain AD dum cliente
+IPA:
+                <itemizedlist>
+                    <listitem>
+                        <para>ad_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ad_site</para>
+                    </listitem>
+                </itemizedlist>
+            </para>
+            <para>
+                Note que se ambas opções estiverem definidas, apenas
+<quote>ad_server</quote> é avaliada.
+            </para>
+            <para>
+                Como qualquer pedido por identidade de utilizador ou grupo a partir de um
+domínio de confiança provocado por um cliente IPA é resolvido pelo servidor
+IPA, as opções <quote>ad_server</quote> e <quote>ad_site</quote> apenas
+afectam contra qual AD DC será a autenticação executada. Em particular, os
+endereços resolvidos a partir destas listas serão escritos em ficheiros
+<quote>kdcinfo</quote> lidos pelo plugin locador do Kerberos. Por favor
+consulte o manual <citerefentry>
+<refentrytitle>sssd_krb5_locator_plugin</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> para mais detalhes sobre o plugin
+locador do Kerberos.
+            </para>
+        </refsect2>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/failover.xml" />
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/service_discovery.xml" />
+
+    <refsect1 id='example'>
+        <title>EXEMPLO</title>
+        <para>
+            O seguinte exemplo assume que o SSSD está actualmente configurado e
+example.com é um dos domínios na secção
+<replaceable>[sssd]</replaceable>. Este exemplo mostra apenas as opções
+específicas do provedor ipa.
+        </para>
+        <para>
+<programlisting>
+[domain/example.com]
+id_provider = ipa
+ipa_server = ipaserver.example.com
+ipa_hostname = myhost.example.com
+</programlisting>
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

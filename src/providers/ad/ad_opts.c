@@ -55,10 +55,9 @@ struct dp_option ad_basic_opts[] = {
     { "ad_site", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "krb5_confd_path", DP_OPT_STRING, { KRB5_MAPPING_DIR }, NULL_STRING },
     { "ad_maximum_machine_account_password_age", DP_OPT_NUMBER, { .number = 30 }, NULL_NUMBER },
-    { "ad_machine_account_password_renewal_opts", DP_OPT_STRING, { "86400:750:300" }, NULL_STRING },
+    { "ad_machine_account_password_renewal_opts", DP_OPT_STRING, { "86400:750:300:realm" }, NULL_STRING },
     { "ad_update_samba_machine_account_password", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "ad_use_ldaps", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
-    { "ad_allow_remote_domain_local_groups", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     DP_OPTION_TERMINATOR
 };
 
@@ -66,6 +65,7 @@ struct dp_option ad_def_ldap_opts[] = {
     { "ldap_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_backup_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "ldap_read_rootdse", DP_OPT_STRING, { "anonymous" }, NULL_STRING },
     { "ldap_default_bind_dn", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_default_authtok_type", DP_OPT_STRING, NULL_STRING, NULL_STRING},
     { "ldap_default_authtok", DP_OPT_BLOB, NULL_BLOB, NULL_BLOB },
@@ -99,8 +99,11 @@ struct dp_option ad_def_ldap_opts[] = {
     { "ldap_pwmodify_mode", DP_OPT_STRING, { "exop" }, NULL_STRING },
     { "ldap_offline_timeout", DP_OPT_NUMBER, { .number = 60 }, NULL_NUMBER },
     { "ldap_force_upper_case_realm", DP_OPT_BOOL, BOOL_TRUE, BOOL_TRUE },
-    { "ldap_enumeration_refresh_timeout", DP_OPT_NUMBER, { .number = 300 }, NULL_NUMBER },
-    { "ldap_enumeration_refresh_offset", DP_OPT_NUMBER, { .number = 30 }, NULL_NUMBER },
+    /* ad_provider doesn't support enumeration, 'ldap_enumeration_*' options are here
+     * only because this structure is shared with ldap_provider
+     */
+    { "ldap_enumeration_refresh_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
+    { "ldap_enumeration_refresh_offset", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_purge_cache_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_purge_cache_offset", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     { "ldap_tls_cacert", DP_OPT_STRING, NULL_STRING, NULL_STRING },
@@ -139,7 +142,10 @@ struct dp_option ad_def_ldap_opts[] = {
     { "ldap_chpass_backup_uri", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_chpass_dns_service_name", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "ldap_chpass_update_last_change", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
-    { "ldap_enumeration_search_timeout", DP_OPT_NUMBER, { .number = 60 }, NULL_NUMBER },
+    /* ad_provider doesn't support enumeration, 'ldap_enumeration_*' options are here
+     * only because this structure is shared with ldap_provider
+     */
+    { "ldap_enumeration_search_timeout", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
     /* Do not include ldap_auth_disable_tls_never_use_in_production in the
      * manpages or SSSDConfig API
      */
@@ -167,6 +173,9 @@ struct dp_option ad_def_ldap_opts[] = {
     { "ldap_pwdlockout_dn", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "wildcard_limit", DP_OPT_NUMBER, { .number = 1000 }, NULL_NUMBER},
     { "ldap_library_debug_level", DP_OPT_NUMBER, NULL_NUMBER, NULL_NUMBER},
+    { "ldap_use_ppolicy", DP_OPT_BOOL, BOOL_TRUE, BOOL_TRUE },
+    { "ldap_ppolicy_pwd_change_threshold", DP_OPT_NUMBER, { .number = 0 }, NULL_NUMBER },
+    { "ldap_subid_ranges_search_base", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     DP_OPTION_TERMINATOR
 };
 
@@ -243,6 +252,7 @@ struct sdap_attr_map ad_2008r2_user_map[] = {
     { "ldap_user_auth_type", NULL, SYSDB_AUTH_TYPE, NULL },
     { "ldap_user_certificate", "userCertificate;binary", SYSDB_USER_CERT, NULL },
     { "ldap_user_email", "mail", SYSDB_USER_EMAIL, NULL },
+    { SDAP_ATTR_MAP_NO_OPT, "sAMAccountName", SYSDB_AD_SAMACCOUNTNAME, NULL },
     { "ldap_user_passkey", "altSecurityIdentities", SYSDB_USER_PASSKEY, NULL },
     SDAP_ATTR_MAP_TERMINATOR
 };
@@ -316,12 +326,16 @@ struct dp_option ad_dyndns_opts[] = {
     { "dyndns_refresh_interval", DP_OPT_NUMBER, { .number = 86400 }, NULL_NUMBER },
     { "dyndns_refresh_interval_offset", DP_OPT_NUMBER, { .number = 300 }, NULL_NUMBER },
     { "dyndns_iface", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_address", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "dyndns_ttl", DP_OPT_NUMBER, { .number = 3600 }, NULL_NUMBER },
     { "dyndns_update_ptr", DP_OPT_BOOL, BOOL_TRUE, BOOL_TRUE },
     { "dyndns_force_tcp", DP_OPT_BOOL, BOOL_FALSE, BOOL_FALSE },
     { "dyndns_auth", DP_OPT_STRING, { "gss-tsig" }, NULL_STRING },
     { "dyndns_auth_ptr", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     { "dyndns_server", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_cacert", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_cert", DP_OPT_STRING, NULL_STRING, NULL_STRING },
+    { "dyndns_dot_key", DP_OPT_STRING, NULL_STRING, NULL_STRING },
     DP_OPTION_TERMINATOR
 };
 

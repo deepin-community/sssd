@@ -39,6 +39,7 @@
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
+#include "util/child_bootstrap.h"
 #include "util/util.h"
 #include "confdb/confdb.h"
 #include "providers/proxy/proxy.h"
@@ -53,8 +54,7 @@ struct pc_ctx {
     struct sss_domain_info *domain;
     const char *identity;
     const char *conf_path;
-    struct sbus_connection *mon_conn;
-    struct sbus_connection *conn;
+    struct sbus_connection *sbus_conn;
     const char *pam_target;
     uint32_t id;
 };
@@ -338,8 +338,6 @@ proxy_cli_init(struct pc_ctx *ctx)
 {
     TALLOC_CTX *tmp_ctx;
     struct tevent_req *subreq;
-    char *sbus_address;
-    char *sbus_busname;
     char *sbus_cliname;
     errno_t ret;
 
@@ -363,32 +361,20 @@ proxy_cli_init(struct pc_ctx *ctx)
         {NULL, NULL}
     };
 
-    sbus_address = sss_iface_domain_address(tmp_ctx, ctx->domain);
-    if (sbus_address == NULL) {
-        ret = ENOMEM;
-        goto done;
-    }
-
-    sbus_busname = sss_iface_domain_bus(tmp_ctx, ctx->domain);
-    if (sbus_busname == NULL) {
-        ret = ENOMEM;
-        goto done;
-    }
-
     sbus_cliname = sss_iface_proxy_bus(tmp_ctx, ctx->id);
     if (sbus_cliname == NULL) {
         ret = ENOMEM;
         goto done;
     }
 
-    ret = sss_iface_connect_address(ctx, ctx->ev, sbus_cliname, sbus_address,
-                                    NULL, &ctx->conn);
+    ret = sss_sbus_connect(ctx, ctx->ev, sbus_cliname, NULL, &ctx->sbus_conn);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to connect to %s\n", sbus_address);
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to connect to SSSD D-Bus server "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto done;
     }
 
-    ret = sbus_connection_add_path_map(ctx->conn, paths);
+    ret = sbus_connection_add_path_map(ctx->sbus_conn, paths);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Unable to add paths [%d]: %s\n",
               ret, sss_strerror(ret));
@@ -398,7 +384,8 @@ proxy_cli_init(struct pc_ctx *ctx)
     DEBUG(SSSDBG_TRACE_FUNC, "Sending ID to Proxy Backend: (%"PRIu32")\n",
           ctx->id);
 
-    subreq = sbus_call_proxy_client_Register_send(ctx, ctx->conn, sbus_busname,
+    subreq = sbus_call_proxy_client_Register_send(ctx, ctx->sbus_conn,
+                                                  ctx->domain->conn_name,
                                                   SSS_BUS_PATH, ctx->id);
     if (subreq == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create subrequest!\n");
@@ -474,29 +461,20 @@ int main(int argc, const char *argv[])
 {
     int opt;
     poptContext pc;
-    char *opt_logger = NULL;
     char *domain = NULL;
     char *srv_name = NULL;
     char *conf_entry = NULL;
     struct main_context *main_ctx;
     int ret;
     long id = 0;
-    long chain_id;
     char *pam_target = NULL;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
-        POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_BASIC_CHILD_OPTS
         {"domain", 0, POPT_ARG_STRING, &domain, 0,
          _("Domain of the information provider (mandatory)"), NULL },
         {"id", 0, POPT_ARG_LONG, &id, 0,
          _("Child identifier (mandatory)"), NULL },
-        {"chain-id", 0, POPT_ARG_LONG, &chain_id, 0,
-         _("Tevent chain ID used for logging purposes"), NULL },
         POPT_TABLEEND
     };
 
@@ -552,9 +530,12 @@ int main(int argc, const char *argv[])
     debug_log_file = talloc_asprintf(NULL, "proxy_child_%s", domain);
     if (!debug_log_file) return 2;
 
-    sss_chain_id_set((uint64_t)chain_id);
-
-    DEBUG_INIT(debug_level, opt_logger);
+    /* Don't set 'sss_child_basic_settings.name' here.
+     * 'debug_prg_name' will be set later in 'server_setup()'
+     */
+    if (!sss_child_setup_basics(&sss_child_basic_settings)) {
+        _exit(-1);
+    }
 
     srv_name = talloc_asprintf(NULL, "proxy_child[%s]", domain);
     if (!srv_name) return 2;
@@ -562,7 +543,8 @@ int main(int argc, const char *argv[])
     conf_entry = talloc_asprintf(NULL, CONFDB_DOMAIN_PATH_TMPL, domain);
     if (!conf_entry) return 2;
 
-    ret = server_setup(srv_name, false, 0, 0, 0, conf_entry, &main_ctx, true);
+    ret = server_setup(srv_name, false, 0, CONFDB_FILE, conf_entry,
+                       &main_ctx, true);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Could not set up mainloop [%d]\n", ret);
         return 2;

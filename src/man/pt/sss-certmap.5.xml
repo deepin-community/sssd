@@ -1,0 +1,756 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss-certmap</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de Ficheiros e Convenções</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss-certmap</refname>
+        <refpurpose>Correspondência de Certificados e Regras de Mapeamento do SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            Este manual descreve as regras que podem ser usadas pelo SSSD e outros
+componentes para corresponder a certificados X.509 e os mapear em contas.
+        </para>
+        <para>
+            Cada regra tem quatro componentes, um <quote>priority</quote>, um
+<quote>matching rule</quote>, um <quote>mapping rule</quote> e um
+<quote>domain list</quote>. Todos os componentes são opcionais. Um
+<quote>priority</quote> em falta irá adicionar a regra com a prioridade mais
+baixa.  A <quote>matching rule</quote> predefinida irá corresponder a
+certificados com a utilização de chave digitalSignature e utilização de
+chave estendida clientAuth, Se a <quote>mapping rule</quote> estiver vazia
+os certificados serão procurados no atributo userCertificate como binário
+codificado em DER. Se nenhum domínio for dado apenas será procurado o
+domínio local.
+        </para>
+        <para>
+            Para permitir extensões ou estilo completamente diferente de regra o
+<quote>mapping</quote> e <quote>matching rules</quote> podem conter um
+prefixo separado por um ':' da principal parte de regra. O prefixo só pode
+conter letras maiúsculas ASCII e números. Se o prefixo for omitido será
+usado o tipo predefinido que é 'KRB5' para as regras de correspondência e
+"LDAP' para as regras de mapeamento.
+        </para>
+        <para>
+            O utilitário 'sssctl' fornece o comando 'cert-eval-rule' para verificar se
+um dado certificado corresponde a uma regra de correspondência e como o
+resultado de uma regra de mapeamento se iria parecer.
+        </para>
+    </refsect1>
+
+    <refsect1 id='components'>
+        <title>COMPONENTES DE REGRA</title>
+    <refsect2 id='priority'>
+        <title>PRIORIDADE</title>
+        <para>
+            As regras são processadas pela prioridade e o número '0' (zero) indica a
+prioridade mais alta. Quanto mais alto o número mais baixa a prioridade. Um
+valor em falta indica a prioridade mais baixa. O processamento de regras é
+parado quando é encontrada uma regra correspondente e não são verificadas
+mais regras.
+        </para>
+        <para>
+            Internamente a prioridade é tratada como um inteiro de 32bit não assinado,
+usar um valor de prioridade maior que 4294967295 irá causar um erro.
+        </para>
+        <para>
+            Se várias regras tiverem a mesma prioridade e apenas uma das regras
+correspondentes relacionadas se aplica, essa regra será escolhida. Se
+existirem com a mesma prioridade que correspondem, é escolhida uma mas qual
+delas é não está definido. Para evitar este comportamento indefinido ou se
+usa diferentes prioridades ou torne as regras de correspondência mas
+específicas ex. ao usar padrões &lt;ISSUER&gt; distintos.
+        </para>
+    </refsect2>
+    <refsect2 id='match'>
+        <title>REGRA DE CORRESPONDÊNCIA</title>
+        <para>
+            A regra correspondente é usada para selecionar o certificado ao qual a regra
+de mapeamento deve ser aplicada. Usa um sistema semelhante aquele usado pela
+opção <quote>pkinit_cert_match</quote> do MIT Kerberos. Consiste de uma
+palavra chave envolta por '&lt;' e '&gt;' o que identifica uma certa parte
+do certificado e um padrão que deve ser encontrado para que a regra
+corresponda. Múltiplos pares de padrões de palavra chave pode ser ou
+juntados com '&amp;&amp;' (e) ou '&#124;&#124;' (ou).
+        </para>
+        <para>
+            Dada a semelhança com o MIT Kerberos o prefixo de tipo para esta regra é
+'KRB5'. Mas 'KRB5' irá ser também a predefinição para <quote>matching
+rules</quote> para que "&lt;SUBJECT&gt;.*,DC=MY,DC=DOMAIN" e
+"KRB5:&lt;SUBJECT&gt;.*,DC=MY,DC=DOMAIN" sejam equivalentes.
+        </para>
+        <para>
+            As opções disponíveis são: <variablelist>
+                <varlistentry>
+                    <term>&lt;SUBJECT&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Com isto uma parte ou o nome completo de sujeito do certificado pode ser
+correspondido. Para correspondência é usada sintaxe Extended Regular
+Expression do POSIX, veja regex(7)  para detalhes.
+                    </para>
+                    <para>
+                        Para corresponder o nome do sujeito guardado no certificado em ASN.1
+codificado em DER é convertido numa string de acordo com RFC 4514. Isto
+significa que o componente nome mais especifico vem primeiro. Por favor note
+que nem todos os nomes de atributo possíveis são cobertos por by RFC
+4514. Os nomes incluídos são 'CN', 'L', 'ST', 'O', 'OU', 'C', 'STREET', 'DC'
+e 'UID'. Outros nomes de atributos podem ser mostrados de maneira diferente
+em plataformas diferentes ou por diferentes ferramentas. Para evitar
+confusões é melhor não usar esses nomes de atributos ou cobri-los por uma
+expressão regular apropriada.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SUBJECT&gt;.*,DC=MY,DC=DOMAIN
+                    </para>
+                    <para>
+                        Por favor note que os caracteres "^.[$()|*+?{\\" têm um significado especial
+em expressões regulares e têm de ser escapados com a ajuda do caractere '\'
+para que correspondam como caracteres normais.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SUBJECT&gt;^CN=.* \(Admin\),DC=MY,DC=DOMAIN$
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;ISSUER&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Com isto uma parte do nome completo do emissor do certificado pode ser
+correspondida. Todos os comentários para &lt;SUBJECT&gt; também se aplicam
+aqui.
+                    </para>
+                    <para>
+                        Exemplo: &lt;ISSUER&gt;^CN=My-CA,DC=MY,DC=DOMAIN$
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;KU&gt;key-usage</term>
+                    <listitem>
+                    <para>
+                        Esta opção pode ser usada para especificar quais valores de utilização de
+chave o certificado deve ter. Os seguintes valores podem ser usados numa
+lista separados por vírgulas:
+                        <itemizedlist>
+                            <listitem><para>digitalSignature</para></listitem>
+                            <listitem><para>nonRepudiation</para></listitem>
+                            <listitem><para>keyEncipherment</para></listitem>
+                            <listitem><para>dataEncipherment</para></listitem>
+                            <listitem><para>keyAgreement</para></listitem>
+                            <listitem><para>keyCertSign</para></listitem>
+                            <listitem><para>cRLSign</para></listitem>
+                            <listitem><para>encipherOnly</para></listitem>
+                            <listitem><para>decipherOnly</para></listitem>
+                        </itemizedlist>
+                    </para>
+                    <para>
+                        Um valor numérico no alcance de inteiro de 32bit não assinado pode ser usado
+também para cobrir casos de utilização especiais.
+                    </para>
+                    <para>
+                        Exemplo: &lt;KU&gt;digitalSignature,keyEncipherment
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;EKU&gt;extended-key-usage</term>
+                    <listitem>
+                    <para>
+                        Esta opção pode ser usada para especificar qual utilização de chave
+estendida o certificado deve ter. Os seguintes valores podem ser usados numa
+lista separados por vírgulas:
+                        <itemizedlist>
+                            <listitem><para>serverAuth</para></listitem>
+                            <listitem><para>clientAuth</para></listitem>
+                            <listitem><para>codeSigning</para></listitem>
+                            <listitem><para>emailProtection</para></listitem>
+                            <listitem><para>timeStamping</para></listitem>
+                            <listitem><para>OCSPSigning</para></listitem>
+                            <listitem><para>KPClientAuth</para></listitem>
+                            <listitem><para>pkinit</para></listitem>
+                            <listitem><para>msScLogin</para></listitem>
+                        </itemizedlist>
+                    </para>
+                    <para>
+                        Utilizações de chave estendida que não estejam listadas em cima podem ser
+especificadas com o seu OID em notação de pontuação-decimal.
+                    </para>
+                    <para>
+                        Exemplo: &lt;EKU&gt;clientAuth,1.3.6.1.5.2.3.4
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Para ser compatível com a utilização de MIT Kerberos esta opção irá
+corresponder aos principais de Kerberos no SAN Principal PKINIT ou AD NT
+como faz o &lt;SAN:Principal&gt;.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN&gt;.*@MY\.REALM
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:Principal&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde aos principais de Kerberos no SAN Principal PKINIT ou AD NT.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:Principal&gt;.*@MY\.REALM
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:ntPrincipalName&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde aos principais de Kerberos no SAN Principal AD NT.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:ntPrincipalName&gt;.*@MY.AD.REALM
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:pkinit&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde aos principais de Kerberos no SAN PKINIT.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:ntPrincipalName&gt;.*@MY\.PKINIT\.REALM
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:dotted-decimal-oid&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Toma o valor do componente SAN otherName dado pelo OID em notação de
+pontuação-decimal, interpreta-o como uma string e tenta corresponde-lo com a
+expressão regular.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:1.2.3.4&gt;test
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:otherName&gt;base64-string</term>
+                    <listitem>
+                    <para>
+                        Faz uma correspondência binária com o borrão codificado em base64 contra
+todos os componentes SAN otherName. Com esta opção é possível corresponder
+contra componentes otherName personalizados com codificações especiais que
+não podem ser tratados como strings.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:otherName&gt;MTIz
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:rfc822Name&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde ao valor de rfc822Name SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:rfc822Name&gt;.*@email\\.domain
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:dNSName&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde ao valor de dNSName SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:dNSName&gt;.*\\.my\\.dns\\.domain
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:x400Address&gt;base64-string</term>
+                    <listitem>
+                    <para>
+                        Corresponde em binário ao valor de x400Address SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:x400Address&gt;MTIz
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:directoryName&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde o valor do SAN directoryName. OS mesmos comentários que são
+dados para &lt;ISSUER&gt; e &lt;SUBJECT&gt; aplicam-se aqui também.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:directoryName&gt;.*,DC=com
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:ediPartyName&gt;base64-string</term>
+                    <listitem>
+                    <para>
+                        Corresponde em binário ao valor de ediPartyName SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:ediPartyName&gt;MTIz
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:uniformResourceIdentifier&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde ao valor de uniformResourceIdentifier SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:uniformResourceIdentifier&gt;URN:.*
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:iPAddress&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde ao valor de iPAddress SAN.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:iPAddress&gt;192\\.168\\..*
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>&lt;SAN:registeredID&gt;expressão-regular</term>
+                    <listitem>
+                    <para>
+                        Corresponde o valor de SAN registeredID como string de pontuação-decimal.
+                    </para>
+                    <para>
+                        Exemplo: &lt;SAN:registeredID&gt;1\\.2\\.3\\..*
+                    </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    </refsect2>
+    <refsect2 id='map'>
+        <title>REGRA DE MAPEAMENTO</title>
+        <para>
+            A regra de mapeamento é usada para associar um certificado com uma ou mais
+contas. Uma Smartcard com o certificado e a chave privada correspondente
+podem então ser usadas para autenticar como uma dessas contas.
+        </para>
+        <para>
+            Actualmente o SSSD basicamente apenas suporta o LDAP para procurar
+informação do utilizador (a excepção é o provedor proxy o qual não é
+relevante aqui). Devido a isto, a regra de mapeamento é baseada na sintaxe
+do filtro de busca do LDAP com modelos para adicionar o conteúdo de
+certificados ao filtro. É esperado que o filtro apenas contenha os dados
+específicos necessários para o mapeamento e que o chamador irá embebe-lo
+noutro filtro para fazer a própria procura. Devido a isto, a string do
+filtro deve começar e terminar com '(' e ')' respetivamente.
+        </para>
+        <para>
+            Em geral é recomendado usar atributos a partir do certificado e adiciona-los
+a atributos especiais ao objecto utilizador do LDAP. Ex. pode ser usado o
+atributo 'altSecurityIdentities' em AD ou o atributo 'ipaCertMapData' para
+IPA.
+        </para>
+        <para>
+            Isto deve ser preferido a ler dados específicos do utilizador a partir do
+certificado tal como, ex. um endereço de email e procurar por ele no
+servidor LDAP. A razão é que os dados específicos do utilizador podem mudar
+por várias razões e iria quebrar o mapeamento. Do outro modo, seria difícil
+quebrar o mapeamento de propósito a um utilizador específico.
+        </para>
+	<para>
+            O tipo predefinido de <quote>mapping rule</quote> é 'LDAP' que pode ser
+adicionado como prefixo a uma regra como ex.
+'LDAP:(userCertificate;binary={cert!bin})'. Existe uma extensão chamada
+'LDAPU1' que oferece mais modelos para mais flexibilidade. Para permitir a
+versões mais antigas desta biblioteca ignorar a extensão, o prefixo 'LDAPU1'
+tem de ser usado quando se usa os novos modelos numa <quote>mapping
+rule</quote> caso contrário a versão antiga desta biblioteca irá falhar com
+um erro de análise. Os novos modelos estão descritos na secção <xref
+linkend="map_ldapu1"/>.
+        </para>
+        <para>
+            Os modelos para adicionar dados de certificados aos filtros de busca são
+baseados em strings de formatação de estilo-Python. Consistem duma palavra
+chave entre chavetas com um especificador de sub-componente opcional
+separado por um '.' ou uma opção de conversão/formatação opcional separada
+por um '!'.  Os valores permitidos são: <variablelist>
+                <varlistentry>
+                    <term>{issuer_dn[!((ad|ad_x500)|ad_ldap|nss_x500|(nss|nss_ldap))]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o emissor total DN convertido numa string conforme
+RFC 4514. Se encomendar X.500 (RDN mais específico chega em último) deve ser
+usado uma opção com o prefixo '_x500'.
+                    </para>
+                    <para>
+                        As opções de conversão que começam com 'ad_' irão usar nomes de atributo
+como usado pelo AD, ex. 'S' em vez de 'ST'.
+                    </para>
+                    <para>
+                        As opções de conversão que começam com 'nss_' irão usar nomes de atributo
+como usado pelo NSS.
+                    </para>
+                    <para>
+                        A opção de conversão predefinida é 'nss', isto é, nomes de atributos de
+acordo para pedidos NSS e LDAP/RFC 4514.
+                    </para>
+                    <para>
+                        Exemplo:
+(ipacertmapdata=X509:&lt;I&gt;{issuer_dn!ad}&lt;S&gt;{subject_dn!ad})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_dn[!((ad|ad_x500)|ad_ldap|nss_x500|(nss|nss_ldap))]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o sujeito total DN convertido numa string conforme
+RFC 4514. Se encomendar X.500 (RDN mais específico chega em último) deve ser
+usado uma opção com o prefixo '_x500'.
+                    </para>
+                    <para>
+                        As opções de conversão que começam com 'ad_' irão usar nomes de atributo
+como usado pelo AD, ex. 'S' em vez de 'ST'.
+                    </para>
+                    <para>
+                        As opções de conversão que começam com 'nss_' irão usar nomes de atributo
+como usado pelo NSS.
+                    </para>
+                    <para>
+                        A opção de conversão predefinida é 'nss', isto é, nomes de atributos de
+acordo para pedidos NSS e LDAP/RFC 4514.
+                    </para>
+                    <para>
+                        Exemplo:
+(ipacertmapdata=X509:&lt;I&gt;{issuer_dn!nss_x500}&lt;S&gt;{subject_dn!nss_x500})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{cert[!(bin|base64)]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o certificado completo codificado em DER como uma
+string ao filtro de busca. Dependendo da opção de conversão o certificado
+binário é ou convertido para uma sequência hexadecimal escapada \\xx' ou
+base64. A sequência hexadecimal escapada é a predefinição e pode, por
+exemplo, ser usada com o atributo do LDAP 'userCertificate;binary'.
+                    </para>
+                    <para>
+                        Exemplo: (userCertificate;binary={cert!bin})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_principal[.short_name]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o principal Kerberos o qual é tomado ou a partir
+do SAN usado pelo pkinit ou daquele usado pelo AD. O componente 'short_name'
+representa a primeira parte do principal antes do sinal '@'.
+                    </para>
+                    <para>
+                        Exemplo:
+(|(userPrincipal={subject_principal})(samAccountName={subject_principal.short_name}))
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_pkinit_principal[.short_name]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o principal Kerberos o qual é dado pelo SAN usado
+pelo pkinit. O componente 'short_name' representa a primeira parte do
+principal antes do sinal '@'.
+                    </para>
+                    <para>
+                        Exemplo:
+(|(userPrincipal={subject_pkinit_principal})(uid={subject_pkinit_principal.short_name}))
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_nt_principal[.short_name]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o principal Kerberos o qual é dado pelo SAN usado
+pelo AD. O componente 'short_name' representa a primeira parte do principal
+antes do sinal '@'.
+                    </para>
+                    <para>
+                        Exemplo:
+(|(userPrincipalName={subject_nt_principal})(samAccountName={subject_nt_principal.short_name}))
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_rfc822_name[.short_name]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a string que está guardada no componente
+rfc822Name do SAN, tipicamente um endereço de email. O componente
+'short_name' representa a primeira parte do endereço antes do sinal '@'.
+                    </para>
+                    <para>
+                        Exemplo:
+(|(mail={subject_rfc822_name})(uid={subject_rfc822_name.short_name}))
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_dns_name[.short_name]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a string que está guardada no componente dNSName
+do SAN, tipicamente um nome de máquina totalmente qualificado.  O componente
+'short_name' representa a primeira parte do nome antes do primeiro sinal
+'.'.
+                    </para>
+                    <para>
+                        Exemplo: (|(fqdn={subject_dns_name})(host={subject_dns_name.short_name}))
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_uri}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a string que está guardada no componente
+uniformResourceIdentifier do SAN.
+                    </para>
+                    <para>
+                        Exemplo: (uri={subject_uri})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_ip_address}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a string que está guardada no componente iPAddress
+do SAN.
+                    </para>
+                    <para>
+                        Exemplo: (ip={subject_ip_address})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_x400_address}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o valor que está guardado no componente
+x400Address do SAN como sequência hexadecimal escapada.
+                    </para>
+                    <para>
+                        Exemplo: (attr:binary={subject_x400_address})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_directory_name[!((ad|ad_x500)|ad_ldap|nss_x500|(nss|nss_ldap))]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a string DN do valor que está guardado no
+componente directoryName do SAN.
+                    </para>
+                    <para>
+                        Exemplo: (orig_dn={subject_directory_name})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_ediparty_name}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o valor que está guardado no componente
+ediPartyName do SAN como sequência hexadecimal escapada.
+                    </para>
+                    <para>
+                        Exemplo: (attr:binary={subject_ediparty_name})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{subject_registered_id}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o OID que está guardado no componente registeredID
+do SAN como uma string decimal-pontuada.
+                    </para>
+                    <para>
+                        Exemplo: (oid={subject_registered_id})
+                    </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    <refsect3 id='map_ldapu1'>
+        <title>Extensão LDAPU1</title>
+        <para>
+            The following templates are available when using the 'LDAPU1' extension:
+        </para>
+        <para>
+            <variablelist>
+                <varlistentry>
+                    <term>{serial_number[!(dec|hex[_ucr])]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o número de série do certificado. Por predefinição
+será escrito como um número hexadecimal com letras minúsculas.
+                    </para>
+                    <para>
+                        Com a opção de formatação '!dec' o número será escrito em string decimal. O
+resultado hexadecimal pode ser escrito com letras maiúsculas ('!hex_u'), com
+dois-pontos a separar os bytes hexadecimais ('!hex_c') ou com os bytes
+hexadecimais em ordem reversa ('!hex_r').  As letras posteriores podem ser
+combinadas para que ex. '!hex_uc' produza uma string hexadecimal separada
+por dois-pontos com letras maiúsculas.
+                    </para>
+                    <para>
+                        Exemplo: LDAPU1:(serial={serial_number})
+                    </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>{subject_key_id[!hex[_ucr]]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o id de chave de objeto do certificado. Por
+predefinição será escrito como um número hexadecimal com letras minúsculas.
+                    </para>
+                    <para>
+                        O resultado em hexadecimal pode ser escrito com letras maiúsculas
+('!hex_u'), com dois-pontos a separar os bytes hexadecimais ('!hex_c') ou
+com os bytes hexadecimais em ordem reversa ('!hex_r').  As letras
+posteriores podem ser combinadas para que ex.  '!hex_uc' produza uma string
+hexadecimal com dois-pontos a separar e letras maiúsculas.
+                    </para>
+                    <para>
+                        Exemplo: LDAPU1:(ski={subject_key_id})
+                    </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>{cert[!DIGEST[_ucr]]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar a digestão/cinza hexadecimal do certificado onde
+DIGEST tem de ser substituído pelo nome da função digest/hash suportada pelo
+OpenSSL, ex. 'sha512'.
+                    </para>
+                    <para>
+                        O resultado em hexadecimal pode ser escrito com letras maiúsculas
+('!sha512_u'), com dois-pontos a separar os bytes hexadecimais ('!sha512_c')
+ou com os bytes hexadecimais em ordem reversa ('!sha512_r'). As letras
+posteriores podem ser combinadas para que ex. '!sha512_uc' produza uma
+string hexadecimal com dois-pontos a separar e letras maiúsculas.
+                    </para>
+                    <para>
+                        Exemplo: LDAPU1:(dgst={cert!sha256})
+                    </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>{subject_dn_component[(.attr_name|[number]]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar um valor de atributo de um componente do objeto
+DN, por predefinição o valor do componente mais específico.
+                    </para>
+                    <para>
+                        A different component can be selected by either attribute name,
+e.g. {subject_dn_component.uid} or by position,
+e.g. {subject_dn_component.[2]} where positive numbers start counting from
+the most specific component and negative numbers start counting from the
+least specific component. Attribute name and the position can be combined as
+e.g.  {subject_dn_component.uid[2]} which means that the name of the second
+component must be 'uid'.
+                    </para>
+                    <para>
+                        Exemplo: LDAPU1:(uid={subject_dn_component.uid})
+                    </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>{issuer_dn_component[(.attr_name|[number]]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar um valor de atributo de um componente do
+publicador DN, por predefinição o valor é o componente mais específico.
+                    </para>
+                    <para>
+                        Veja 'subject_dn_component' para detalhes acerca de nome de atributo e
+especificadores de posição.
+                    </para>
+                    <para>
+                        Exemplo:
+LDAPU1:(domain={issuer_dn_component.[-2]}.{issuer_dn_component.dc[-1]})
+                    </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>{sid[.rid]}</term>
+                    <listitem>
+                    <para>
+                        Este modelo irá adicionar o SID se a extensão correspondente introduzida
+pela Microsoft com o OID 1.3.6.1.4.1.311.25.2 estiver disponível. Com o
+seletor '.rid' apenas o último componente, isto é, o RID, será adicionado.
+                    </para>
+                    <para>
+                        Exemplo: LDAPU1:(objectsid={sid})
+                    </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    </refsect3>
+    </refsect2>
+    <refsect2 id='domains'>
+        <title>LISTA DE DOMÍNIOS</title>
+        <para>
+            Se a lista de domínios não estiver vazia, os utilizadores mapeados a um dado
+certificado não são apenas procurados no domínio local mas também nos
+domínios listados desde que sejam conhecidos pelo SSSD. Os domínios não
+conhecidos do SSSD serão ignorados.
+        </para>
+    </refsect2>
+    </refsect1>
+</refentry>
+</reference>

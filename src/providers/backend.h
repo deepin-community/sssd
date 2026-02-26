@@ -24,9 +24,9 @@
 
 #include "providers/data_provider.h"
 #include "providers/fail_over.h"
+#include "providers/be_netlink.h"
 #include "providers/be_refresh.h"
 #include "providers/data_provider/dp.h"
-#include "util/child_common.h"
 #include "util/session_recording.h"
 #include "db/sysdb.h"
 
@@ -55,6 +55,7 @@ struct be_svc_data {
 
     char *last_good_srv;
     int last_good_port;
+    int last_good_family;
     time_t last_status_change;
     bool run_callbacks;
 
@@ -79,8 +80,6 @@ struct be_ctx {
     const char *identity;
     const char *conf_path;
     const char *sbus_name;
-    uid_t uid;
-    gid_t gid;
     char override_space;
     struct session_recording_conf sr_conf;
     struct be_failover_ctx *be_fo;
@@ -105,19 +104,22 @@ struct be_ctx {
     /* Periodically check if we can go online. */
     struct be_ptask *check_if_online_ptask;
 
-    struct sbus_connection *mon_conn;
-
     struct be_refresh_ctx *refresh_ctx;
+    struct be_netlink_ctx *nlctx;
 
     size_t check_online_ref_count;
     int check_online_retry_delay;
 
     struct data_provider *provider;
+    struct sbus_connection *conn;
 
     /* Indicates whether the last state of the DP that has been logged is
      * DP_ERR_OK or DP_ERR_OFFLINE. The only usage of this var, so far, is
      * to log the DP status without spamming the syslog/journal. */
     int last_dp_state;
+
+    /* List of periodic tasks */
+    struct be_ptask *tasks;
 };
 
 bool be_is_offline(struct be_ctx *ctx);

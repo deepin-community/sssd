@@ -29,13 +29,14 @@
             Du kan konfigurera SSSD för att använda mer än en LDAP-domän.
         </para>
         <para>
-            LDAP back end supports id, auth, access and chpass providers. If you want to
-authenticate against an LDAP server either TLS/SSL or LDAPS is
-required. <command>sssd</command> <emphasis>does not</emphasis> support
-authentication over an unencrypted channel.  Even if the LDAP server is used
-only as an identity provider, an encrypted channel is strongly
-recommended. Please refer to <quote>ldap_access_filter</quote> config option
-for more information about using LDAP as an access provider.
+            LDAP-bakändar stödjer leverantörer av id, autentisering, åtkomst och
+lösenordsändring. Om du vill autentisera mot en LDAP-server krävs antingen
+TLS/SSL eller LDAPS. <command>sssd</command> stödjer
+<emphasis>inte</emphasis> autentisering över en okrypterad kanal. Även om
+LDAP-servern används endast som en identitetsleverantör rekommenderas starkt
+en krypterad kanal. Se konfigurationsalternativet
+<quote>ldap_access_filter</quote> för mer information om att använda LDAP
+som en åtkomstleverantör.
         </para>
     </refsect1>
 
@@ -142,6 +143,43 @@ värden stödjs inte.
                 </varlistentry>
 
                 <varlistentry>
+                    <term>ldap_read_rootdse (sträng)</term>
+                    <listitem>
+                        <para>
+                            SSSD reads RootDSE to get information about LDAP and its capabilities. By
+default, this is done anonymously. However, this may not be permitted by the
+LDAP server. In such cases we can use this option to influence SSSD
+behavior.
+                        </para>
+                        <para>
+                            Tillåtna värden är:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        anonymous
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        authenticated
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        never
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                            By default, using the "anonymous" option, SSSD tries to read RootDSE
+anonymously. If this fails SSSD retries the attempt with authentication.
+                        </para>
+                        <para>
+                            Standard: anonymous
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
                     <term>ldap_schema (sträng)</term>
                     <listitem>
                         <para>
@@ -205,6 +243,14 @@ AD-schematypen sätter attributen till att motsvara Active Directory
                                 <listitem>
                                     <para>
                                         ldap_modify - Direkt ändring av userPassword (rekommenderas inte).
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        exop_force - Try Password Modify Extended Operation (RFC 3062) even if there
+are no grace logins left.  Depending on the type and configuration of the
+LDAP server the password change might fail because an authenticated bind is
+not possible.
                                     </para>
                                 </listitem>
                             </itemizedlist>
@@ -285,10 +331,6 @@ rike i versaler.
                         <para>
                             Anger hur många sekunder SSSD måste vänta före den uppdaterar sin cache av
 uppräknade poster.
-                        </para>
-                        <para>
-                            Detta alternativ kan även sättas per underdomän eller ärvt via
-<emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Standard: 300
@@ -384,6 +426,20 @@ multipla sökbaser.
                     </listitem>
                 </varlistentry>
 
+                <varlistentry condition="with_subid">
+                    <term>ldap_subid_ranges_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Frivillig. Använd den givna strängen som sökbas för
+underordningsintervallsrelaterade objekt.
+                        </para>
+                        <para>
+                            Default: the value of <emphasis>cn=subids,%basedn</emphasis> for IPA
+otherwise <emphasis>ldap_search_base</emphasis>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
                 <varlistentry>
                     <term>ldap_service_search_base (sträng)</term>
                     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ldap_search_bases.xml" />
@@ -428,10 +484,6 @@ specifika uppslagningstyper.
                             Anger tiden (i sekunder) som ldap-sökningar för användar- och
 gruppuppräkningar tillåts köra före de annulleras och cachade resultat
 returneras (och går in i frånkopplat läge)
-                        </para>
-                        <para>
-                            Detta alternativ kan även sättas per underdomän eller ärvt via
-<emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Standard: 60
@@ -594,12 +646,14 @@ att några begäranden nekas.
                             Avaktivera Active Directory intervallhämtning.
                         </para>
                         <para>
-                            Active Directory begränsar antalet medlemmar som kan hämtas i en enskild
-uppslagning med policyn MaxValRange (vilket som standard är 1500
-medlemmar). Om en grupp innehåller fler medlemmar skulle svaret innehålla en
-AD-specifik intervallutökning. Detta alternativ avaktiverar tolkning av
-intervallutökningar, därför kommer stora grupper förefalla inte ha några
-medlemmar.
+                            Active Directory limits the number of members that can be retrieved in a
+single lookup using the MaxValRange policy, which defaults to 1500
+members. If a group contains more than 1500 members, the reply includes an
+AD-specific range extension. When enabled, this option prevents SSSD from
+parsing the range extension. As a result large groups will appear as they
+have no members.  This option does not enable SSSD to read subsequent
+ranges. To retrieve all members of a group, you must increase the
+MaxValRange setting in Active Directory.
                         </para>
                         <para>
                             Standard: False
@@ -743,8 +797,8 @@ sessionen omedelbart.
                             Anger sökvägen till en katalog som innehåller certifikat för
 Certifikatauktoriteter i individuella filer.  Typiskt måste filnamnen vara
 kontrollsummor av certifikaten följda av ”.0”.  Om det är tillgängligt kan
-<command>cacertdir_rehash</command> användas för att skapa de korrekta
-namnen.
+<command>openssl rehash</command> or <command>c_rehash</command> användas
+för att skapa de korrekta namnen.
                         </para>
                         <para>
                             Standard: använd standardvärden för OpenLDAP, typiskt i
@@ -796,12 +850,12 @@ Se <citerefentry><refentrytitle>ldap.conf</refentrytitle>
                     <term>ldap_id_use_start_tls (boolean)</term>
                     <listitem>
                         <para>
-                            Specifies that the id_provider connection must also use <systemitem
-class="protocol">tls</systemitem> to protect the channel.
-<emphasis>true</emphasis> is strongly recommended for security reasons.
+                            Anger att id-leverantörsförbindelsen också måste använda <systemitem
+class="protocol">tls</systemitem> för att skydda
+kanalen. <emphasis>true</emphasis> rekommenderas starkt av säkerhetsskäl.
                         </para>
                         <para>
-                            Standard: false
+                            Standard: true
                         </para>
                     </listitem>
                 </varlistentry>
@@ -873,11 +927,12 @@ katalogen.  Detta alternativ kan antingen innehålla den fullständiga
 huvudmannen (till exempel host/minvärd@EXAMPLE.COM) eller bara
 huvudmannanamnet (till exempel host/minvärd).  Som standard är värdet inte
 satt och följande huvudmän används: <programlisting>
-värdnamn@RIKE
-netbiosnamn$@RIKE
-host/värdnamn@RIKE
-*$@RIKE
-host/*@RIKE
+hostname@REALM
+netbiosname$@REALM
+host/hostname@REALM
+*$@REALM
+host/*@REALM
+netbiosname$@*
 host/*
                             </programlisting>  Om ingen av dem kan hittas returneras den första huvudmannen i
 keytab.
@@ -1126,10 +1181,10 @@ lösenordsändringar när tjänsteupptäckt är aktiverat.
 dagar sedan epoken efter en ändring av lösenord.
                         </para>
                         <para>
-                            Det rekommenderas att explicit sätta detta alternativ om ”ldap_pwd_policy =
-shadow” används för att låta SSSD veta om LDAP-servern kommer uppdatera
-LDAP-attributet shadowLastChange automatiskt efter en lösenordsändring eller
-om SSSD måste uppdatera det.
+                            It is recommended to set this option explicitly if "ldap_pwd_policy =
+shadow" is used to let SSSD know if the LDAP server will update
+shadowLastChange LDAP attribute automatically after a password change or if
+SSSD has to update it.
                         </para>
                         <para>
                             Standard: False
@@ -1268,31 +1323,32 @@ autentisering är baserat på användning av en annan metod än lösenord – ti
 exempel SSH-nycklar.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Skillnaden mellan dessa alternativ är åtgärden som vidtas om användarens
+lösenord gått ut:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_reject - user is denied to log in,
+                                        pwd_expire_policy_reject — användaren nekas att logga in,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_warn - user is still able to log in,
+                                        pwd_expire_policy_warn — användaren kan fortfarande logga in,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                        pwd_expire_policy_renew — användaren ombeds att ändra sitt lösenord
+omedelbart.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
                             Observera att ”access_provider = ldap” måste vara satt för att denna
-funktion skall fungera. ”ldap_pwd_policy” måste också vara satt till en
-lämplig lösenordspolicy.
+funktion skall fungera. ”ldap_pwd_policy” måste också vara satt till shadow
+eller mit_kerberos, dessa alternativ fungerar inte med lösenordspolicy på
+serversidan.
                         </para>
                         <para>
                             <emphasis>authorized_service</emphasis>: använd attributet authorizedService
@@ -1422,6 +1478,37 @@ komponenter, -1 kommer aktivera fullständig felsökningsutmatning.
                         </para>
                         <para>
                             Standard: 0 (libldap-felsökning avaktiverat)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_use_ppolicy (boolean)</term>
+                    <listitem>
+                        <para>
+                            Slår på begäran av och förlitan på serversidans kontroller av
+lösenordspolicy. Avaktivering av detta möjliggör interaktion med tjänster
+vilka skickar tillbaka felaktiga ppolicy-utökningar.
+                        </para>
+                        <para>
+                            Standard: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_ppolicy_pwd_change_threshold (heltal)</term>
+                    <listitem>
+                        <para>
+                            Framtvingar en lösenordsändring när serversidans policystyrning är aktiverad
+och den återstående fristen av inloggningar som returneras av servern efter
+att autenticeringen når eller går nedanför tröskelvärdet. Observera att det
+minsta användbara värdet är 2, eftersom att ändra lösenordet förbrukar 2
+ytterligar inloggningar från fristen, en för att verifiera det aktuella
+lösenordet och en andra för att utföra lösenordsbytet.
+                        </para>
+                        <para>
+                            Standard: 0
                         </para>
                     </listitem>
                 </varlistentry>

@@ -32,9 +32,9 @@
 
 #include "util/util.h"
 #include "util/sss_utf8.h"
+#include "util/strtonum.h"
 
 int socket_activated = 0;
-int dbus_activated = 0;
 
 static void free_args(char **args)
 {
@@ -928,6 +928,18 @@ int sss_unique_file_ex(TALLOC_CTX *owner,
         goto done;
     }
 
+    /* The temp file might get created under a directory with the setgid bit
+     * set. This might result in group owner being different from the effective
+     * GID. Moreover, on FreeBSD this behavior is default even without setgid
+     */
+    if (fchown(fd, -1, getegid()) != 0) {
+        ret = errno;
+        DEBUG(SSSDBG_OP_FAILURE,
+              "fchown(\"%s\") failed [%d]: %s!\n",
+              path_tmpl, ret, strerror(ret));
+        goto done;
+    }
+
     if (owner != NULL) {
         tw = tmpfile_watch_set(owner, path_tmpl);
         if (tw == NULL) {
@@ -1001,15 +1013,6 @@ bool is_socket_activated(void)
 {
 #ifdef HAVE_SYSTEMD
     return !!socket_activated;
-#else
-    return false;
-#endif
-}
-
-bool is_dbus_activated(void)
-{
-#ifdef HAVE_SYSTEMD
-    return !!dbus_activated;
 #else
     return false;
 #endif
@@ -1100,4 +1103,84 @@ errno_t sss_getenv(TALLOC_CTX *mem_ctx,
     }
 
     return value != NULL ? EOK : ENOENT;
+}
+
+errno_t sss_parse_dns_uri(TALLOC_CTX *mem_ctx,
+                          const char *uri,
+                          struct sss_parsed_dns_uri **_parsed_uri)
+{
+    char *s, *p;
+    const char *start;
+    struct sss_parsed_dns_uri *parsed_uri;
+    errno_t ret = EOK;
+
+    if (uri == NULL || _parsed_uri == NULL) {
+        return EINVAL;
+    }
+
+    parsed_uri = talloc_zero(mem_ctx, struct sss_parsed_dns_uri);
+    if (parsed_uri == NULL) {
+        ret = ENOMEM;
+        goto fail;
+    }
+
+    start = uri;
+    while(isspace(start[0])) {
+        start++;
+    }
+
+    parsed_uri->data = talloc_strdup(parsed_uri, start);
+    if (parsed_uri->data == NULL) {
+        ret = ENOMEM;
+        goto fail;
+    }
+    s = parsed_uri->data;
+
+    /* scheme */
+    p = strstr(s, "://");
+    if (p != NULL) {
+        parsed_uri->scheme = s;
+        *p = '\000';
+        s = &p[3];
+    }
+
+    /* path part */
+    p = strchr(s, '/');
+    if (p != NULL) {
+        parsed_uri->path = &p[1];
+        *p = '\000';
+    }
+
+    p = strchr(s, '#');
+    if (p != NULL) {
+        parsed_uri->host = &p[1];
+        *p = '\000';
+    }
+
+    if (s[0] == '[') {
+        /* IPv6 address */
+        p = strstr(s, "]:");
+        if (p != NULL) {
+            ++p;
+        }
+    } else {
+        p = strchr(s, ':');
+    }
+    if (p != NULL) {
+        parsed_uri->port = &p[1];
+        *p = '\000';
+    }
+
+    parsed_uri->address = s;
+    if (parsed_uri->host == NULL) {
+        parsed_uri->host = parsed_uri->address;
+    }
+
+    *_parsed_uri = parsed_uri;
+    return EOK;
+
+ fail:
+    talloc_free(parsed_uri);
+    *_parsed_uri = NULL;
+    return ret;
 }

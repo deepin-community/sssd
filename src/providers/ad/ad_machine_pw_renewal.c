@@ -21,24 +21,37 @@
 */
 
 
+#include "util/child_common.h"
 #include "util/util.h"
 #include "util/strtonum.h"
 #include "providers/be_ptask.h"
 #include "providers/ad/ad_common.h"
 
-#ifndef RENEWAL_PROG_PATH
-#define RENEWAL_PROG_PATH "/usr/sbin/adcli"
+#ifndef RENEWAL_PROG_PATH_ADCLI
+#define RENEWAL_PROG_PATH_ADCLI "/usr/sbin/adcli"
 #endif
+
+#ifndef RENEWAL_PROG_PATH_REALM
+#define RENEWAL_PROG_PATH_REALM "/usr/sbin/realm"
+#endif
+
+enum renew_helper {
+    RENEW_HELPER_UNDEFINED = 0,
+    RENEW_HELPER_ADCLI,
+    RENEW_HELPER_REALM
+};
 
 struct renewal_data {
     struct be_ctx *be_ctx;
     char *prog_path;
     const char **extra_args;
+    enum renew_helper renew_helper;
 };
 
 static errno_t get_adcli_extra_args(const char *ad_domain,
                                     const char *ad_hostname,
                                     const char *ad_keytab,
+                                    bool ad_use_ldaps,
                                     size_t pw_lifetime_in_days,
                                     bool add_samba_data,
                                     size_t period,
@@ -53,13 +66,14 @@ static errno_t get_adcli_extra_args(const char *ad_domain,
         return EINVAL;
     }
 
-    renewal_data->prog_path = talloc_strdup(renewal_data, RENEWAL_PROG_PATH);
+    renewal_data->prog_path = talloc_strdup(renewal_data,
+                                            RENEWAL_PROG_PATH_ADCLI);
     if (renewal_data->prog_path == NULL) {
         DEBUG(SSSDBG_OP_FAILURE, "talloc_strdup failed.\n");
         return ENOMEM;
     }
 
-    args = talloc_array(renewal_data, const char *, 9);
+    args = talloc_array(renewal_data, const char *, 10);
     if (args == NULL) {
         DEBUG(SSSDBG_OP_FAILURE, "talloc_array failed.\n");
         return ENOMEM;
@@ -79,6 +93,9 @@ static errno_t get_adcli_extra_args(const char *ad_domain,
         args[c++] = talloc_asprintf(args, "--host-keytab=%s", ad_keytab);
     }
     args[c++] = talloc_asprintf(args, "--domain=%s", ad_domain);
+    if (ad_use_ldaps) {
+        args[c++] = talloc_strdup(args, "--use-ldaps");
+    }
     if (DEBUG_IS_SET(SSSDBG_TRACE_LIBS)) {
         args[c++] = talloc_strdup(args, "--verbose");
     }
@@ -99,20 +116,78 @@ static errno_t get_adcli_extra_args(const char *ad_domain,
     return EOK;
 }
 
-struct renewal_state {
-    int child_status;
-    struct sss_child_ctx_old *child_ctx;
-    struct tevent_timer *timeout_handler;
-    struct tevent_context *ev;
+static errno_t get_realm_extra_args(const char *ad_domain,
+                                    const char *ad_hostname,
+                                    const char *ad_keytab,
+                                    bool ad_use_ldaps,
+                                    size_t pw_lifetime_in_days,
+                                    bool add_samba_data,
+                                    size_t period,
+                                    size_t initial_delay,
+                                    struct renewal_data *renewal_data)
+{
+    const char **args;
+    size_t c = 0;
 
+    if (ad_domain == NULL || ad_hostname == NULL) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Missing AD domain or hostname.\n");
+        return EINVAL;
+    }
+
+    renewal_data->prog_path = talloc_strdup(renewal_data, RENEWAL_PROG_PATH_REALM);
+    if (renewal_data->prog_path == NULL) {
+        DEBUG(SSSDBG_OP_FAILURE, "talloc_strdup failed.\n");
+        return ENOMEM;
+    }
+
+    args = talloc_array(renewal_data, const char *, 10);
+    if (args == NULL) {
+        DEBUG(SSSDBG_OP_FAILURE, "talloc_array failed.\n");
+        return ENOMEM;
+    }
+
+    /* extra_args are added in revers order */
+    /* first add NULL as a placeholder for the server name which is determined
+     * at runtime */
+    args[c++] = NULL;
+    args[c++] = talloc_asprintf(args, "--computer-password-lifetime=%zu",
+                                pw_lifetime_in_days);
+    if (add_samba_data) {
+        args[c++] = talloc_strdup(args, "--add-samba-data");
+    }
+    args[c++] = talloc_asprintf(args, "--host-fqdn=%s", ad_hostname);
+    if (ad_keytab != NULL) {
+        args[c++] = talloc_asprintf(args, "--host-keytab=%s", ad_keytab);
+    }
+    if (ad_use_ldaps) {
+        args[c++] = talloc_strdup(args, "--use-ldaps");
+    }
+    if (DEBUG_IS_SET(SSSDBG_TRACE_LIBS)) {
+        args[c++] = talloc_strdup(args, "--verbose");
+    }
+    args[c++] = talloc_strdup(args, ad_domain);
+    args[c++] = talloc_strdup(args, "renew");
+    args[c] = NULL;
+
+    do {
+        if (args[--c] == NULL) {
+            DEBUG(SSSDBG_OP_FAILURE,
+                  "talloc failed while copying  arguments.\n");
+            talloc_free(args);
+            return ENOMEM;
+        }
+    } while (c != 1); /* it is expected that the first element is NULL */
+
+    renewal_data->extra_args = args;
+
+    return EOK;
+}
+
+struct renewal_state {
     struct child_io_fds *io;
 };
 
 static void ad_machine_account_password_renewal_done(struct tevent_req *subreq);
-static void
-ad_machine_account_password_renewal_timeout(struct tevent_context *ev,
-                                            struct tevent_timer *te,
-                                            struct timeval tv, void *pvt);
 
 static struct tevent_req *
 ad_machine_account_password_renewal_send(TALLOC_CTX *mem_ctx,
@@ -125,10 +200,6 @@ ad_machine_account_password_renewal_send(TALLOC_CTX *mem_ctx,
     struct renewal_state *state;
     struct tevent_req *req;
     struct tevent_req *subreq;
-    pid_t child_pid;
-    struct timeval tv;
-    int pipefd_to_child[2] = PIPE_INIT;
-    int pipefd_from_child[2] = PIPE_INIT;
     int ret;
     const char **extra_args;
     const char *server_name;
@@ -141,21 +212,10 @@ ad_machine_account_password_renewal_send(TALLOC_CTX *mem_ctx,
 
     renewal_data = talloc_get_type(pvt, struct renewal_data);
 
-    state->ev = ev;
-    state->child_status = EFAULT;
-    state->io = talloc(state, struct child_io_fds);
-    if (state->io == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "talloc failed.\n");
-        ret = ENOMEM;
-        goto done;
-    }
-    state->io->write_to_child_fd = -1;
-    state->io->read_from_child_fd = -1;
-    talloc_set_destructor((void *) state->io, child_io_destructor);
-
     server_name = be_fo_get_active_server_name(be_ctx, AD_SERVICE_NAME);
     talloc_zfree(renewal_data->extra_args[0]);
-    if (server_name != NULL) {
+    if ((renewal_data->renew_helper == RENEW_HELPER_ADCLI)
+            && (server_name != NULL)) {
         renewal_data->extra_args[0] = talloc_asprintf(renewal_data->extra_args,
                                                       "--domain-controller=%s",
                                                       server_name);
@@ -167,84 +227,36 @@ ad_machine_account_password_renewal_send(TALLOC_CTX *mem_ctx,
         extra_args = &renewal_data->extra_args[1];
     }
 
-    ret = pipe(pipefd_from_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (from) failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-    ret = pipe(pipefd_to_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe (to) failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-
-    child_pid = fork();
-    if (child_pid == 0) { /* child */
-        exec_child_ex(state, pipefd_to_child, pipefd_from_child,
-                      renewal_data->prog_path, NULL,
-                      extra_args, true,
-                      STDIN_FILENO, STDERR_FILENO);
-
-        /* We should never get here */
-        DEBUG(SSSDBG_CRIT_FAILURE, "Could not exec renewal child\n");
-    } else if (child_pid > 0) { /* parent */
-
-        state->io->read_from_child_fd = pipefd_from_child[0];
-        PIPE_FD_CLOSE(pipefd_from_child[1]);
-        sss_fd_nonblocking(state->io->read_from_child_fd);
-
-        state->io->write_to_child_fd = pipefd_to_child[1];
-        PIPE_FD_CLOSE(pipefd_to_child[0]);
-        sss_fd_nonblocking(state->io->write_to_child_fd);
-
-        /* Set up SIGCHLD handler */
-        ret = child_handler_setup(ev, child_pid, NULL, NULL, &state->child_ctx);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_OP_FAILURE, "Could not set up child handlers [%d]: %s\n",
-                ret, sss_strerror(ret));
-            ret = ERR_RENEWAL_CHILD;
-            goto done;
-        }
-
-        /* Set up timeout handler */
-        tv = sss_tevent_timeval_current_ofs_time_t(be_ptask_get_timeout(be_ptask));
-        state->timeout_handler = tevent_add_timer(ev, req, tv,
-                                    ad_machine_account_password_renewal_timeout,
-                                    req);
-        if(state->timeout_handler == NULL) {
-            ret = ERR_RENEWAL_CHILD;
-            goto done;
-        }
-
-        subreq = read_pipe_send(state, ev, state->io->read_from_child_fd);
-        if (subreq == NULL) {
-            DEBUG(SSSDBG_OP_FAILURE, "read_pipe_send failed.\n");
-            ret = ERR_RENEWAL_CHILD;
-            goto done;
-        }
-        tevent_req_set_callback(subreq,
-                                ad_machine_account_password_renewal_done, req);
-
-        /* Now either wait for the timeout to fire or the child
-         * to finish
-         */
-    } else { /* error */
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "fork failed [%d][%s].\n",
-                                   ret, sss_strerror(ret));
+    ret = sss_child_start(state, ev,
+                          renewal_data->prog_path, extra_args, true,
+                          /* no log file */ NULL, STDERR_FILENO,
+                          /* no SIGCHLD cb */ NULL, NULL,
+                          (unsigned)(be_ptask_get_timeout(be_ptask)),
+                          sss_child_handle_timeout,
+                          sss_child_create_timeout_cb_pvt(req, ERR_RENEWAL_CHILD),
+                          true,
+                          &(state->io));
+    if (ret != EOK) {
         goto done;
     }
 
+    subreq = read_pipe_non_blocking_send(state, ev,
+                                         state->io->read_from_child_fd);
+    if (subreq == NULL) {
+        DEBUG(SSSDBG_OP_FAILURE, "read_pipe_send failed.\n");
+        ret = ERR_RENEWAL_CHILD;
+        goto done;
+    }
+    tevent_req_set_callback(subreq,
+                            ad_machine_account_password_renewal_done, req);
+
+    /* Now either wait for the timeout to fire or the child
+     * to finish
+     */
     ret = EOK;
 
 done:
     if (ret != EOK) {
-        PIPE_CLOSE(pipefd_from_child);
-        PIPE_CLOSE(pipefd_to_child);
         tevent_req_error(req, ret);
         tevent_req_post(req, ev);
     }
@@ -260,7 +272,7 @@ static void ad_machine_account_password_renewal_done(struct tevent_req *subreq)
     struct renewal_state *state = tevent_req_data(req, struct renewal_state);
     int ret;
 
-    talloc_zfree(state->timeout_handler);
+    talloc_zfree(state->io->timeout_handler);
 
     ret = read_pipe_recv(subreq, state, &buf, &buf_len);
     talloc_zfree(subreq);
@@ -276,21 +288,6 @@ static void ad_machine_account_password_renewal_done(struct tevent_req *subreq)
 
     tevent_req_done(req);
     return;
-}
-
-static void
-ad_machine_account_password_renewal_timeout(struct tevent_context *ev,
-                                            struct tevent_timer *te,
-                                            struct timeval tv, void *pvt)
-{
-    struct tevent_req *req = talloc_get_type(pvt, struct tevent_req);
-    struct renewal_state *state = tevent_req_data(req, struct renewal_state);
-
-    DEBUG(SSSDBG_CRIT_FAILURE, "Timeout reached for AD renewal child.\n");
-    child_handler_destroy(state->child_ctx);
-    state->child_ctx = NULL;
-    state->child_status = ETIMEDOUT;
-    tevent_req_error(req, ERR_RENEWAL_CHILD);
 }
 
 static errno_t
@@ -316,15 +313,6 @@ errno_t ad_machine_account_password_renewal_init(struct be_ctx *be_ctx,
     int opt_list_size;
     char *endptr;
 
-    ret = access(RENEWAL_PROG_PATH, X_OK);
-    if (ret != 0) {
-        ret = errno;
-        DEBUG(SSSDBG_CONF_SETTINGS,
-              "The helper program ["RENEWAL_PROG_PATH"] for renewal "
-              "doesn't exist [%d]: %s\n", ret, strerror(ret));
-        return EOK;
-    }
-
     lifetime = dp_opt_get_int(ad_opts->basic,
                               AD_MAXIMUM_MACHINE_ACCOUNT_PASSWORD_AGE);
 
@@ -339,7 +327,7 @@ errno_t ad_machine_account_password_renewal_init(struct be_ctx *be_ctx,
         return EINVAL;
     }
 
-    renewal_data = talloc(be_ctx, struct renewal_data);
+    renewal_data = talloc_zero(be_ctx, struct renewal_data);
     if (renewal_data == NULL) {
         DEBUG(SSSDBG_OP_FAILURE, "talloc failed.\n");
         return ENOMEM;
@@ -354,7 +342,7 @@ errno_t ad_machine_account_password_renewal_init(struct be_ctx *be_ctx,
         goto done;
     }
 
-    if (opt_list_size < 2 || opt_list_size > 3) {
+    if (opt_list_size < 2 || opt_list_size > 4) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Wrong number of renewal options %d\n",
               opt_list_size);
         ret = EINVAL;
@@ -375,7 +363,7 @@ errno_t ad_machine_account_password_renewal_init(struct be_ctx *be_ctx,
         goto done;
     }
 
-    if (opt_list_size == 3) {
+    if (opt_list_size >= 3 && opt_list[2] != NULL && *(opt_list[2]) != '\0') {
         offset = strtouint32(opt_list[2], &endptr, 10);
         if (errno != 0 || *endptr != '\0' || opt_list[2] == endptr) {
             DEBUG(SSSDBG_CRIT_FAILURE, "Unable to parse third renewal option.\n");
@@ -386,18 +374,61 @@ errno_t ad_machine_account_password_renewal_init(struct be_ctx *be_ctx,
         offset = 0;
     }
 
-    ret = get_adcli_extra_args(dp_opt_get_cstring(ad_opts->basic, AD_DOMAIN),
+    renewal_data->renew_helper = RENEW_HELPER_REALM;
+    if (opt_list_size == 4 && opt_list[3] != NULL && *(opt_list[3]) != '\0') {
+        if (strcasecmp(opt_list[3], "adcli") == 0) {
+            renewal_data->renew_helper = RENEW_HELPER_ADCLI;
+        } else if (strcasecmp(opt_list[3], "realm") == 0) {
+            renewal_data->renew_helper = RENEW_HELPER_REALM;
+        } else {
+            DEBUG(SSSDBG_CRIT_FAILURE,
+                  "Unsupported keytab renewal helper program [%s].\n",
+                  opt_list[3]);
+            ret = EINVAL;
+            goto done;
+        }
+    }
+
+    if (renewal_data->renew_helper == RENEW_HELPER_ADCLI) {
+        ret = get_adcli_extra_args(dp_opt_get_cstring(ad_opts->basic, AD_DOMAIN),
                    dp_opt_get_cstring(ad_opts->basic, AD_HOSTNAME),
                    dp_opt_get_cstring(ad_opts->id_ctx->sdap_id_ctx->opts->basic,
                                       SDAP_KRB5_KEYTAB),
-                   lifetime,
+                   dp_opt_get_bool(ad_opts->basic, AD_USE_LDAPS), lifetime,
                    dp_opt_get_bool(ad_opts->basic,
                                    AD_UPDATE_SAMBA_MACHINE_ACCOUNT_PASSWORD),
                    period, initial_delay, renewal_data);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_OP_FAILURE, "get_adcli_extra_args failed.\n");
+    } else if (renewal_data->renew_helper == RENEW_HELPER_REALM) {
+        ret = get_realm_extra_args(dp_opt_get_cstring(ad_opts->basic, AD_DOMAIN),
+                   dp_opt_get_cstring(ad_opts->basic, AD_HOSTNAME),
+                   dp_opt_get_cstring(ad_opts->id_ctx->sdap_id_ctx->opts->basic,
+                                      SDAP_KRB5_KEYTAB),
+                   dp_opt_get_bool(ad_opts->basic, AD_USE_LDAPS), lifetime,
+                   dp_opt_get_bool(ad_opts->basic,
+                                   AD_UPDATE_SAMBA_MACHINE_ACCOUNT_PASSWORD),
+                   period, initial_delay, renewal_data);
+    } else {
+        DEBUG(SSSDBG_CRIT_FAILURE,
+              "Unsupported keytab renewal helper program.\n");
+        ret = EINVAL;
         goto done;
     }
+    if (ret != EOK) {
+        DEBUG(SSSDBG_OP_FAILURE,
+              "Failed to generate argument for helper program [%s].\n",
+              renewal_data->prog_path);
+        goto done;
+    }
+
+    ret = access(renewal_data->prog_path, X_OK);
+    if (ret != 0) {
+        ret = errno;
+        DEBUG(SSSDBG_CONF_SETTINGS,
+              "The helper program [%s] for renewal doesn't exist [%d]: %s\n",
+              renewal_data->prog_path, ret, strerror(ret));
+        return EOK;
+    }
+
 
     ret = be_ptask_create(be_ctx, be_ctx, period, initial_delay, 0, offset,
                           60, 0,

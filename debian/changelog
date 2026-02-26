@@ -1,8 +1,126 @@
-sssd (2.9.5-3deepin1) unstable; urgency=medium
+sssd (2.12.0-2deepin1) unstable; urgency=medium
 
   * Revert t64.
 
- -- xiangzelong <xiangzelong@deepin.org>  Tue, 24 Sep 2024 14:41:42 +0800
+ -- lichenggang <lichenggang@deepin.org>  Thu, 26 Feb 2026 13:41:11 +0800
+
+sssd (2.12.0-2) unstable; urgency=medium
+
+  [ Jonas Jelten ]
+  * d/t/sssd-{softhism2-certificates-test,smart-card-pam-auth-configs-tester}:
+    fix test user creation
+  * d/t/sssd-smart-card-pam-auth-configs-tester: remove deprecated files provider
+
+  [ Timo Aaltonen ]
+  * libsss-sudo: Drop dependency on libnss-sudo, modify libsss-sudo.nss to create
+    the nsswitch.conf entry for sudo. (Closes: #770825)
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Fri, 13 Feb 2026 12:36:20 +0200
+
+sssd (2.12.0-1) unstable; urgency=medium
+
+  [ Michael Tokarev ]
+  * d/control: remove kfreebsd reference (remove lintian error)
+  * d/tests/sssd-smart-card-pam-auth-configs-tester.sh: show status/journal
+    after (re)start of sssd fails
+
+  [ Seyeong Kim ]
+  * Updating apparmor profile for smartcard authentication (LP: #2109673)
+   - d/apparmor-profile: allow access to sssd configuration directory,
+     pcscd socket and libraries required for PKCS#11 module initialization.
+
+  [ John Veitch ]
+  * Update file sssd-common.sssd.default
+  * Edit sssd-common.sssd.default  - add the --logger=files daemon option
+
+  [ Timo Aaltonen ]
+  * New upstream release.
+  * patches: Drop upstreamed patch.
+  * source: Update diff-ignore.
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Sun, 08 Feb 2026 18:16:39 +0200
+
+sssd (2.11.1-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Disabling sssd-smart-card-pam-auth-configs for now to allow sssd to
+    migrate - until a proper fix, it's better to have sssd in testing
+    without this test run than not have sssd at all (Closes: #1123815).
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 06 Feb 2026 04:01:15 +0000
+
+sssd (2.11.1-2) unstable; urgency=medium
+
+  * BUILD-Accept-krb5-1.22-for-building-the-PAC-plugin.patch
+    (Closes: #1122483 -- FTBFS, missing support for MIT Kerberos 1.22)
+
+ -- Michael Tokarev <mjt@tls.msk.ru>  Fri, 09 Jan 2026 11:47:07 +0300
+
+sssd (2.11.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * watch: Updated.
+  * d/p/drop-valgrind.diff: Dropped, obsolete.
+  * source: Update local-options.
+  * rules, install: Drop files-provider, removed upstream.
+  * sssd-common: Add sssd-idp.
+  * copyright: Update FSF address.
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Mon, 10 Nov 2025 16:34:59 +0200
+
+sssd (2.10.1-2) unstable; urgency=medium
+
+  [ Timo Aaltonen ]
+  * control: Drop valgrind from build-depends again.
+  * drop-valgrind.diff: Drop a check for if a test is running on
+    valgrind, avoids the build-dep and ftbfs on where valgrind is not
+    available.
+  * control: Add systemd to build-depends since build-tests require
+    systemctl.
+  * tests: Use a 2048bit private key. (Closes: #1092722)
+
+  [ Michal Maloszewski  ]
+  * d/apparmor-profile: Update profile to silence extraneous ALLOWED
+    messages.
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Tue, 14 Jan 2025 08:45:10 +0200
+
+sssd (2.10.1-1) unstable; urgency=medium
+
+  [ Timo Aaltonen ]
+  * New upstream release.
+  * watch: Updated.
+  * patches: Refreshed.
+  * control: Add valgrind and libcap-dev to build-depends.
+  * install: Updated.
+
+  [ Andreas Hasenack ]
+  * autopkgtests: also gather sssd logs in case of failure
+  * postinst: add filesystem capabilities to several helpers
+  * control: add libcap2-bin dependency
+  * rules: don't change permissions of proxy_child and sssd_pam
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Wed, 08 Jan 2025 12:34:49 +0200
+
+sssd (2.9.5-5) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Andreas Hasenack ]
+  * autopkgtests: switch to ssh for the login test (Closes: #1081027)
+  * autopkgtests: display logs in the case of a failure
+
+ -- Simon Josefsson <simon@josefsson.org>  Fri, 20 Dec 2024 16:15:34 +0100
+
+sssd (2.9.5-4) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Michael Prokop ]
+  * autopkgtests: increase expect timeout to address flaky ldap-user-group-ldap-auth under control
+    (Closes: #1081027)
+
+ -- Simon Josefsson <simon@josefsson.org>  Tue, 26 Nov 2024 11:06:09 +0100
 
 sssd (2.9.5-3) unstable; urgency=medium
 

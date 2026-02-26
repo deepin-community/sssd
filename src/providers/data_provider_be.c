@@ -46,7 +46,6 @@
 #include "providers/fail_over.h"
 #include "providers/be_refresh.h"
 #include "providers/be_ptask.h"
-#include "util/child_common.h"
 #include "util/file_watch.h"
 #include "resolv/async_resolv.h"
 #include "sss_iface/sss_iface_async.h"
@@ -223,10 +222,9 @@ static void be_mark_subdom_offline(struct sss_domain_info *subdom,
     tv = tevent_timeval_current_ofs(reset_status_timeout, 0);
 
     switch (subdom->state) {
-    case DOM_INCONSISTENT:
     case DOM_DISABLED:
         DEBUG(SSSDBG_MINOR_FAILURE,
-              "Won't touch disabled or inconsistent subdomain\n");
+              "Won't touch disabled subdomain\n");
         return;
     case DOM_INACTIVE:
         DEBUG(SSSDBG_TRACE_ALL, "Subdomain already inactive\n");
@@ -472,6 +470,111 @@ static void signal_be_reset_offline(struct tevent_context *ev,
     check_if_online(ctx, 0);
 }
 
+static void signal_be_reschedule_tasks(struct tevent_context *ev,
+                                       struct tevent_signal *se,
+                                       int signum,
+                                       int count,
+                                       void *siginfo,
+                                       void *private_data)
+{
+    struct be_ctx *ctx = talloc_get_type(private_data, struct be_ctx);
+    be_ptask_postpone_all(ctx);
+}
+
+static void watch_update_resolv(const char *filename, void *arg)
+{
+    int ret;
+    struct be_ctx *be_ctx = (struct be_ctx *) arg;
+
+    DEBUG(SSSDBG_TRACE_FUNC, "Reloading %s.\n", filename);
+    resolv_reread_configuration(be_ctx->be_res->resolv);
+    ret = res_init();
+    if (ret != 0) {
+        DEBUG(SSSDBG_OP_FAILURE, "Failed to reload %s.\n", filename);
+        return;
+    }
+    check_if_online(be_ctx, 1);
+}
+
+static int watch_config_files(struct be_ctx *ctx)
+{
+    int ret;
+    bool monitor_resolv_conf;
+    bool use_inotify;
+
+    /* Watch for changes to the DNS resolv.conf */
+    ret = confdb_get_bool(ctx->cdb,
+                          CONFDB_MONITOR_CONF_ENTRY,
+                          CONFDB_MONITOR_RESOLV_CONF,
+                          true, &monitor_resolv_conf);
+    if (ret != EOK) {
+        return ret;
+    }
+
+    ret = confdb_get_bool(ctx->cdb,
+                          CONFDB_MONITOR_CONF_ENTRY,
+                          CONFDB_MONITOR_TRY_INOTIFY,
+                          true, &use_inotify);
+    if (ret != EOK) {
+        return ret;
+    }
+
+    if (monitor_resolv_conf) {
+        ctx->file_ctx = fw_watch_file(ctx, ctx->ev, RESOLV_CONF_PATH,
+                                      use_inotify, watch_update_resolv, ctx);
+        if (ctx->file_ctx == NULL) {
+            return ENOMEM;
+        }
+
+    } else {
+        DEBUG(SSS_LOG_NOTICE, "%s watching is disabled\n", RESOLV_CONF_PATH);
+    }
+
+    return EOK;
+}
+
+static void network_status_change_cb(void *cb_data)
+{
+    struct be_ctx *ctx = (struct be_ctx *) cb_data;
+
+    check_if_online(ctx, 1);
+}
+
+
+static int watch_netlink(struct be_ctx *ctx)
+{
+    int ret;
+    bool disable_netlink;
+
+    ret = confdb_get_bool(ctx->cdb,
+                          CONFDB_MONITOR_CONF_ENTRY,
+                          CONFDB_MONITOR_DISABLE_NETLINK,
+                          false, &disable_netlink);
+
+    if (ret != EOK) {
+        DEBUG(SSSDBG_OP_FAILURE,
+              "Failed to read %s from confdb: [%d] %s\n",
+              CONFDB_MONITOR_DISABLE_NETLINK,
+              ret, sss_strerror(ret));
+        return ret;
+    }
+
+
+    if (disable_netlink) {
+        DEBUG(SSS_LOG_NOTICE, "Netlink watching is disabled\n");
+    } else {
+        ret = netlink_watch(ctx, ctx->ev, network_status_change_cb,
+                            ctx, &ctx->nlctx);
+        if (ret != EOK) {
+            DEBUG(SSSDBG_OP_FAILURE,
+                  "Failed to set up listener for network status changes\n");
+            return ret;
+        }
+    }
+
+    return EOK;
+}
+
 static errno_t
 be_register_monitor_iface(struct sbus_connection *conn, struct be_ctx *be_ctx)
 {
@@ -494,19 +597,15 @@ be_register_monitor_iface(struct sbus_connection *conn, struct be_ctx *be_ctx)
         {NULL, NULL}
     };
 
-    return sbus_connection_add_path_map(be_ctx->mon_conn, paths);
+    return sbus_connection_add_path_map(conn, paths);
 }
-
-static void dp_initialized(struct tevent_req *req);
 
 errno_t be_process_init(TALLOC_CTX *mem_ctx,
                         const char *be_domain,
-                        uid_t uid,
-                        gid_t gid,
                         struct tevent_context *ev,
                         struct confdb_ctx *cdb)
 {
-    struct tevent_req *req;
+    struct tevent_signal *tes;
     struct be_ctx *be_ctx;
     char *str = NULL;
     errno_t ret;
@@ -519,8 +618,6 @@ errno_t be_process_init(TALLOC_CTX *mem_ctx,
 
     be_ctx->ev = ev;
     be_ctx->cdb = cdb;
-    be_ctx->uid = uid;
-    be_ctx->gid = gid;
     be_ctx->identity = talloc_asprintf(be_ctx, "%%BE_%s", be_domain);
     be_ctx->conf_path = talloc_asprintf(be_ctx, CONFDB_DOMAIN_PATH_TMPL, be_domain);
     if (be_ctx->identity == NULL || be_ctx->conf_path == NULL) {
@@ -588,128 +685,21 @@ errno_t be_process_init(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
-    be_ctx->sbus_name = sss_iface_domain_bus(be_ctx, be_ctx->domain);
+    be_ctx->sbus_name = talloc_strdup(be_ctx, be_ctx->domain->conn_name);
     if (be_ctx->sbus_name == NULL) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Could not get sbus backend name.\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Out of memory when copying D-Bus name.\n");
         ret = ENOMEM;
         goto done;
     }
 
-    req = dp_init_send(be_ctx, be_ctx->ev, be_ctx, be_ctx->uid, be_ctx->gid,
-                       be_ctx->sbus_name);
-    if (req == NULL) {
-        ret = ENOMEM;
+    ret = dp_init(be_ctx->ev, be_ctx, be_ctx->sbus_name);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to setup data provider [%d]: %s\n",
+              ret, sss_strerror(ret));
         goto done;
     }
 
-    tevent_req_set_callback(req, dp_initialized, be_ctx);
-
-    ret = EOK;
-
-done:
-    if (ret != EOK) {
-        talloc_free(be_ctx);
-    }
-
-    return ret;
-}
-
-static void watch_update_resolv(const char *filename, void *arg)
-{
-    int ret;
-    struct be_ctx *be_ctx = (struct be_ctx *) arg;
-
-    DEBUG(SSSDBG_TRACE_FUNC, "Reloading %s.\n", filename);
-    resolv_reread_configuration(be_ctx->be_res->resolv);
-    ret = res_init();
-    if (ret != 0) {
-        DEBUG(SSSDBG_OP_FAILURE, "Failed to reload %s.\n", filename);
-        return;
-    }
-    check_if_online(be_ctx, 1);
-}
-
-static int watch_config_files(struct be_ctx *ctx)
-{
-    int ret;
-    bool monitor_resolv_conf;
-    bool use_inotify;
-
-    /* Watch for changes to the DNS resolv.conf */
-    ret = confdb_get_bool(ctx->cdb,
-                          CONFDB_MONITOR_CONF_ENTRY,
-                          CONFDB_MONITOR_RESOLV_CONF,
-                          true, &monitor_resolv_conf);
-    if (ret != EOK) {
-        return ret;
-    }
-
-    ret = confdb_get_bool(ctx->cdb,
-                          CONFDB_MONITOR_CONF_ENTRY,
-                          CONFDB_MONITOR_TRY_INOTIFY,
-                          true, &use_inotify);
-    if (ret != EOK) {
-        return ret;
-    }
-
-    if (monitor_resolv_conf) {
-        ctx->file_ctx = fw_watch_file(ctx, ctx->ev, RESOLV_CONF_PATH,
-                                      use_inotify, watch_update_resolv, ctx);
-        if (ctx->file_ctx == NULL) {
-            return ENOMEM;
-        }
-
-    } else {
-        DEBUG(SSS_LOG_NOTICE, "%s watching is disabled\n", RESOLV_CONF_PATH);
-    }
-
-    return EOK;
-}
-
-static void fix_child_log_permissions(uid_t uid, gid_t gid)
-{
-    int ret;
-    const char *child_names[] = { "krb5_child",
-                                  "ldap_child",
-                                  "selinux_child",
-                                  "ad_gpo_child",
-                                  "proxy_child",
-                                  NULL };
-    size_t c;
-
-    for (c = 0; child_names[c] != NULL; c++) {
-        ret = chown_debug_file(child_names[c], uid, gid);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_MINOR_FAILURE,
-                  "Cannot chown the [%s] debug file, "
-                  "debugging might not work!\n", child_names[c]);
-        }
-    }
-}
-
-static void dp_initialized(struct tevent_req *req)
-{
-    struct tevent_signal *tes;
-    struct be_ctx *be_ctx;
-    errno_t ret;
-
-    be_ctx = tevent_req_callback_data(req, struct be_ctx);
-
-    ret = dp_init_recv(be_ctx, req);
-    talloc_zfree(req);
-    if (ret !=  EOK) {
-        goto done;
-    }
-
-    ret = sss_monitor_service_init(be_ctx, be_ctx->ev, be_ctx->sbus_name,
-                                   be_ctx->identity, DATA_PROVIDER_VERSION,
-                                   MT_SVC_PROVIDER, NULL, &be_ctx->mon_conn);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to initialize monitor connection\n");
-        goto done;
-    }
-
-    ret = be_register_monitor_iface(be_ctx->mon_conn, be_ctx);
+    ret = be_register_monitor_iface(be_ctx->conn, be_ctx);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register monitor interface "
               "[%d]: %s\n", ret, sss_strerror(ret));
@@ -736,25 +726,34 @@ static void dp_initialized(struct tevent_req *req)
         goto done;
     }
 
-    ret = chown_debug_file(NULL, be_ctx->uid, be_ctx->gid);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_MINOR_FAILURE,
-              "Cannot chown the debug files, debugging might not work!\n");
+    /* Handle SSSSIG_TIME_SHIFT_DETECTED (reschedule tasks) */
+    BlockSignals(false, SSSSIG_TIME_SHIFT_DETECTED);
+    tes = tevent_add_signal(be_ctx->ev, be_ctx, SSSSIG_TIME_SHIFT_DETECTED, 0,
+                            signal_be_reschedule_tasks, be_ctx);
+    if (tes == NULL) {
+        DEBUG(SSSDBG_FATAL_FAILURE,
+              "Unable to setup SSSSIG_TIME_SHIFT_DETECTED handler\n");
+        ret = EIO;
+        goto done;
     }
 
-    fix_child_log_permissions(be_ctx->uid, be_ctx->gid);
-
-    /* Set up watchers for system config files */
+    /* Set up watchers for system config files and the net links */
     ret = watch_config_files(be_ctx);
     if (ret != EOK) {
         goto done;
     }
 
-    ret = become_user(be_ctx->uid, be_ctx->gid);
+    ret = watch_netlink(be_ctx);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FUNC_DATA,
-              "Cannot become user [%"SPRIuid"][%"SPRIgid"].\n",
-              be_ctx->uid, be_ctx->gid);
+        goto done;
+    }
+
+    ret = sss_monitor_register_service(be_ctx, be_ctx->conn,
+                                       be_ctx->identity, DATA_PROVIDER_VERSION,
+                                       MT_SVC_PROVIDER);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register to the monitor "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto done;
     }
 
@@ -765,8 +764,10 @@ static void dp_initialized(struct tevent_req *req)
 
 done:
     if (ret != EOK) {
-        exit(3);
+        talloc_free(be_ctx);
     }
+
+    return ret;
 }
 
 #ifndef UNIT_TESTING
@@ -780,14 +781,11 @@ int main(int argc, const char *argv[])
     struct main_context *main_ctx;
     char *confdb_path;
     int ret;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
         POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_DEBUG_OPTS
+        SSSD_LOGGER_OPTS(&opt_logger)
         {"domain", 0, POPT_ARG_STRING, &be_domain, 0,
          _("Domain of the information provider (mandatory)"), NULL },
         POPT_TABLEEND
@@ -830,7 +828,8 @@ int main(int argc, const char *argv[])
     confdb_path = talloc_asprintf(NULL, CONFDB_DOMAIN_PATH_TMPL, be_domain);
     if (!confdb_path) return 2;
 
-    ret = server_setup(srv_name, false, 0, 0, 0, confdb_path, &main_ctx, false);
+    ret = server_setup(srv_name, false, 0, CONFDB_FILE,
+                       confdb_path, &main_ctx, false);
     if (ret != EOK) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Could not set up mainloop [%d]\n", ret);
         return 2;
@@ -850,7 +849,7 @@ int main(int argc, const char *argv[])
     }
 
     ret = be_process_init(main_ctx,
-                          be_domain, uid, gid,
+                          be_domain,
                           main_ctx->event_ctx,
                           main_ctx->confdb_ctx);
     if (ret != EOK) {

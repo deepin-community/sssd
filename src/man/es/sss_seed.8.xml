@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
 "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
 <reference>
-<title>Páginas de manual de SSSD</title>
+<title>Páginas del manual de SSSD</title>
 <refentry>
     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
 
@@ -20,16 +20,16 @@
         <cmdsynopsis>
 <command>sss_seed</command> <arg choice='opt'>
 <replaceable>options</replaceable> </arg> <arg choice='plain'>-D
-<replaceable>DOMAIN</replaceable></arg> <arg choice='plain'>-n
-<replaceable>USER</replaceable></arg></cmdsynopsis>
+<replaceable>DOMINIO</replaceable></arg> <arg choice='plain'>-n
+<replaceable>USUARIO</replaceable></arg></cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1 id='description'>
-        <title>DESCRIPCION</title>
+        <title>DESCRIPCIÓN</title>
         <para>
-            <command>sss_seed</command> alimenta el cache SSSD con una entrada de
-usuario y una contresañe temporal. Si una entrada de usuario está ya
-presente en el cache SSSD la entrada se actualiza con la contraseña temporal
+            <command>sss_seed</command> alimenta la caché SSSD con un apunte de usuario
+y una contraseña temporal. Si un apunte de usuario ya está presente en la
+cache de SSSD entonces el apunte es actualizado con la contraseña temporal.
         </para>
         <para>
         </para>
@@ -41,7 +41,7 @@ presente en el cache SSSD la entrada se actualiza con la contraseña temporal
             <varlistentry>
                 <term>
                     <option>-D</option>,<option>--domain</option>
-<replaceable>DOMAIN</replaceable>
+<replaceable>DOMINIO</replaceable>
                 </term>
                 <listitem>
                     <para>
@@ -56,7 +56,7 @@ suministrado en las opciones.
             <varlistentry>
                 <term>
                     <option>-n</option>,<option>--username</option>
-<replaceable>USER</replaceable>
+<replaceable>USUARIO</replaceable>
                 </term>
                 <listitem>
                     <para>
@@ -152,7 +152,7 @@ especifica se pregunta por la contraseña)
         <para>
             La longitud de la contraseña (o el tamaño especificado con la opción -p or
 --password-file) debe ser menos o igual a PASS_MAX bytes ( 64 bytes en
-sistemas sin valor  PASS_MAX globalmente definido).
+sistemas sin valor PASS_MAX globalmente definido).
         </para>
         <para>
         </para>

@@ -60,7 +60,11 @@ static struct pam_conv conv = {
 #endif
 
 #define DEFAULT_ACTION "acct"
+#ifdef HAVE_SUSE
+#define DEFAULT_SERVICE "login"
+#else
 #define DEFAULT_SERVICE "system-auth"
+#endif
 
 #define DEFAULT_BUFSIZE 4096
 
@@ -212,8 +216,7 @@ done:
 }
 
 errno_t sssctl_user_checks(struct sss_cmdline *cmdline,
-                           struct sss_tool_ctx *tool_ctx,
-                           void *pvt)
+                           struct sss_tool_ctx *tool_ctx)
 {
 
     pam_handle_t *pamh;
@@ -236,7 +239,7 @@ errno_t sssctl_user_checks(struct sss_cmdline *cmdline,
         POPT_TABLEEND
     };
 
-    ret = sss_tool_popt_ex(cmdline, options, SSS_TOOL_OPT_OPTIONAL,
+    ret = sss_tool_popt_ex(cmdline, options, NULL, SSS_TOOL_OPT_OPTIONAL,
                            NULL, NULL, "USERNAME", _("Specify user name."),
                            SSS_TOOL_OPT_REQUIRED, &user, NULL);
     if (ret != EOK) {

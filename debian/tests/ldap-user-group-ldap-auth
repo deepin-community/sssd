@@ -5,6 +5,21 @@ set -ex
 . debian/tests/util
 . debian/tests/common-tests
 
+cleanup() {
+    result=$?
+    set +e
+    if [ ${result} -ne 0 ]; then
+        echo "## Something failed, gathering logs"
+        echo
+        gather_logs
+    else
+        echo "## All tests passed, phew"
+    fi
+    cleanup_sshd_config
+}
+
+trap cleanup EXIT
+
 mydomain="example.com"
 myhostname="ldap.${mydomain}"
 mysuffix="dc=example,dc=com"
@@ -25,5 +40,9 @@ enable_pam_mkhomedir
 # tests begin here
 run_common_tests
 
-echo "The LDAP user can login on a terminal"
+echo "The LDAP user can login via ssh"
+
+# this test is not via gssapi: we need password authentication
+setup_sshd_password_auth
+
 /usr/bin/expect -f debian/tests/login.exp "${ldap_user}" "${ldap_user_pw}"

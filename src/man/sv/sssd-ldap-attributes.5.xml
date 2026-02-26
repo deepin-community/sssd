@@ -552,12 +552,13 @@ alternativet ldap_user_authorized_rhost skall fungera.
                             Namnet på LDAP-attributet som innehåller användarens e-postadress.
                         </para>
                         <para>
-                            Note: If an email address of a user conflicts with an email address or fully
-qualified name of another user, then SSSD will not be able to serve those
-users properly. This option allows users to login by (1) username, and (2)
-e-mail address.  If for some reason several users need to share the same
-email address then set this option to a nonexistent attribute name in order
-to disable user lookup/login by email.
+                            Observera: om en e-postadress för användaren står i konflikt med en
+e-postadress eller fullt kvalificerat namn för en annan användare, då kommer
+SSSD inte kunna serva dessa användare ordentligt. Detta alternativ gör att
+användare kan logga in med (1) användarnamn och (2) e-postadress. Om flera
+användare av något skäl behöver dela samma e-postadress, sätt då detta
+attributnamn till ett som inte finns för att avaktivera
+uppslagning/inloggning av användare via e-post.
                         </para>
                         <para>
                             Standard: mail
@@ -565,13 +566,14 @@ to disable user lookup/login by email.
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>ldap_user_passkey (string)</term>
+                    <term>ldap_user_passkey (sträng)</term>
                     <listitem>
                         <para>
-                            Name of the LDAP attribute containing the passkey mapping data of the user.
+                            Namnet på LDAP-attributet som innehåller användarens avbildningsdata för
+lösennyckel.
                         </para>
                         <para>
-                            Default: passkey (LDAP), ipaPassKey (IPA), altSecurityIdentities (AD)
+                            Standard: passkey (LDAP), ipaPassKey (IPA), altSecurityIdentities (AD)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -599,10 +601,9 @@ to disable user lookup/login by email.
                     <term>ldap_group_name (sträng)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that corresponds to the group name. In an environment
-with nested groups, this value must be an LDAP attribute which has a unique
-name for every group. This requirement includes non-POSIX groups in the tree
-of nested groups.
+                            LDAP-attributet som motsvarar gruppnamnet. I en miljö med nästade grupper
+måste detta värde vara ett LDAP-attribut vilket har ett unikt namn för varje
+grupp. Detta krav inkluderar icke-POSIX-grupper i trädet av nästade grupper.
                         </para>
                         <para>
                             Standard: cn (rfc2307, rfc2307bis och IPA), sAMAccountName (AD)
@@ -1166,6 +1167,85 @@ alias.
                         </para>
                         <para>
                             Standard: ipNetworkNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+        </variablelist>
+    </para>
+    </refsect1>
+
+    <refsect1 id='subid-attributes'>
+    <title>SUBID ATTRIBUTES</title>
+    <para>
+        <variablelist>
+            <varlistentry>
+                    <term>ldap_subuid_object_class (string)</term>
+                    <listitem>
+                        <para>
+                            The object class of an subid entry in LDAP.
+                        </para>
+                        <para>
+                            Default: subordinateIdEntry
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subuid_count (string)</term>
+                    <listitem>
+                        <para>
+                            Subordinate user ID count (range size)
+                        </para>
+                        <para>
+                            Default: subUidCount
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subgid_count (string)</term>
+                    <listitem>
+                        <para>
+                            Subordinate group ID count (range size)
+                        </para>
+                        <para>
+                            Default: subGidCount
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subuid_number (string)</term>
+                    <listitem>
+                        <para>
+                            Numerical subordinate user ID (range start value)
+                        </para>
+                        <para>
+                            Default: subUidNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subgid_number (string)</term>
+                    <listitem>
+                        <para>
+                            Numerical subordinate group ID (range start value)
+                        </para>
+                        <para>
+                            Default: subGidNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subid_range_owner (string)</term>
+                    <listitem>
+                        <para>
+                            Owner of an entry
+                        </para>
+                        <para>
+                            Default: subidRangeOwner
                         </para>
                     </listitem>
                 </varlistentry>

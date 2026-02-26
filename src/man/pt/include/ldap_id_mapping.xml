@@ -1,93 +1,100 @@
 <refsect1 id='idmap'>
-    <title>ID MAPPING</title>
+    <title>MAPEAMENTO DE ID</title>
     <para>
-        The ID-mapping feature allows SSSD to act as a client of Active Directory
-without requiring administrators to extend user attributes to support POSIX
-attributes for user and group identifiers.
+        A funcionalidade de mapeamento de ID permite ao SSSD actuar como um cliente
+de Active Directory sem requerer aos administradores estenderem os atributos
+de utilizador para suportar atributos POSIX para identificadores de
+utilizador e grupo.
     </para>
     <para>
-        NOTE: When ID-mapping is enabled, the uidNumber and gidNumber attributes are
-ignored. This is to avoid the possibility of conflicts between
-automatically-assigned and manually-assigned values. If you need to use
-manually-assigned values, ALL values must be manually-assigned.
+        NOTA: Quando o mapeamento de ID está activo, os atributos uidNumber e
+gidNumber são ignorados. Isto é para evitar a possibilidade de conflitos
+entre valores designados automaticamente e designados manualmente. Se você
+precisa usar valores designados manualmente, TODOS os valores têm de ser
+atribuídos manualmente.
     </para>
     <para>
-        Please note that changing the ID mapping related configuration options will
-cause user and group IDs to change. At the moment, SSSD does not support
-changing IDs, so the SSSD database must be removed. Because cached passwords
-are also stored in the database, removing the database should only be
-performed while the authentication servers are reachable, otherwise users
-might get locked out. In order to cache the password, an authentication must
-be performed. It is not sufficient to use <citerefentry>
+        Por favor note que alterar as opções de configuração relacionadas com
+mapeamento de ID irá fazer com que os IDs de utilizador e grupo mudem. De
+momento, o SSSD não suporta alterar os IDs, assim a base de dados do SSSD
+tem de ser removida. Porque as palavras passe em cache são também guardadas
+na base de dados, remover a base de dados só deve ser feito enquanto os
+servidores de autenticação estão alcançáveis, caso contrário os utilizadores
+podem ficar bloqueados de fora. De modo a palavra passe em cache, tem de ser
+executada uma autenticação. Não é suficiente usar <citerefentry>
 <refentrytitle>sss_cache</refentrytitle> <manvolnum>8</manvolnum>
-</citerefentry> to remove the database, rather the process consists of:
+</citerefentry> para remover a base de dados, em vez disso o processo
+consiste de:
             <itemizedlist>
                 <listitem>
                     <para>
-                        Making sure the remote servers are reachable
+                        Certificar que os servidores remotos são alcançáveis
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Stopping the SSSD service
+                        Parar serviço SSSD
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Removing the database
+                        Remover a base de dados
                     </para>
                 </listitem>
                 <listitem>
                     <para>
-                        Starting the SSSD service
+                        Arrancar o serviço SSSD
                     </para>
                 </listitem>
             </itemizedlist>
-        Moreover, as the change of IDs might necessitate the adjustment of other
-system properties such as file and directory ownership, it's advisable to
-plan ahead and test the ID mapping configuration thoroughly.
+        Mais ainda, como a mudança de IDs pode necessitar de ajustes noutras
+propriedades do sistema tais como o dono de ficheiros e directórios, é
+recomendado planear com antecedência e testar a configuração do mapeamento
+de ID meticulosamente.
     </para>
 
     <refsect2 id='idmap_algorithm'>
-        <title>Mapping Algorithm</title>
+        <title>Algoritmo de Mapeamento</title>
         <para>
-            Active Directory provides an objectSID for every user and group object in
-the directory. This objectSID can be broken up into components that
-represent the Active Directory domain identity and the relative identifier
-(RID) of the user or group object.
+            Active Directory fornece um objectSID para cada objecto utilizador e grupo
+no directório. Este objectSID pode ser partido em componentes que
+representam a identidade de domínio Active Directory e o identificador
+relativo (RID) do objecto utilizador ou grupo.
         </para>
         <para>
-            The SSSD ID-mapping algorithm takes a range of available UIDs and divides it
-into equally-sized component sections - called "slices"-. Each slice
-represents the space available to an Active Directory domain.
+            O algoritmo de mapeamento de ID do SSSD toma uma gama de UIDs disponíveis e
+divide-a em secções de componente de tamanho igual - chamadas fatias ou
+"slices"-. Cada fatia representa o espaço disponível para um domínio Active
+Directory.
         </para>
         <para>
-            When a user or group entry for a particular domain is encountered for the
-first time, the SSSD allocates one of the available slices for that
-domain. In order to make this slice-assignment repeatable on different
-client machines, we select the slice based on the following algorithm:
+            Quando uma entrada de utilizador ou grupo para um domínio particular é
+encontrada pela primeira vez, o SSSD aloca uma das fatias disponíveis para
+esse domínio. De modo a tornar esta atribuição de fatia repetível em
+diferentes máquinas cliente, nós selecionamos a fatia com base no seguinte
+algoritmo:
         </para>
         <para>
-            The SID string is passed through the murmurhash3 algorithm to convert it to
-a 32-bit hashed value. We then take the modulus of this value with the total
-number of available slices to pick the slice.
+            A string SID é passada através do algoritmo murmurhash3 para a converter num
+valor cinza de 32-bit. Depois nós pegamos no modulus deste valor com o
+número total de fatias disponíveis para escolher a fatia.
         </para>
         <para>
-            NOTE: It is possible to encounter collisions in the hash and subsequent
-modulus. In these situations, we will select the next available slice, but
-it may not be possible to reproduce the same exact set of slices on other
-machines (since the order that they are encountered will determine their
-slice). In this situation, it is recommended to either switch to using
-explicit POSIX attributes in Active Directory (disabling ID-mapping) or
-configure a default domain to guarantee that at least one is always
-consistent. See <quote>Configuration</quote> for details.
+            NOTA: É possível de se encontrar colisões na cinza e modulus
+subsequentes. Nestas situações, iremos selecionar a próxima fatia
+disponível, mas pode não ser possível de reproduzir o mesmo conjunto exacto
+de fatias em outras máquinas (pois a ordem com que são encontradas irá
+determinar a sua fatia). Nesta situação, é recomendado ou mudar para usar
+atributos POSIX explícitos em Active Directory (desactivando o mapeamento de
+ID) ou configurar um domínio predefinido para garantir que pelo menos um é
+sempre consistente. Veja <quote>Configuração</quote> para detalhes.
         </para>
     </refsect2>
 
     <refsect2 id='idmap_config'>
         <title>Configuração</title>
         <para>
-            Minimum configuration (in the <quote>[domain/DOMAINNAME]</quote> section):
+            Configuração mínima (na secção <quote>[domain/DOMAINNAME]</quote>):
         </para>
         <para>
 <programlisting>
@@ -96,82 +103,84 @@ ldap_schema = ad
 </programlisting>
         </para>
         <para>
-            The default configuration results in configuring 10,000 slices, each capable
-of holding up to 200,000 IDs, starting from 200,000 and going up to
-2,000,200,000. This should be sufficient for most deployments.
+            A configuração predefinida consiste em configurar 10,000 fatias, cada uma
+capaz de conter até 200,000 IDs, a começar de 200,000 e ir até a
+2,000,200,000. Isto deve ser suficiente para a maioria dos desenvolvimentos.
         </para>
         <refsect3 id='idmap_advanced_config'>
-            <title>Advanced Configuration</title>
+            <title>Configuração Avançada</title>
             <variablelist>
                 <varlistentry>
-                    <term>ldap_idmap_range_min (integer)</term>
+                    <term>ldap_idmap_range_min (inteiro)</term>
                     <listitem>
                         <para>
-                            Specifies the lower (inclusive) bound of the range of POSIX IDs to use for
-mapping Active Directory user and group SIDs. It is the first POSIX ID which
-can be used for the mapping.
+                            Especifica o limite mais baixo (inclusive) do alcance de IDs POSIX a usar
+para mapear SIDs de utilizador e grupo Active Directory. É o primeiro ID
+POSIX que pode ser usado para o mapeamento.
                         </para>
                         <para>
-                            NOTE: This option is different from <quote>min_id</quote> in that
-<quote>min_id</quote> acts to filter the output of requests to this domain,
-whereas this option controls the range of ID assignment. This is a subtle
-distinction, but the good general advice would be to have
-<quote>min_id</quote> be less-than or equal to
+                            NOTA: Esta opção é diferente de <quote>min_id</quote> em que
+<quote>min_id</quote> actua para filtrar o resultado de pedidos a este
+domínio, ao passo que esta opção controla a gama de atribuição de ID. Esta é
+uma distinção subtil, mas o bom conselho geral será que
+<quote>min_id</quote> seja menor ou igual a
 <quote>ldap_idmap_range_min</quote>
                         </para>
                         <para>
-                            Default: 200000
+                            Predefinição: 200000
                         </para>
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>ldap_idmap_range_max (integer)</term>
+                    <term>ldap_idmap_range_max (inteiro)</term>
                     <listitem>
                         <para>
-                            Specifies the upper (exclusive) bound of the range of POSIX IDs to use for
-mapping Active Directory user and group SIDs. It is the first POSIX ID which
-cannot be used for the mapping anymore, i.e. one larger than the last one
-which can be used for the mapping.
+                            Especifica o limite mais alto (exclusivo) do alcance de IDs POSIX a usar
+para mapear SIDs de utilizador e grupo Active Directory. É o primeiro ID
+POSIX que não pode mais ser usado para o mapeamento, isto é, um maior que o
+último que pode ser usado para o mapeamento.
                         </para>
                         <para>
-                            NOTE: This option is different from <quote>max_id</quote> in that
-<quote>max_id</quote> acts to filter the output of requests to this domain,
-whereas this option controls the range of ID assignment. This is a subtle
-distinction, but the good general advice would be to have
-<quote>max_id</quote> be greater-than or equal to
+                            NOTA: Esta opção é diferente de <quote>max_id</quote> em que
+<quote>max_id</quote> actua para filtrar o resultado de pedidos a este
+domínio, ao passo que esta opção controla a gama de atribuição de ID. Esta é
+uma distinção subtil, mas o bom conselho geral será que
+<quote>max_id</quote> seja maior ou igual a
 <quote>ldap_idmap_range_max</quote>
                         </para>
                         <para>
-                            Default: 2000200000
+                            Predefinição: 2000200000
                         </para>
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>ldap_idmap_range_size (integer)</term>
+                    <term>ldap_idmap_range_size (inteiro)</term>
                     <listitem>
                         <para>
-                            Specifies the number of IDs available for each slice.  If the range size
-does not divide evenly into the min and max values, it will create as many
-complete slices as it can.
+                            Especifica o número de IDs disponível para cada fatia.  Se o tamanho do
+alcance não se dividir uniforme nos valores mínimo e máximo, irá criar o
+máximo de fatias completas que conseguir.
                         </para>
                         <para>
-                            NOTE: The value of this option must be at least as large as the highest user
-RID planned for use on the Active Directory server. User lookups and login
-will fail for any user whose RID is greater than this value.
+                            NOTA: O valor desta opção tem de ser pelo menos tão grande quando o RID
+planeado do mais alto utilizador para usar no servidor Active Directory. As
+procuras e login de utilizador irão falhar para qualquer utilizador cujo RID
+seja maior que este valor.
                         </para>
                         <para>
-                            For example, if your most recently-added Active Directory user has
-objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
-<quote>ldap_idmap_range_size</quote> must be at least 1108 as range size is
-equal to maximal SID minus minimal SID plus one (e.g. 1108 = 1107 - 0 + 1).
+                            Por exemplo, o seu utilizador Active Directory adicionado mais recente tem
+um objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
+<quote>ldap_idmap_range_size</quote> tem de ser pelo menos 1108 pois o
+tamanho de alcance é igual ao RID máximo menos o RID mínimo mais um
+(ex. 1108 = 1107 - 0 + 1).
                         </para>
                         <para>
-                            It is important to plan ahead for future expansion, as changing this value
-will result in changing all of the ID mappings on the system, leading to
-users with different local IDs than they previously had.
+                            É importante planear com antecedência para futura expansão, pois modificar
+este valor ira resultar e modificar todos os mapeamentos de ID no sistema,
+deixando os utilizadores com IDs locais diferentes dos que antes tinham.
                         </para>
                         <para>
-                            Default: 200000
+                            Predefinição: 200000
                         </para>
                     </listitem>
                 </varlistentry>
@@ -179,12 +188,12 @@ users with different local IDs than they previously had.
                     <term>ldap_idmap_default_domain_sid (string)</term>
                     <listitem>
                         <para>
-                            Specify the domain SID of the default domain. This will guarantee that this
-domain will always be assigned to slice zero in the ID map, bypassing the
-murmurhash algorithm described above.
+                            Especifica o SID de domínio do domínio predefinido. Isto irá garantir que
+este domínio irá sempre ser atribuído à fatia zero no mapa de ID,
+contornando o algoritmo murmurhash descrito em cima.
                         </para>
                         <para>
-                            Default: not set
+                            Predefinição: não definida
                         </para>
                     </listitem>
                 </varlistentry>
@@ -192,51 +201,52 @@ murmurhash algorithm described above.
                     <term>ldap_idmap_default_domain (string)</term>
                     <listitem>
                         <para>
-                            Specify the name of the default domain.
+                            Especifica o nome do domínio predefinido.
                         </para>
                         <para>
-                            Default: not set
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>ldap_idmap_autorid_compat (boolean)</term>
-                    <listitem>
-                        <para>
-                            Changes the behavior of the ID-mapping algorithm to behave more similarly to
-winbind's <quote>idmap_autorid</quote> algorithm.
-                        </para>
-                        <para>
-                            When this option is configured, domains will be allocated starting with
-slice zero and increasing monotonically with each additional domain.
-                        </para>
-                        <para>
-                            NOTE: This algorithm is non-deterministic (it depends on the order that
-users and groups are requested). If this mode is required for compatibility
-with machines running winbind, it is recommended to also use the
-<quote>ldap_idmap_default_domain_sid</quote> option to guarantee that at
-least one domain is consistently allocated to slice zero.
-                        </para>
-                        <para>
-                            Default: False
+                            Predefinição: não definida
                         </para>
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>ldap_idmap_helper_table_size (integer)</term>
+                    <term>ldap_idmap_autorid_compat (booleano)</term>
                     <listitem>
                         <para>
-                          Maximal number of secondary slices that is tried when performing mapping
-from UNIX id to SID.
+                            Muda o comportamento do algoritmo de mapeamento de ID para se comportar de
+modo mais semelhante ao algoritmo <quote>idmap_autorid</quote> do winbind.
                         </para>
                         <para>
-                          Note: Additional secondary slices might be generated when SID is being
-mapped to UNIX id and RID part of SID is out of range for secondary slices
-generated so far. If value of ldap_idmap_helper_table_size is equal to 0
-then no additional secondary slices are generated.
+                            Quando esta opção está configurada, os domínios serão alocados começando da
+fatia zero e aumentando monotonicamente com cada domínio adicional.
                         </para>
                         <para>
-                            Padrão: 10
+                            NOTA: Este algoritmo é não-determinístico (depende da ordem em que os
+utilizadores e grupos são requisitados). Se este modo for requerido para
+compatibilidade com máquinas que correm winbind, é recomendado que se também
+use a opção <quote>ldap_idmap_default_domain_sid</quote> para garantir que
+pelo menos um domínio é consistentemente alocado para a fatia zero.
+                        </para>
+                        <para>
+                            Predefinição: False
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>ldap_idmap_helper_table_size (inteiro)</term>
+                    <listitem>
+                        <para>
+                          Número máximo de fatias secundárias que é tentado quando se executa
+mapeamento de id UNIX para SID.
+                        </para>
+                        <para>
+                          Nota: Podem ser geradas fatias secundárias adicionais quando o SID está a
+ser mapeado para id de UNIX e RID parte do SID está fora de alcance para as
+fatias secundárias geradas até ao momento. Se o valor de
+ldap_idmap_helper_table_size for igual a 0 então nenhuma fatia secundária
+adicional será gerada.
+                        </para>
+                        <para>
+                            Predefinido: 10
                         </para>
                     </listitem>
                 </varlistentry>
@@ -245,16 +255,16 @@ then no additional secondary slices are generated.
     </refsect2>
 
     <refsect2 id='well_known_sids'>
-        <title>Well-Known SIDs</title>
+        <title>SIDs Well-Known</title>
         <para>
-            SSSD supports to look up the names of Well-Known SIDs, i.e. SIDs with a
-special hardcoded meaning. Since the generic users and groups related to
-those Well-Known SIDs have no equivalent in a Linux/UNIX environment no
-POSIX IDs are available for those objects.
+            SSSD suporta procurar nomes de SIDs Well-Known, isto é, SIDs com um
+significado especial codificado. Como os utilizadores e grupos genéricos
+relacionados a esses SIDs Well-Known não têm equivalente num ambiente
+Linux/UNIX, nenhuns IDs de POSIX estão disponíveis para esses objectos.
         </para>
         <para>
-            The SID name space is organized in authorities which can be seen as
-different domains. The authorities for the Well-Known SIDs are
+            O espaço de nome SID está organizado em autoridades que podem ser vistas
+como diferentes domínios. As autoridades para os SIDs Well-Known são
             <itemizedlist>
                 <listitem><para>Null Authority</para></listitem>
                 <listitem><para>World Authority</para></listitem>
@@ -265,19 +275,20 @@ different domains. The authorities for the Well-Known SIDs are
                 <listitem><para>NT Authority</para></listitem>
                 <listitem><para>Built-in</para></listitem>
             </itemizedlist>
-            The capitalized version of these names are used as domain names when
-returning the fully qualified name of a Well-Known SID.
+            As versões capitalizada desses nomes são usadas como nomes de domínio quando
+se retorna o nome totalmente qualificado de um SID Well-Known.
         </para>
         <para>
-            Since some utilities allow to modify SID based access control information
-with the help of a name instead of using the SID directly SSSD supports to
-look up the SID by the name as well. To avoid collisions only the fully
-qualified names can be used to look up Well-Known SIDs. As a result the
-domain names <quote>NULL AUTHORITY</quote>, <quote>WORLD AUTHORITY</quote>,
-<quote>LOCAL AUTHORITY</quote>, <quote>CREATOR AUTHORITY</quote>,
-<quote>MANDATORY LABEL AUTHORITY</quote>, <quote>AUTHENTICATION
-AUTHORITY</quote>, <quote>NT AUTHORITY</quote> and <quote>BUILTIN</quote>
-should not be used as domain names in <filename>sssd.conf</filename>.
+            Como alguns utilitários permitem modificar informação de controle de acesso
+baseado em SID com a ajuda de um nome em vez de se usar o SID diretamente, o
+SSSD suporta procurar o SID pelo nome também. Para evitar colisões apenas os
+nomes totalmente qualificados podem ser usados para procurar SIDs
+Well-Known. Como resultado os nomes de domínio <quote>NULL
+AUTHORITY</quote>, <quote>WORLD AUTHORITY</quote>, <quote> LOCAL
+AUTHORITY</quote>, <quote>CREATOR AUTHORITY</quote>, <quote>MANDATORY LABEL
+AUTHORITY</quote>, <quote>AUTHENTICATION AUTHORITY</quote>, <quote>NT
+AUTHORITY</quote> e <quote>BUILTIN</quote> não devem ser usados como nomes
+de domínio no <filename>sssd.conf</filename>.
         </para>
     </refsect2>
 

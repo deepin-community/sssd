@@ -43,6 +43,7 @@
 
 #include <libintl.h>
 #define _(STRING) dgettext (PACKAGE, STRING)
+#include "shared/cred.h"
 #include "sss_cli.h"
 #include "common_private.h"
 #include "util/util_errors.h"
@@ -135,6 +136,28 @@ __attribute__((destructor)) void sss_at_lib_unload(void)
 }
 #endif
 
+#ifdef SSSD_NON_ROOT_USER
+static uid_t sss_sssd_uid;
+static gid_t sss_sssd_gid;
+
+#ifdef HAVE_PTHREAD_EXT
+static pthread_once_t sss_sssd_ids_init = PTHREAD_ONCE_INIT;
+
+static void init_sssd_ids(void)
+{
+    /* 'libnss_sss' doesn't resolve SSSD_USER,
+     * so no need to set '_SSS_LOOPS'
+     */
+    struct passwd *pwd = getpwnam(SSSD_USER);
+    if (pwd != NULL) {
+        sss_sssd_uid = pwd->pw_uid;
+        sss_sssd_gid = pwd->pw_gid;
+    }
+}
+#endif
+#endif /* SSSD_NON_ROOT_USER */
+
+
 
 /* Requests:
  *
@@ -161,8 +184,9 @@ static enum sss_status sss_cli_send_req(enum sss_cli_command cmd,
 
     while (datasent < header[0]) {
         struct pollfd pfd;
-        int rdsent;
+        size_t rdsent;
         int res, error;
+        ssize_t sent;
 
         *errnop = 0;
         pfd.fd = sss_cli_sd_get();
@@ -184,7 +208,7 @@ static enum sss_status sss_cli_send_req(enum sss_cli_command cmd,
             *errnop = error;
             break;
         case 0:
-            *errnop = ETIME;
+            *errnop = ETIMEDOUT;
             break;
         case 1:
             if (pfd.revents & (POLLERR | POLLHUP)) {
@@ -208,20 +232,20 @@ static enum sss_status sss_cli_send_req(enum sss_cli_command cmd,
 
         errno = 0;
         if (datasent < SSS_NSS_HEADER_SIZE) {
-            res = send(sss_cli_sd_get(),
-                       (char *)header + datasent,
-                       SSS_NSS_HEADER_SIZE - datasent,
-                       SSS_DEFAULT_WRITE_FLAGS);
+            sent = send(sss_cli_sd_get(),
+                        (char *)header + datasent,
+                        SSS_NSS_HEADER_SIZE - datasent,
+                        SSS_DEFAULT_WRITE_FLAGS);
         } else {
             rdsent = datasent - SSS_NSS_HEADER_SIZE;
-            res = send(sss_cli_sd_get(),
-                       (const char *)rd->data + rdsent,
-                       rd->len - rdsent,
-                       SSS_DEFAULT_WRITE_FLAGS);
+            sent = send(sss_cli_sd_get(),
+                        (const char *)rd->data + rdsent,
+                        rd->len - rdsent,
+                        SSS_DEFAULT_WRITE_FLAGS);
         }
         error = errno;
 
-        if ((res == -1) || (res == 0)) {
+        if (sent <= 0) {
             if ((error == EINTR) || error == EAGAIN) {
                 /* If the write was interrupted, go back through
                  * the loop and try again
@@ -235,7 +259,7 @@ static enum sss_status sss_cli_send_req(enum sss_cli_command cmd,
             return SSS_STATUS_UNAVAIL;
         }
 
-        datasent += res;
+        datasent += sent;
     }
 
     return SSS_STATUS_SUCCESS;
@@ -296,7 +320,7 @@ static enum sss_status sss_cli_recv_rep(enum sss_cli_command cmd,
             *errnop = error;
             break;
         case 0:
-            *errnop = ETIME;
+            *errnop = ETIMEDOUT;
             break;
         case 1:
             if (pfd.revents & (POLLHUP)) {
@@ -464,8 +488,7 @@ static bool sss_cli_check_version(const char *socket_name, int timeout)
 
     if (strcmp(socket_name, SSS_NSS_SOCKET_NAME) == 0) {
         expected_version = SSS_NSS_PROTOCOL_VERSION;
-    } else if (strcmp(socket_name, SSS_PAM_SOCKET_NAME) == 0 ||
-               strcmp(socket_name, SSS_PAM_PRIV_SOCKET_NAME) == 0) {
+    } else if (strcmp(socket_name, SSS_PAM_SOCKET_NAME) == 0) {
         expected_version = SSS_PAM_PROTOCOL_VERSION;
     } else if (strcmp(socket_name, SSS_SUDO_SOCKET_NAME) == 0) {
         expected_version = SSS_SUDO_PROTOCOL_VERSION;
@@ -795,7 +818,7 @@ static enum sss_status sss_cli_check_socket(int *errnop,
             *errnop = error;
             break;
         case 0:
-            *errnop = ETIME;
+            *errnop = ETIMEDOUT;
             break;
         case 1:
             if (pfd.revents & (POLLERR | POLLHUP)) {
@@ -922,6 +945,9 @@ int sss_pac_check_and_open(void)
     return EOK;
 }
 
+/* Non-locking version is exported (non-static) because
+ * it is used by 'krb5_child' (that is single threaded so
+ * it is safe to use non-locking version there) */
 int sss_pac_make_request(enum sss_cli_command cmd,
                          struct sss_cli_req_data *rd,
                          uint8_t **repbuf, size_t *replen,
@@ -929,7 +955,6 @@ int sss_pac_make_request(enum sss_cli_command cmd,
 {
     enum sss_status ret;
     char *envval;
-    int timeout = SSS_CLI_SOCKET_TIMEOUT;
 
     /* avoid looping in the nss daemon */
     envval = getenv("_SSS_LOOPS");
@@ -937,24 +962,10 @@ int sss_pac_make_request(enum sss_cli_command cmd,
         return NSS_STATUS_NOTFOUND;
     }
 
-    ret = sss_cli_check_socket(errnop, SSS_PAC_SOCKET_NAME, timeout);
-    if (ret != SSS_STATUS_SUCCESS) {
-        return NSS_STATUS_UNAVAIL;
-    }
+    ret = sss_cli_make_request_with_checks(cmd, rd, SSS_CLI_SOCKET_TIMEOUT,
+                                           repbuf, replen, errnop,
+                                           SSS_PAC_SOCKET_NAME, false, false);
 
-    ret = sss_cli_make_request_nochecks(cmd, rd, timeout, repbuf, replen,
-                                        errnop);
-    if (ret == SSS_STATUS_UNAVAIL && *errnop == EPIPE) {
-        /* try reopen socket */
-        ret = sss_cli_check_socket(errnop, SSS_PAC_SOCKET_NAME, timeout);
-        if (ret != SSS_STATUS_SUCCESS) {
-            return NSS_STATUS_UNAVAIL;
-        }
-
-        /* and make request one more time */
-        ret = sss_cli_make_request_nochecks(cmd, rd, timeout, repbuf, replen,
-                                            errnop);
-    }
     switch (ret) {
     case SSS_STATUS_TRYAGAIN:
         return NSS_STATUS_TRYAGAIN;
@@ -982,28 +993,72 @@ int sss_pac_make_request_with_lock(enum sss_cli_command cmd,
     return ret;
 }
 
-errno_t check_server_cred(int sockfd)
+inline static errno_t check_socket_cred(const char *socket_name)
 {
-#ifdef HAVE_UCRED
+    struct stat stat_buf;
+    int statret;
+
+    errno = 0;
+    statret = stat(socket_name, &stat_buf);
+    if (statret != 0) {
+        if (errno == ENOENT) {
+            return ESSS_NO_SOCKET;
+        }
+        return ESSS_SOCKET_STAT_ERROR;
+    }
+
+    if (!S_ISSOCK(stat_buf.st_mode)) {
+        return ESSS_BAD_SOCKET;
+    }
+
+    if ((stat_buf.st_uid == 0) && (stat_buf.st_gid == 0)) {
+        return 0;
+    }
+
+#ifdef SSSD_NON_ROOT_USER
+    if ((stat_buf.st_uid == sss_sssd_uid) && (stat_buf.st_gid == sss_sssd_gid)) {
+        return 0;
+    }
+#endif /* SSSD_NON_ROOT_USER */
+
+    return ESSS_BAD_SOCKET;
+}
+
+static errno_t check_server_cred(int sockfd)
+{
     int ret;
-    struct ucred server_cred;
+    STRUCT_CRED server_cred;
     socklen_t server_cred_len = sizeof(server_cred);
 
-    ret = getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &server_cred,
+    if (sockfd < 0) {
+        return EFAULT;
+    }
+
+    ret = getsockopt(sockfd, SOL_SOCKET, SSS_PEERCRED_SOCKET_OPTION, &server_cred,
                      &server_cred_len);
     if (ret != 0) {
         return errno;
     }
 
-    if (server_cred_len != sizeof(struct ucred)) {
+    if (server_cred_len != sizeof(STRUCT_CRED)) {
         return ESSS_BAD_CRED_MSG;
     }
 
-    if (server_cred.uid != 0 || server_cred.gid != 0) {
-        return ESSS_SERVER_NOT_TRUSTED;
+    if ((CRED_UID(&server_cred) == 0) && (CRED_GID(&server_cred) == 0)) {
+        return 0;
+    }
+
+#ifdef SSSD_NON_ROOT_USER
+#ifdef HAVE_PTHREAD_EXT
+    pthread_once(&sss_sssd_ids_init, init_sssd_ids); /* once for all threads */
+
+    if ((CRED_UID(&server_cred) == sss_sssd_uid) && (CRED_GID(&server_cred) == sss_sssd_gid)) {
+        return 0;
     }
 #endif
-    return 0;
+#endif /* SSSD_NON_ROOT_USER */
+
+    return ESSS_SERVER_NOT_TRUSTED;
 }
 
 int sss_pam_make_request(enum sss_cli_command cmd,
@@ -1011,13 +1066,9 @@ int sss_pam_make_request(enum sss_cli_command cmd,
                       uint8_t **repbuf, size_t *replen,
                       int *errnop)
 {
-    int ret, statret;
-    errno_t error;
+    int ret;
     enum sss_status status;
-    char *envval;
-    struct stat stat_buf;
-    const char *socket_name;
-    int timeout = SSS_CLI_SOCKET_TIMEOUT;
+    const char *envval;
 
     sss_pam_lock();
 
@@ -1028,79 +1079,23 @@ int sss_pam_make_request(enum sss_cli_command cmd,
         goto out;
     }
 
-    /* only UID 0 shall use the privileged pipe */
-    if (getuid() == 0) {
-        socket_name = SSS_PAM_PRIV_SOCKET_NAME;
-        errno = 0;
-        statret = stat(socket_name, &stat_buf);
-        if (statret != 0) {
-            if (errno == ENOENT) {
-                *errnop = ESSS_NO_SOCKET;
-            } else {
-                *errnop = ESSS_SOCKET_STAT_ERROR;
-            }
-            ret = PAM_SERVICE_ERR;
-            goto out;
-        }
-        if ( ! (stat_buf.st_uid == 0 &&
-                stat_buf.st_gid == 0 &&
-                S_ISSOCK(stat_buf.st_mode) &&
-                (stat_buf.st_mode & ~S_IFMT) == 0600 )) {
-            *errnop = ESSS_BAD_PRIV_SOCKET;
-            ret = PAM_SERVICE_ERR;
-            goto out;
-        }
-    } else {
-        socket_name = SSS_PAM_SOCKET_NAME;
-        errno = 0;
-        statret = stat(socket_name, &stat_buf);
-        if (statret != 0) {
-            if (errno == ENOENT) {
-                *errnop = ESSS_NO_SOCKET;
-            } else {
-                *errnop = ESSS_SOCKET_STAT_ERROR;
-            }
-            ret = PAM_SERVICE_ERR;
-            goto out;
-        }
-        if ( ! (stat_buf.st_uid == 0 &&
-                stat_buf.st_gid == 0 &&
-                S_ISSOCK(stat_buf.st_mode) &&
-                (stat_buf.st_mode & ~S_IFMT) == 0666 )) {
-            *errnop = ESSS_BAD_PUB_SOCKET;
-            ret = PAM_SERVICE_ERR;
-            goto out;
-        }
-    }
+#ifdef SSSD_NON_ROOT_USER
+#ifdef HAVE_PTHREAD_EXT
+    pthread_once(&sss_sssd_ids_init, init_sssd_ids); /* once for all threads */
+#endif
+#endif /* SSSD_NON_ROOT_USER */
 
-    status = sss_cli_check_socket(errnop, socket_name, timeout);
-    if (status != SSS_STATUS_SUCCESS) {
+    ret = check_socket_cred(SSS_PAM_SOCKET_NAME);
+    if (ret != 0) {
+        *errnop = ret;
         ret = PAM_SERVICE_ERR;
         goto out;
     }
 
-    error = check_server_cred(sss_cli_sd_get());
-    if (error != 0) {
-        sss_cli_close_socket();
-        *errnop = error;
-        ret = PAM_SERVICE_ERR;
-        goto out;
-    }
-
-    status = sss_cli_make_request_nochecks(cmd, rd, timeout, repbuf, replen,
-                                           errnop);
-    if (status == SSS_STATUS_UNAVAIL && *errnop == EPIPE) {
-        /* try reopen socket */
-        status = sss_cli_check_socket(errnop, socket_name, timeout);
-        if (status != SSS_STATUS_SUCCESS) {
-            ret = PAM_SERVICE_ERR;
-            goto out;
-        }
-
-        /* and make request one more time */
-        status = sss_cli_make_request_nochecks(cmd, rd, timeout, repbuf, replen,
-                                               errnop);
-    }
+    status = sss_cli_make_request_with_checks(cmd, rd, SSS_CLI_SOCKET_TIMEOUT,
+                                              repbuf, replen, errnop,
+                                              SSS_PAM_SOCKET_NAME,
+                                              true, true);
 
     if (status == SSS_STATUS_SUCCESS) {
         ret = PAM_SUCCESS;
@@ -1119,13 +1114,29 @@ sss_cli_make_request_with_checks(enum sss_cli_command cmd,
                                  int timeout,
                                  uint8_t **repbuf, size_t *replen,
                                  int *errnop,
-                                 const char *socket_name)
+                                 const char *socket_name,
+                                 bool check_server_creds,
+                                 bool allow_custom_errors)
 {
     enum sss_status ret = SSS_STATUS_UNAVAIL;
+    errno_t error;
 
     ret = sss_cli_check_socket(errnop, socket_name, timeout);
     if (ret != SSS_STATUS_SUCCESS) {
         return SSS_STATUS_UNAVAIL;
+    }
+
+    if (check_server_creds) {
+        error = check_server_cred(sss_cli_sd_get());
+        if (error != 0) {
+            sss_cli_close_socket();
+            if (allow_custom_errors) {
+                *errnop = error;
+            } else {
+                *errnop = EFAULT;
+            }
+            return SSS_STATUS_UNAVAIL;
+        }
     }
 
     ret = sss_cli_make_request_nochecks(cmd, rd, timeout, repbuf, replen,
@@ -1145,61 +1156,19 @@ sss_cli_make_request_with_checks(enum sss_cli_command cmd,
     return ret;
 }
 
-int sss_sudo_make_request(enum sss_cli_command cmd,
-                          struct sss_cli_req_data *rd,
-                          uint8_t **repbuf, size_t *replen,
-                          int *errnop)
-{
-    return sss_cli_make_request_with_checks(cmd, rd, SSS_CLI_SOCKET_TIMEOUT,
-                                            repbuf, replen, errnop,
-                                            SSS_SUDO_SOCKET_NAME);
-}
-
-int sss_autofs_make_request(enum sss_cli_command cmd,
-                            struct sss_cli_req_data *rd,
-                            uint8_t **repbuf, size_t *replen,
-                            int *errnop)
-{
-    enum sss_status status;
-
-    status = sss_cli_make_request_with_checks(cmd, rd, SSS_CLI_SOCKET_TIMEOUT,
-                                              repbuf, replen, errnop,
-                                              SSS_AUTOFS_SOCKET_NAME);
-
-    if (*errnop == ERR_OFFLINE) {
-        *errnop = EHOSTDOWN;
-    }
-
-    return status;
-}
-
-int sss_ssh_make_request(enum sss_cli_command cmd,
-                         struct sss_cli_req_data *rd,
-                         uint8_t **repbuf, size_t *replen,
-                         int *errnop)
-{
-    return sss_cli_make_request_with_checks(cmd, rd, SSS_CLI_SOCKET_TIMEOUT,
-                                            repbuf, replen, errnop,
-                                            SSS_SSH_SOCKET_NAME);
-}
-
-
 const char *ssscli_err2string(int err)
 {
     const char *m;
 
     switch(err) {
-        case ESSS_BAD_PRIV_SOCKET:
-            return _("Privileged socket has wrong ownership or permissions.");
-            break;
-        case ESSS_BAD_PUB_SOCKET:
-            return _("Public socket has wrong ownership or permissions.");
+        case ESSS_BAD_SOCKET:
+            return _("Socket has wrong ownership or permissions.");
             break;
         case ESSS_BAD_CRED_MSG:
             return _("Unexpected format of the server credential message.");
             break;
         case ESSS_SERVER_NOT_TRUSTED:
-            return _("SSSD is not run by root.");
+            return _("SSSD is not run by trusted user.");
             break;
         case ESSS_NO_SOCKET:
             return _("SSSD socket does not exist.");

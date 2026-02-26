@@ -291,17 +291,7 @@ sdap_nested_group_hash_group(struct sdap_nested_group_ctx *group_ctx,
         DEBUG(SSSDBG_TRACE_ALL,
              "The group's gid was %s\n", ret == ENOENT ? "missing" : "zero");
         DEBUG(SSSDBG_TRACE_INTERNAL,
-             "Marking group as non-POSIX and setting GID=0!\n");
-
-        if (ret == ENOENT || !posix_group) {
-            ret = sysdb_attrs_add_uint32(group,
-                                         map[SDAP_AT_GROUP_GID].sys_name, 0);
-            if (ret != EOK) {
-                DEBUG(SSSDBG_CRIT_FAILURE,
-                      "Failed to add a GID to non-POSIX group!\n");
-                return ret;
-            }
-        }
+             "Marking group as non-POSIX!\n");
 
         ret = sysdb_attrs_add_bool(group, SYSDB_POSIX, false);
         if (ret != EOK) {
@@ -1633,6 +1623,8 @@ sdap_nested_group_single_step_process(struct tevent_req *subreq)
         } else {
             DEBUG(SSSDBG_OP_FAILURE, "Unknown entry type [%s]!\n",
                   state->current_member->dn);
+            DEBUG(SSSDBG_OP_FAILURE, "Consider enabling sssd-ldap option "
+                                     "ldap_ignore_unreadable_references\n");
             ret = EINVAL;
             goto done;
         }

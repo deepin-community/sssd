@@ -171,10 +171,10 @@ Active Directory. Это первый идентификатор POSIX, кото
                         </para>
                         <para>
                             Например, если у последнего добавленного пользователя Active Directory
-objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
-значение<quote>ldap_idmap_range_size</quote> должно равняться минимум 1108,
-так как размер диапазона рассчитывается как максимальный SID минус
-минимальный SID плюс один (т.е. 1108 = 1107 - 0 + 1).
+objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107, значение
+<quote>ldap_idmap_range_size</quote> должно равняться минимум 1108, так как
+размер диапазона рассчитывается как максимальный RID минус минимальный RID
+плюс один (т.е. 1108 = 1107 - 0 + 1).
                         </para>
                         <para>
                             Для будущего расширения важно всё спланировать заранее,поскольку изменение
@@ -218,8 +218,8 @@ objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
 похожим на алгоритм <quote>idmap_autorid</quote> winbind.
                         </para>
                         <para>
-                            When this option is configured, domains will be allocated starting with
-slice zero and increasing monotonically with each additional domain.
+                            Когда настроен этот параметр, домены будут выделяться, начиная с нулевого
+среза, с постепенным увеличением для каждого дополнительного домена.
                         </para>
                         <para>
                             ПРИМЕЧАНИЕ: этот алгоритм является недетерминированным (он зависит от
@@ -285,13 +285,13 @@ winbind, рекомендуется также использовать пара
             Так как некоторые утилиты позволяют изменять данные управления доступом на
 основе SID с помощью имени, а не непосредственного использования SID, SSSD
 также поддерживает поиск SID по имени. Чтобы избежать конфликтов, для поиска
-известных SID разрешается использовать только полные имена. Следовательно,
-нельзя использовать в качестве имён доменов в <filename>sssd.conf</filename>
-следующие названия: <quote>NULL AUTHORITY</quote>, <quote>WORLD
-AUTHORITY</quote>, <quote> LOCAL AUTHORITY</quote>, <quote>CREATOR
-AUTHORITY</quote>, <quote>MANDATORY LABEL AUTHORITY</quote>,
-<quote>AUTHENTICATION AUTHORITY</quote>, <quote>NT AUTHORITY</quote> и
-<quote>BUILTIN</quote>.
+известных (Well-Known) SID разрешается использовать только полные
+имена. Следовательно, нельзя использовать следующие названия: <quote>NULL
+AUTHORITY</quote>, <quote>WORLD AUTHORITY</quote>, <quote> LOCAL
+AUTHORITY</quote>, <quote>CREATOR AUTHORITY</quote>, <quote>MANDATORY LABEL
+AUTHORITY</quote>, <quote>AUTHENTICATION AUTHORITY</quote>, <quote>NT
+AUTHORITY</quote> и <quote>BUILTIN</quote> в качестве имён доменов в
+<filename>sssd.conf</filename>.
         </para>
     </refsect2>
 

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_knownhosts</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_knownhosts</refname>
+        <refpurpose>obtiene las claves públicas OpenSSH conocidas de los hosts</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_ssh_knownhosts</command> <arg choice='opt'>
+<replaceable>opciones</replaceable> </arg> <arg
+choice='plain'><replaceable>HOST</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            <command>sss_ssh_knownhosts</command> adquiere claves públicas SSH para el
+host <replaceable>HUÉSPED</replaceable> y las salidas en formato de clave
+autorizadas know_hosts de OpenSSH (consulte la sección <quote>FORMATO DE
+ARCHIVO SSH_KNOWN_HOSTS</quote> de
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry> para más información).
+        </para>
+        <para>
+            <citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> puede ser configurado para usar
+<command>sss_ssh_knownhosts</command> para autenticación de la clave del
+host usando la opción <quote>KnownHostsCommand</quote>: <programlisting>
+                KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H
+            </programlisting>Refuera a la página man
+<citerefentry><refentrytitle>ssh_config</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+para más detalles sobre esta opción.
+        </para>
+        <para>
+            Esta herramienta requiere ese servicio ssh de SSSD esté habilitado para
+funcionar apropiadamente.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPCIONES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMINIO</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Busca las claves públicas del host en el dominio SSSD
+<replaceable>DOMAIN</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-o</option>,<option>--only-host-name</option>
+                </term>
+                <listitem>
+                    <para>
+                        Cuando las claves obtenidas desde el segundo plano no incluyen el nombre del
+host, esta herramienta añadirá el nombre de host no modificado como
+proporcionado por el invocante. Si este indicador está puesto, solo el
+nombre de host (no el número del puerto) será añadido a las claves.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='key_retrieval'>
+        <title>OBTENCIÓN DE CLAVE</title>
+        <para>
+            Las líneas de clave obtenidas desde el segundo plano son esperadas para
+respetar el formato de clave como se describió en la sección <quote>FORMATO
+DE ARCHIVO SSH_KNOWN_HOSTS </quote> de
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>. sin embargo, devolver solo el tipo
+de clave y la misma clave es tolerado, en cual caso, el nombre del host
+recibido como parámetro será añadido antes del tipo de clave a la salida una
+línea correctamente formada. El nombre de host será añadido sin modificarlo
+o tan solo el nombre de host (no el número del puerto), dependiendo de si la
+opción <option>-o</option>, <option>--only-host-name</option> fue
+proporcionada.
+        </para>
+        <para>
+            Cuando el servidor SSH está listado en un puerto no predeterminado, el
+segundo plano DEBE proporcionar el nombre de host incluyendo el número del
+puerto en el formato correcto y posición como parte de la línea de
+clave. Por ejemplo, la línea de clave minimal sería: <programlisting>
+                [canonical.host.name]:2222 &lt;keytype&gt; &lt;base64-encoded key&gt;
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='exit_status'>
+        <title>ESTADO DE SALIDA</title>
+        <para>
+            En caso de lograr la ejecución, incluso si no se encontró ninguna clave para
+ese host o si no se pudo contactar al respondedor ssh, se devuelve 0. Se
+devuelve 1 en caso de cualquier otro error.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

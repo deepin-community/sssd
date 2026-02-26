@@ -8,7 +8,12 @@
 set -xe
 
 if [ -z "${AUTOPKGTEST_NORMAL_USER}" ]; then
-    adduser --quiet --disable-password _sssduser
+    adduser --quiet --disabled-password --allow-bad-names _sssduser || {
+        if [ $? -ne 11 ]; then
+            echo "failed to add test user";
+            exit 1
+        fi
+    }
     AUTOPKGTEST_NORMAL_USER="_sssduser"
 fi
 

@@ -144,31 +144,6 @@ systemd-journald
                     </para>
                 </listitem>
             </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-g</option>,<option>--genconf</option>
-                </term>
-                <listitem>
-                    <para>
-                        Не запускати SSSD, а лише оновити базу даних налаштувань на основі вмісту
-<filename>/etc/sssd/sssd.conf</filename> і завершити роботу.
-                    </para>
-                </listitem>
-            </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-s</option>,<option>--genconf-section</option>
-                </term>
-                <listitem>
-                    <para>
-                        Подібний до <quote>--genconf</quote>, але наказує програмі освіжити лише
-окремий розділу на основі файла налаштувань. Цей параметр корисний, в
-основному, для виклику з файлів модулів systemd з метою дозволити
-відповідачам, які активуються з сокетів, освіжати налаштування без потреби у
-перезапуску адміністратором усього SSSD.
-                    </para>
-                </listitem>
-            </varlistentry>
             <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
             <varlistentry>
                 <term>
@@ -224,6 +199,65 @@ systemd-journald
                         Наказує SSSD перейти у режим роботи у мережі негайно. Найкориснішим
 застосуванням є тестування служби. Сигнал може бути надіслано або процесу
 sssd, або процесу sssd_be безпосередньо.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGRTMIN+1</term>
+                <listitem>
+                    <para>
+                        Повідомляє SSSD, що слід змінити планування періодичних завдань. Внутрішній
+засіб спостереження надсилає цей сигнал до надавачів даних при виявленні
+зсуву годинника, хоча його можна надсилати до будь-якого процесу sssd_be
+безпосередньо.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>СТАН ВИХОДУ</title>
+        <variablelist>
+            <varlistentry>
+                <term>0</term>
+                <listitem>
+                    <para>
+                        SSSD завершив роботу штатно.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>1</term>
+                <listitem>
+                    <para>
+                        Помилкові налаштування або помилковий параметр командного рядка.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>2</term>
+                <listitem>
+                    <para>
+                        Помилка розподілу пам'яті.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>6</term>
+                <listitem>
+                    <para>
+                        SSSD вже запущено.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Інші коди</term>
+                <listitem>
+                    <para>
+                        Інші коди означають інші помилки, найімовірніше пов'язані із нестачею
+потрібних прав доступу. Див. журнали SSSD і системи, щоб дізнатися більше.
                     </para>
                 </listitem>
             </varlistentry>

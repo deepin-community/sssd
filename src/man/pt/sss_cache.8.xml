@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_cache</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_cache</refname>
+        <refpurpose>executa limpeza da cache</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_cache</command> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            O <command>sss_cache</command> invalida registos na cache do SSSD.  Os
+registos invalidados são forçados a ser recarregados a partir do servidor
+assim que o backend SSSD relacionado esteja online. AS opções que invalidam
+um único objecto apenas aceitam um único argumento fornecido.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-E</option>,<option>--everything</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todas as entradas em cache.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-u</option>,<option>--user</option> <replaceable>login</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida utilizador especifico.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-U</option>,<option>--users</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todos os registos de utilizadores. Esta opção sobrepõe a
+invalidação de utilizador especifico se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g</option>,<option>--group</option>
+<replaceable>grupo</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida grupo especifico.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-G</option>,<option>--groups</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todos os registos de grupos. Esta opção sobrepõe a invalidação de
+grupo especifico se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-n</option>,<option>--netgroup</option>
+<replaceable>grupo-de-rede</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida grupo-de-rede especifico.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-N</option>,<option>--netgroups</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todos os registos de grupo-de-rede. Esta opção sobrepõe a
+invalidação de grupo-de-rede especifico se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-s</option>,<option>--service</option>
+<replaceable>serviço</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida serviço especifico.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-S</option>,<option>--services</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todos os registos de serviços. Esta opção sobrepõe a invalidação de
+serviço especifico se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="with_autofs">
+                <term>
+                    <option>-a</option>,<option>--autofs-map</option>
+<replaceable>autofs-map</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida mapas autofs específicos.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="with_autofs">
+                <term>
+                    <option>-A</option>,<option>--autofs-maps</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todos os mapas autofs Esta opção sobrepõe a invalidação de mapa
+especifico se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="with_ssh">
+                <term>
+                    <option>-h</option>,<option>--ssh-host</option>
+<replaceable>nome-máquina</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida chaves públicas SSH para uma máquina específica.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="with_ssh">
+                <term>
+                    <option>-H</option>,<option>--ssh-hosts</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida chaves públicas SSH para todas as máquinas. Esta opção sobrepõe a
+invalidação de chaves públicas SSH para máquinas específicas se estiver
+também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+           <varlistentry condition="with_sudo">
+                <term>
+                    <option>-r</option>,<option>--sudo-rule</option>
+<replaceable>regra</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida regra sudo particular.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry condition="with_sudo">
+                <term>
+                    <option>-R</option>,<option>--sudo-rules</option>
+                </term>
+                <listitem>
+                    <para>
+                        Invalida todas as regras sudo em cache. Esta opção sobrepõe a invalidação de
+regra sudo específica se estiver também definida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>domínio</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Restringe processo de invalidação apenas a um domínio particular.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='memcache'>
+        <title>EFEITOS NA CACHE DE MEMÓRIA RÁPIDA</title>
+        <para>
+            O <command>sss_cache</command> também invalida a cache de memória.  Como a
+cache de memória é um ficheiro que é mapeado na memória de cada processo que
+chamou o SSSD para resolver utilizadores e grupos, o ficheiro não pode ser
+truncado. É definida uma bandeira especial no cabeçalho do ficheiro para
+indicar que o conteúdo é inválido e depois o ficheiro é desvinculado pelo
+respondedor NSS do SSSD e é criado um novo ficheiro de cache.  Sempre que um
+processo está a fazer uma nova procura por um utilizador ou um grupo irá ver
+a bandeira, fechar o ficheiro de cache de memória antigo e mapear o novo na
+sua memória. Quando todos os processos que abriram o ficheiro de cache de
+memória antigo o tiverem fechado enquanto procuram um utilizador ou grupo o
+kernel pode libertar o espaço de disco ocupado e o ficheiro de cache de
+memória antigo é finalmente removido completamente.
+        </para>
+        <para>
+            Um caso especial são processos de execução longa que fazem procuras de
+utilizadores ou grupos apenas no arranque, ex, para determinar o nome do
+utilizador com que o processo corre como. Para essas procuras o ficheiro de
+cache de memória é mapeado para a memória do processo. Mas como não irão
+existir mais procuras este processo nunca vai detectar se o ficheiro de
+cache de memória foi invalidado e assim vai ser mentido em memória e vai
+ocupar espaço no disco até que o processo pare. Como resultado chamar o
+<command>sss_cache</command> pode aumentar a utilização do disco porque os
+ficheiros de cache de memória antigos não podem ser removidos do disco
+porque ainda estão mapeados por processos de execução longa.
+        </para>
+        <para>
+            Um contorno possível para processos de execução longa que estão a procurar
+utilizadores e grupos apenas no arranque ou muito raramente são corridos com
+a variável de ambiente SSS_NSS_USE_MEMCACHE definida para "NO" para que não
+usem a cache de memória de todo e não mapearem o ficheiro de cache de
+memória na memória. Em geral uma solução melhor é afinar os parâmetros de
+tempo limite de cache para que corresponda às expectativas locais e chamar o
+<command>sss_cache</command> não seja necessário.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

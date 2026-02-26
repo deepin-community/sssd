@@ -142,31 +142,6 @@ systemd-journald
                     </para>
                 </listitem>
             </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-g</option>,<option>--genconf</option>
-                </term>
-                <listitem>
-                    <para>
-                        Не запускать SSSD, но обновить базу данных конфигурации содержимым
-<filename>/etc/sssd/sssd.conf</filename> и выйти.
-                    </para>
-                </listitem>
-            </varlistentry>
-            <varlistentry>
-                <term>
-                    <option>-s</option>,<option>--genconf-section</option>
-                </term>
-                <listitem>
-                    <para>
-                        Аналогично <quote>--genconf</quote>, но будет выполнено обновление только
-одного раздела файла конфигурации. Этот параметр полезен главным образом при
-вызове из файлов модулей systemd с целью позволить ответчикам, которые
-активируются с помощью сокетов, обновлять свою конфигурацию без
-необходимости в перезапуске всего сервиса SSSD администратором.
-                    </para>
-                </listitem>
-            </varlistentry>
             <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
             <varlistentry>
                 <term>
@@ -221,6 +196,66 @@ systemd-journald
                         Сообщает SSSD, что следует немедленно перейти в сетевой режим. Это полезно
 при тестировании. Сигнал можно отправить либо процессу sssd, либо напрямую
 любому процессу sssd_be.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>SIGRTMIN+1</term>
+                <listitem>
+                    <para>
+                        Сообщает SSSD о необходимости перепланировать периодические
+задачи. Внутренний сторожевой таймер посылает этот сигнал поставщикам данных
+при обнаружении сдвига часов, хотя его можно послать любому процессу sssd_be
+напрямую.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>СОСТОЯНИЕ ВЫХОДА</title>
+        <variablelist>
+            <varlistentry>
+                <term>0</term>
+                <listitem>
+                    <para>
+                        SSSD был выключен корректно.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>1</term>
+                <listitem>
+                    <para>
+                        Неверная конфигурация или параметр командной строки.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>2</term>
+                <listitem>
+                    <para>
+                        Ошибка выделения памяти.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>6</term>
+                <listitem>
+                    <para>
+                        SSSD уже запущен.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Другие коды</term>
+                <listitem>
+                    <para>
+                        Другие коды обозначают разные ошибки, которые, скорее всего, связаны с
+нехваткой необходимых прав доступа. Дополнительные сведения см. в журналах
+SSSD и системных журналах.
                     </para>
                 </listitem>
             </varlistentry>

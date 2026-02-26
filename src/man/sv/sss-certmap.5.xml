@@ -616,7 +616,7 @@ SAN:en som en punktad decimal sträng.
     <refsect3 id='map_ldapu1'>
         <title>LDAPU1-utvidgningen</title>
         <para>
-            Följande mall är tillgänglig när utökningen ”LDAPU1” används:
+            The following templates are available when using the 'LDAPU1' extension:
         </para>
         <para>
             <variablelist>
@@ -690,13 +690,13 @@ hexadecimal sträng med versaler.
 subjekt-DN, som standard värdet på den mest specifika komponenten.
                     </para>
                     <para>
-                        En annan komponent kan antingen väljas via attributnamnet,
-t.ex. {subject_dn_component.uid}  eller via position,
-t.ex. {subject_dn_component.[2]} där positiva tal börjar räknas från den
-mest specifika komponenten och negativa tal börjar räkna från den minst
-specifika komponenten Attributnamn och positionen kan kombineras,
-t.ex. {subject_dn_component.uid[2]} vilket betyder att namnet på den andra
-komponenten måste vara ”uid”.
+                        A different component can be selected by either attribute name,
+e.g. {subject_dn_component.uid} or by position,
+e.g. {subject_dn_component.[2]} where positive numbers start counting from
+the most specific component and negative numbers start counting from the
+least specific component. Attribute name and the position can be combined as
+e.g.  {subject_dn_component.uid[2]} which means that the name of the second
+component must be 'uid'.
                     </para>
                     <para>
                         Exempel: LDAPU1:(uid={subject_dn_component.uid})

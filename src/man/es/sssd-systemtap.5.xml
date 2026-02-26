@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-systemtap</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-systemtap</refname>
+        <refpurpose>Información del sistema SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página del manual proporciona información sobre la funcionalidad
+systemtap en <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>.
+       </para>
+        <para>
+            Se han agregado puntos de sonda SystemTap en varias ubicaciones en el código
+SSSD para ayudar a solucionar problemas y analizar problemas relacionados
+con el rendimiento.
+       </para>
+        <para>
+            <itemizedlist>
+                <listitem>
+                    <para>
+                        Se proporcionan scripts de muestra de SystemTap en
+/usr/share/sssd/systemtap/
+                    </para>
+                </listitem>
+                <listitem>
+                    <para>
+                        Las sondas y funciones varias se definen en
+/usr/share/systemtap/tapset/sssd.stp y
+/usr/share/systemtap/tapset/sssd_functions.stp respectivamente.
+                    </para>
+                </listitem>
+            </itemizedlist>
+        </para>
+    </refsect1>
+
+    <refsect1 id='probe-points'>
+        <title>PUNTOS DE SONDA</title>
+        <para>
+            La siguiente información enumera los puntos de prueba y los argumentos
+disponibles en el siguiente formato:
+        </para>
+            <variablelist>
+                <varlistentry>
+                    <term>probe $name</term>
+                    <listitem>
+                        <para>
+                            Descripción del punto de sonda
+                        </para>
+                        <programlisting>
+variable1:datatype
+variable2:datatype
+variable3:datatype
+...
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+
+        <refsect2 id='database-transaction-probes'>
+            <title>Sondas de Transacciones de Bases de Datos</title>
+            <para>
+              <variablelist>
+                <varlistentry>
+                    <term>probe sssd_transaction_start</term>
+                    <listitem>
+                        <para>
+                            Inicio de una transacción sysdb, prueba la función
+sysdb_transaction_start().
+                        </para>
+                        <programlisting>
+nesting:integer
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sssd_transaction_cancel</term>
+                    <listitem>
+                        <para>
+                            La cancelación de una transacción sysdb, prueba la función
+sysdb_transaction_cancel().
+                        </para>
+                        <programlisting>
+nesting:integer
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sssd_transaction_commit_before</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sysdb_transaction_commit_before().
+                        </para>
+                        <programlisting>
+nesting:integer
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sssd_transaction_commit_after</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sysdb_transaction_commit_after().
+                        </para>
+                        <programlisting>
+nesting:integer
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+              </variablelist>
+            </para>
+        </refsect2>
+
+        <refsect2 id='ldap-search-probes'>
+            <title>Sondas de Búsqueda LDAP</title>
+            <para>
+              <variablelist>
+                <varlistentry>
+                    <term>probe sdap_search_send</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_get_generic_ext_send().
+                        </para>
+                        <programlisting>
+base:string
+scope:integer
+filter:string
+attrs:string
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sdap_search_recv</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_get_generic_ext_recv().
+                        </para>
+                        <programlisting>
+base:string
+scope:integer
+filter:string
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sdap_parse_entry</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_parse_entry(). Es invocado repetidamente con cada
+atributo recibido.
+                        </para>
+                        <programlisting>
+attr:string
+value:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>sondea sdap_parse_entry_done</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_parse_entry(). Es invocado al interpreta cuando está
+finalizado el objeto recibido.
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sdap_deref_send</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_deref_search_send().
+                        </para>
+                        <programlisting>
+base_dn:string
+deref_attr:string
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>probe sdap_deref_recv</term>
+                    <listitem>
+                        <para>
+                            Sondea la función sdap_deref_search_recv().
+                        </para>
+                        <programlisting>
+base:string
+scope:integer
+filter:string
+probestr:string
+                        </programlisting>
+                    </listitem>
+                </varlistentry>
+              </variablelist>
+            </para>
+        </refsect2>
+
+       <refsect2 id='ldap-account-req-probes'>
+           <title>Sondeos de Solicitud de Cuenta LDAP</title>
+           <para>
+             <variablelist>
+               <varlistentry>
+                   <term>probe sdap_acct_req_send</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_acct_req_send().
+                       </para>
+                       <programlisting>
+entry_type:int
+filter_type:int
+filter_value:string
+extra_value:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+               <varlistentry>
+                   <term>probe
+sdap_acct_req_recvhttps://translate.fedoraproject.org/js/ignore-check/32968964/</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_acct_req_recv().
+                       </para>
+                       <programlisting>
+entry_type:int
+filter_type:int
+filter_value:string
+extra_value:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+            </variablelist>
+        </para>
+        </refsect2>
+
+       <refsect2 id='ldap-user-search-probes'>
+           <title>Sondas de Búsqueda de Usuarios LDAP</title>
+           <para>
+             <variablelist>
+               <varlistentry>
+                   <term>probe sdap_search_user_send</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_search_user_send().
+                       </para>
+                       <programlisting>
+filtro:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+               <varlistentry>
+                   <term>probe sdap_search_user_recv</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_search_user_recv().
+                       </para>
+                       <programlisting>
+filtro:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+               <varlistentry>
+                   <term>probe sdap_search_user_save_begin</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_search_user_save_begin().
+                       </para>
+                       <programlisting>
+filtro:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+               <varlistentry>
+                   <term>probe sdap_search_user_save_end</term>
+                   <listitem>
+                       <para>
+                           Sondea la función sdap_search_user_save_end().
+                       </para>
+                       <programlisting>
+filtro:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+            </variablelist>
+        </para>
+        </refsect2>
+
+       <refsect2 id='data-provider-request-probes'>
+           <title>Sondeos de Solicitud del Proveedor de Datos</title>
+           <para>
+             <variablelist>
+               <varlistentry>
+                   <term>probe dp_req_send</term>
+                   <listitem>
+                       <para>
+                           Se envió una solicitud de Proveedor de Datos.
+                       </para>
+                       <programlisting>
+dp_req_domain:string
+dp_req_name:string
+dp_req_target:int
+dp_req_method:int
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+               <varlistentry>
+                   <term>probe dp_req_done</term>
+                   <listitem>
+                       <para>
+                           Se ha completado una solicitud de proveedor de datos.
+                       </para>
+                       <programlisting>
+dp_req_name:string
+dp_req_target:int
+dp_req_method:int
+dp_ret:int
+dp_errorstr:string
+                       </programlisting>
+                   </listitem>
+               </varlistentry>
+            </variablelist>
+        </para>
+        </refsect2>
+
+    <refsect2 id='miscellaneous-functions'>
+        <title>FUNCIONES VARIAS</title>
+        <para>
+            La siguiente información enumera los puntos de prueba y los argumentos
+disponibles en el siguiente formato:
+        </para>
+            <variablelist>
+                <varlistentry>
+                    <term>función acct_req_desc(entry_type)</term>
+                    <listitem>
+                        <para>
+                            Convierte entry_type en cadena y devuelve cadena
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>función sssd_acct_req_probestr(fc_name, entry_type, filter_type,
+filter_value, extra_value)</term>
+                    <listitem>
+                        <para>
+                            Crear una cadena de prueba basada en el tipo de filtro
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>función dp_target_str(target)</term>
+                    <listitem>
+                        <para>
+                            Convertir el destino en cadena y devolver la cadena
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>función dp_method_str(target)</term>
+                    <listitem>
+                        <para>
+                            Convertir método a cadena y devolver cadena
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+    </refsect2>
+
+    </refsect1>
+
+    <refsect1 id='sample-systemtap-scripts'>
+        <title>EJEMPLOS DE SCRIPTS DE SYSTEMTAP</title>
+        <para>
+            Inicie el script SystemTap (<command>stap
+/usr/share/sssd/systemtap/&lt;script_name&gt;.stp</command>), luego realice
+una operación de identidad y el script recopilará información de las sondas.
+        </para>
+        <para>
+            Los scripts SystemTap proporcionados son:
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term>dp_request.stp</term>
+                <listitem>
+                    <para>
+                        Monitoreo del rendimiento de las solicitudes del proveedor de datos.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>id_perf.stp</term>
+                <listitem>
+                    <para>
+                        Supervisión del rendimiento del comando <command>id</command>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+          <term>ldap_perf.stp</term>
+          <listitem>
+              <para>
+                  Supervisión de consultas LDAP.
+              </para>
+          </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>nested_group_perf.stp</term>
+                <listitem>
+                    <para>
+                        Rendimiento de resolución de grupos anidados.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

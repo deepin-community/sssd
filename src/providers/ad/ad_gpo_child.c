@@ -26,13 +26,14 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <popt.h>
-#include <sys/prctl.h>
 #include <libsmbclient.h>
 #include <security/pam_modules.h>
 
+#include "util/child_bootstrap.h"
+#include "shared/io.h"
 #include "util/util.h"
-#include "util/child_common.h"
 #include "util/sss_chain_id.h"
+#include "util/sss_prctl.h"
 #include "providers/backend.h"
 #include "providers/ad/ad_gpo.h"
 #include "sss_cli.h"
@@ -121,7 +122,7 @@ unpack_buffer(uint8_t *buf,
 
 
 static errno_t
-pack_buffer(struct response *r,
+pack_buffer(struct io_buffer *r,
             int sysvol_gpt_version,
             int result)
 {
@@ -133,18 +134,18 @@ pack_buffer(struct response *r,
      */
     r->size = 2 * sizeof(uint32_t);
 
-    r->buf = talloc_array(r, uint8_t, r->size);
-    if(r->buf == NULL) {
+    r->data = talloc_array(r, uint8_t, r->size);
+    if (r->data == NULL) {
         return ENOMEM;
     }
 
     DEBUG(SSSDBG_TRACE_FUNC, "result [%d]\n", result);
 
     /* sysvol_gpt_version */
-    SAFEALIGN_SET_UINT32(&r->buf[p], sysvol_gpt_version, &p);
+    SAFEALIGN_SET_UINT32(&r->data[p], sysvol_gpt_version, &p);
 
     /* result */
-    SAFEALIGN_SET_UINT32(&r->buf[p], result, &p);
+    SAFEALIGN_SET_UINT32(&r->data[p], result, &p);
 
     return EOK;
 }
@@ -153,17 +154,17 @@ static errno_t
 prepare_response(TALLOC_CTX *mem_ctx,
                  int sysvol_gpt_version,
                  int result,
-                 struct response **rsp)
+                 struct io_buffer **rsp)
 {
     int ret;
-    struct response *r = NULL;
+    struct io_buffer *r = NULL;
 
-    r = talloc_zero(mem_ctx, struct response);
+    r = talloc_zero(mem_ctx, struct io_buffer);
     if (r == NULL) {
         return ENOMEM;
     }
 
-    r->buf = NULL;
+    r->data = NULL;
     r->size = 0;
 
     ret = pack_buffer(r, sysvol_gpt_version, result);
@@ -657,12 +658,9 @@ perform_smb_operations(int cached_gpt_version,
 int
 main(int argc, const char *argv[])
 {
+    static const size_t IN_BUF_SIZE = 2048;
     int opt;
     poptContext pc;
-    int dumpable = 1;
-    int debug_fd = -1;
-    long chain_id = 0;
-    const char *opt_logger = NULL;
     errno_t ret;
     int sysvol_gpt_version = -1;
     int result;
@@ -670,19 +668,11 @@ main(int argc, const char *argv[])
     uint8_t *buf = NULL;
     ssize_t len = 0;
     struct input_buffer *ibuf = NULL;
-    struct response *resp = NULL;
+    struct io_buffer *resp = NULL;
     ssize_t written;
 
     struct poptOption long_options[] = {
-        POPT_AUTOHELP
-        SSSD_DEBUG_OPTS
-        {"dumpable", 0, POPT_ARG_INT, &dumpable, 0,
-         _("Allow core dumps"), NULL },
-        {"debug-fd", 0, POPT_ARG_INT, &debug_fd, 0,
-         _("An open file descriptor for the debug logs"), NULL},
-        {"chain-id", 0, POPT_ARG_LONG, &chain_id,
-         0, _("Tevent chain ID used for logging purposes"), NULL},
-        SSSD_LOGGER_OPTS
+        SSSD_BASIC_CHILD_OPTS
         POPT_TABLEEND
     };
 
@@ -702,27 +692,10 @@ main(int argc, const char *argv[])
 
     poptFreeContext(pc);
 
-    prctl(PR_SET_DUMPABLE, (dumpable == 0) ? 0 : 1);
-
-    debug_prg_name = talloc_asprintf(NULL, "gpo_child[%d]", getpid());
-    if (debug_prg_name == NULL) {
-        ERROR("talloc_asprintf failed.\n");
-        goto fail;
+    sss_child_basic_settings.name = "gpo_child";
+    if (!sss_child_setup_basics(&sss_child_basic_settings)) {
+        _exit(-1);
     }
-
-    if (debug_fd != -1) {
-        opt_logger = sss_logger_str[FILES_LOGGER];
-        ret = set_debug_file_from_fd(debug_fd);
-        if (ret != EOK) {
-            opt_logger = sss_logger_str[STDERR_LOGGER];
-            ERROR("set_debug_file_from_fd failed.\n");
-        }
-    }
-
-    sss_chain_id_set_format(DEBUG_CHAIN_ID_FMT_RID);
-    sss_chain_id_set((uint64_t)chain_id);
-
-    DEBUG_INIT(debug_level, opt_logger);
 
     DEBUG(SSSDBG_TRACE_FUNC, "gpo_child started.\n");
 
@@ -796,7 +769,7 @@ main(int argc, const char *argv[])
 
     errno = 0;
 
-    written = sss_atomic_write_s(AD_GPO_CHILD_OUT_FILENO, resp->buf, resp->size);
+    written = sss_atomic_write_s(AD_GPO_CHILD_OUT_FILENO, resp->data, resp->size);
     if (written == -1) {
         ret = errno;
         DEBUG(SSSDBG_CRIT_FAILURE, "write failed [%d][%s].\n", ret,

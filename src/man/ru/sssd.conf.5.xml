@@ -28,16 +28,15 @@
 разделов и параметров. Раздел начинается с имени раздела в квадратных
 скобках и продолжается до начала нового раздела. Пример раздела с
 параметрами, которые имеют одно или несколько значений: <programlisting>
-<replaceable>[section]</replaceable>
-<replaceable>key</replaceable> = <replaceable>value</replaceable>
-<replaceable>key2</replaceable> = <replaceable>value2,value3</replaceable>
+<replaceable>[раздел]</replaceable>
+<replaceable>ключ</replaceable> = <replaceable>значение</replaceable>
+<replaceable>ключ2</replaceable> = <replaceable>значение2,значение3</replaceable>
             </programlisting>
         </para>
 
         <para>
             Используемые типы данных: строка (кавычки не требуются), целое число и
-логическое значение (возможны два значения: <quote>TRUE</quote> или
-<quote>FALSE</quote>).
+логическое значение (возможные значения: <quote>TRUE/FALSE</quote>).
         </para>
 
         <para>
@@ -52,10 +51,13 @@
 обозначения раздела.
         </para>
 
-        <para>
-            <filename>sssd.conf</filename> должен быть обычным файлом, владельцем
-которого является пользователь root. Права на чтение этого файла или запись
-в него должен иметь только пользователь root.
+        <para condition="without_non_root_user_support">
+            <filename>sssd.conf</filename> должен быть обычным файлом, который должен
+принадлежать и быть доступен для чтения и записи только пользователю «root».
+        </para>
+        <para condition="with_non_root_user_support">
+            <filename>sssd.conf</filename> должен быть обычным файлом, доступным только
+пользователю, используемому для запуска службы SSSD, или пользователю root.
         </para>
     </refsect1>
 
@@ -64,9 +66,7 @@
 
         <para>
             В файл конфигурации <filename>sssd.conf</filename> будут включены фрагменты
-конфигурации из каталога <filename>conf.d</filename>. Эта возможность
-доступна, если сборка SSSD была выполнена с библиотекой libini версии 1.3.0
-или более поздней.
+конфигурации из каталога <filename>conf.d</filename>.
         </para>
 
         <para>
@@ -90,7 +90,7 @@ SSSD вместе с файлом <filename>sssd.conf</filename>.
 
         <para>
             Файлы фрагментов должны иметь того же владельца и те же права доступа, что и
-файл <filename>sssd.conf</filename>. По умолчанию: root:root и 0600.
+файл <filename>sssd.conf</filename>.
         </para>
     </refsect1>
 
@@ -207,15 +207,6 @@ SSSD вместе с файлом <filename>sssd.conf</filename>.
 <quote>[sssd]</quote>. <variablelist>
                     <title>Параметры раздела</title>
                     <varlistentry>
-                        <term>config_file_version (целое число)</term>
-                        <listitem>
-                            <para>
-                                Обозначает версию синтаксических конструкций файла конфигурации. Для SSSD
-0.6.0 и более поздних версий используется версия 2.
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
                         <term>services</term>
                         <listitem>
                             <para>
@@ -225,28 +216,16 @@ sssd. <phrase condition="have_systemd"> Список служб является
 необходимости будут активированы с помощью сокета или D-Bus.  </phrase>
                             </para>
                             <para>
-                                Поддерживаемые службы: nss, pam <phrase condition="with_sudo">,
+                                Поддерживаемые службы: nss, pam, ifp <phrase condition="with_sudo">,
 sudo</phrase> <phrase condition="with_autofs">, autofs</phrase> <phrase
 condition="with_ssh">, ssh</phrase> <phrase condition="with_pac_responder">,
-pac</phrase> <phrase condition="with_ifp">, ifp</phrase>
+pac</phrase>
                             </para>
                             <para>
                                 <phrase condition="have_systemd"> По умолчанию все службы
 отключены. Администратор должен включить разрешённые для использования
 службы с помощью следующей команды: «systemctl enable
 sssd-@service@.socket».  </phrase>
-                            </para>
-                        </listitem>
-                    </varlistentry>
-                    <varlistentry>
-                        <term>reconnection_retries (целое число)</term>
-                        <listitem>
-                            <para>
-                                Количество попыток восстановления подключения службами в случае сбоя или
-перезапуска поставщика данных
-                            </para>
-                            <para>
-                                По умолчанию: 3
                             </para>
                         </listitem>
                     </varlistentry>
@@ -373,31 +352,13 @@ inotify. В таких случаях в этот параметр следуе�
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry condition="with_non_root_user_support">
-                        <term>user (строка)</term>
-                        <listitem>
-                            <para>
-                                The user to drop the privileges to where appropriate to avoid running as the
-root user.  Currently the only supported value is '&sssd_user_name;'.
-                            </para>
-
-                            <para condition="have_systemd">
-                                This option does not work when running socket-activated services, as the
-user set up to run the processes is set up during compilation time.  The way
-to override the systemd unit files is by creating the appropriate files in
-/etc/systemd/system/.  Keep in mind that any change in the socket user,
-group or permissions may result in a non-usable SSSD. The same may occur in
-case of changes of the user running the NSS responder.
-                            </para>
-
-                            <para>
-                                По умолчанию: не задано, процесс будет запущен от имени пользователя root
-                            </para>
-                        </listitem>
-                    </varlistentry>
                     <varlistentry>
                         <term>default_domain_suffix (строка)</term>
                         <listitem>
+                            <para>
+                                Обратите внимание, что этот параметр устарел, и следует использовать вместо
+него domain_resolution_order.
+                            </para>
                             <para>
                                 Эта строка будет использоваться как стандартное имя домена для всех имён без
 компонента имени домена. В основном, этот параметр применяется в средах, где
@@ -407,15 +368,12 @@ case of changes of the user running the NSS responder.
 не указывая имя домена.
                             </para>
                             <para>
-                                Please note that if this option is set all users from the primary domain
-have to use their fully qualified name, e.g. user@domain.name, to log
-in. Setting this option changes default of use_fully_qualified_names to
-True. It is not allowed to use this option together with
-use_fully_qualified_names set to False.  <phrase
-condition="with_files_provider"> One exception from this rule are domains
-with <quote>id_provider=files</quote> that always try to match the behaviour
-of nss_files and therefore their output is not qualified even when the
-default_domain_suffix option is used.  </phrase>
+                                Обратите внимание, что если этот параметр задан, все пользователи из
+основного домена будут должны использовать своё полностью определённое имя,
+например user@domain.name, для входа в систему. Установка этого параметра
+изменит стандартное значение use_fully_qualified_names на «True». Этот
+параметр нельзя использовать вместе с параметром use_fully_qualified_names,
+установленным в значение «False».
                             </para>
                             <para>
                                 По умолчанию: не задано
@@ -532,7 +490,8 @@ default_domain_suffix option is used.  </phrase>
                                         Если срок действия списка отзыва сертификатов (CRL) истёк, игнорировать
 проверки CRL для соответствующих сертификатов. Этот параметр следует
 использовать, чтобы разрешить проверку подлинности, когда система находится
-в автономном режиме и нельзя обновить CRL.</para>
+в автономном режиме и нельзя обновить CRL.
+                                        </para>
                                     </listitem>
                                 </varlistentry>
                                 </variablelist>
@@ -545,7 +504,7 @@ default_domain_suffix option is used.  </phrase>
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry>
+                    <varlistentry condition="have_libnl">
                         <term>disable_netlink (логическое значение)</term>
                         <listitem>
                             <para>
@@ -562,18 +521,6 @@ default_domain_suffix option is used.  </phrase>
                             </para>
                         </listitem>
                     </varlistentry>
-                    <varlistentry condition="with_files_provider">
-                        <term>enable_files_domain (логическое значение)</term>
-                        <listitem>
-                            <para>
-                                Когда этот параметр включён, SSSD добавляет перед всеми явно настроенными
-доменами неявный домен с<quote>id_provider=files</quote>.
-                            </para>
-                            <para>
-                                По умолчанию: false
-                            </para>
-                        </listitem>
-                    </varlistentry>
                     <varlistentry>
                         <term>domain_resolution_order</term>
                         <listitem>
@@ -586,19 +533,19 @@ default_domain_suffix option is used.  </phrase>
 будет выполняться в случайном порядке для каждого родительского домена.
                             </para>
                             <para>
-                                Please, note that when this option is set the output format of all commands
-is always fully-qualified even when using short names for input <phrase
-condition="with_files_provider"> , for all users but the ones managed by the
-files provider </phrase>.  In case the administrator wants the output not
-fully-qualified, the full_name_format option can be used as shown below:
-<quote>full_name_format=%1$s</quote> However, keep in mind that during
-login, login applications often canonicalize the username by calling
-<citerefentry> <refentrytitle>getpwnam</refentrytitle>
-<manvolnum>3</manvolnum> </citerefentry> which, if a shortname is returned
-for a qualified input (while trying to reach a user which exists in multiple
-domains) might re-route the login attempt into the domain which uses
-shortnames, making this workaround totally not recommended in cases where
-usernames may overlap between domains.
+                                Обратите внимание: когда этот параметр задан, для вывода всех команд будет
+использоваться полный формат, даже если во входных данных использовались
+краткие имена . Если администратору не требуется полный формат, параметр
+full_name_format можно использовать следующим образом:
+<quote>full_name_format=%1$s</quote>. Но следует учитывать, что при входе
+приложения часто преобразуют имя пользователя в каноническую форму, вызывая
+программу <citerefentry> <refentrytitle>getpwnam</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry>, которая, если для входных данных в
+полной форме возвращается краткое имя (при попытке обработки данных
+пользователя, существующего в нескольких доменах), может перенаправить
+попытку входа в домен, который использует краткие имена; следовательно,
+такое использование параметра категорически не рекомендуется, когда имена
+пользователей в разных доменах могут быть одинаковыми.
                             </para>
                             <para>
                                 По умолчанию: не задано
@@ -625,7 +572,14 @@ usernames may overlap between domains.
                                 Этот параметр можно использовать для общей защиты системы: установка
 значения «false» запрещает создание дампов памяти для всех процессов SSSD,
 чтобы избежать утечки паролей в открытом виде. Дополнительные сведения
-доступны на справочной странице prctl:PR_SET_DUMPABLE.
+доступны на странице руководства prctl:PR_SET_DUMPABLE в Linux или
+procctl:PROC_TRACE_CTL в FreeBSD.
+                            </para>
+                            <para>
+                                Обратите внимание, что этот параметр не влияет на «ldap_child», «krb5_child»
+и «sssd_pam», поскольку эти привилегированные двоичные файлы могут содержать
+копию данных таблицы ключей узла в памяти, и их поведение определяется
+системным параметром /proc/sys/fs/suid_dumpable.
                             </para>
                             <para>
                                 По умолчанию: true
@@ -633,21 +587,23 @@ usernames may overlap between domains.
                         </listitem>
                     </varlistentry>
                     <varlistentry condition="build_passkey">
-                        <term>passkey_verification (string)</term>
+                        <term>passkey_verification (строка)</term>
                         <listitem>
                             <para>
-                                With this parameter the passkey verification can be tuned with a comma
-separated list of options. Supported options are: <variablelist>
+                                При установке этого параметра проверку ключа доступа можно настроить с
+помощью разделённого запятыми списка параметров. Поддерживаемые параметры:
+<variablelist>
                                 <varlistentry>
-                                    <term>user_verification (boolean)</term>
+                                    <term>user_verification (логическое значение)</term>
                                     <listitem>
-                                        <para> Enable or disable the user verification (i.e. PIN, fingerprint)  during
-authentication. If enabled, the PIN will always be requested.
+                                        <para> Включить или отключить проверку пользователя (например, PIN-код, отпечаток
+пальца) во время аутентификации. Если этот параметр включен, PIN-код будет
+запрашиваться всегда.
                                         </para>
                                         <para>
-                                        The default is that the key settings decide what to do. In the IPA or
-kerberos pre-authentication case, this value will be overwritten by the
-server.
+                                        По умолчанию поведение определяется параметрами ключей. В случае
+предварительной аутентификации IPA или Kerberos это значение будет
+перезаписано сервером.
                                         </para>
                                     </listitem>
                                 </varlistentry>
@@ -676,18 +632,6 @@ server.
                 Эти параметры можно использовать для настройки любых служб.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>reconnection_retries (целое число)</term>
-                    <listitem>
-                        <para>
-                            Количество попыток восстановления подключения службами в случае сбоя или
-перезапуска поставщика данных
-                        </para>
-                        <para>
-                            По умолчанию: 3
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>fd_limit</term>
                     <listitem>
@@ -832,10 +776,7 @@ SSSD может работать без использования. Это зн�
                             Этот параметр определяет, следует ли ответчику опрашивать все кэши перед
 опросом поставщиков данных.
                         </para>
-                        <para condition="with_files_provider">
-                            По умолчанию: false
-                        </para>
-                        <para condition="without_files_provider">
+                        <para>
                             По умолчанию: true
                         </para>
                     </listitem>
@@ -901,20 +842,6 @@ SSSD может работать без использования. Это зн�
                         </para>
                         <para>
                             По умолчанию: 15
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>local_negative_timeout (целое число)</term>
-                    <listitem>
-                        <para>
-                            Означает количество секунд, в течение которого в негативном кэше nss_sss
-будут храниться локальные пользователи и группы перед попыткой повторного
-поиска на внутреннем сервере. Установка значения «0» отключает эту
-возможность.
-                        </para>
-                        <para>
-                            По умолчанию: 14400 (4 часа)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1226,10 +1153,8 @@ SSSD. Следовательно, в случае установки новой 
 что будет иметь приоритет над значением в разделе [nss].
                         </para>
                         <para>
-                            Default: <quote>not set</quote> (remote domains), <phrase
-condition="with_files_provider"> <quote>x</quote> (the files domain),
-</phrase> <quote>x</quote> (proxy domain with nss_files and sssd-shadowutils
-target)
+                            По умолчанию: <quote>не задано</quote> (удалённые домены), <quote>x</quote>
+(домен прокси с nss_files и целью sssd-shadowutils)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1506,10 +1431,10 @@ pam_account_locked_message = Учётная запись заблокирова�
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>pam_passkey_auth (bool)</term>
+                    <term>pam_passkey_auth (логическое значение)</term>
                     <listitem>
                         <para>
-                            Enable passkey device based authentication.
+                            Включить аутентификацию на основе ключа доступа.
                         </para>
                         <para>
                             По умолчанию: true
@@ -1517,10 +1442,10 @@ pam_account_locked_message = Учётная запись заблокирова�
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>passkey_debug_libfido2 (bool)</term>
+                    <term>passkey_debug_libfido2 (логическое значение)</term>
                     <listitem>
                         <para>
-                            Enable libfido2 library debug messages.
+                            Включить отладочные сообщения библиотеки libfido2.
                         </para>
                         <para>
                             По умолчанию: false
@@ -1592,10 +1517,11 @@ pam_cert_verification = partial_chain
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>passkey_child_timeout (integer)</term>
+                    <term>passkey_child_timeout (целое число)</term>
                     <listitem>
                         <para>
-                            How many seconds will the PAM responder wait for passkey_child to finish.
+                            Разрешённое количество секунд, в течение которого ответчик PAM ожидает
+завершения работы passkey_child.
                         </para>
                         <para>
                             По умолчанию: 15
@@ -1615,7 +1541,7 @@ pam_cert_verification = partial_chain
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>pam_p11_allowed_services (string)</term>
+                    <term>pam_p11_allowed_services (строка)</term>
                     <listitem>
                         <para>
                             Разделённый запятыми список имён служб PAM, для которых будет разрешено
@@ -1658,6 +1584,11 @@ pam_p11_allowed_services = +my_pam_service, -login
                                 <listitem>
                                     <para>
                                         gdm-password
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-switchable-auth
                                     </para>
                                 </listitem>
                                 <listitem>
@@ -1876,6 +1807,30 @@ pam_gssapi_indicators_map = sudo:pkinit, sudo-i:pkinit
                         </para>
                     </listitem>
                 </varlistentry>
+                <varlistentry condition="build_json_pam">
+                    <term>pam_json_services (string)</term>
+                    <listitem>
+                        <para>
+                            Comma separated list of PAM services which can handle the JSON protocol for
+selecting authentication mechanisms
+                        </para>
+                        <para>
+                            To disable JSON protocol, set this option to <quote>-</quote> (dash).
+                        </para>
+                        <para>
+                            Пример: <programlisting>
+pam_json_services = gdm-switchable-auth
+                            </programlisting>
+                        </para>
+                        <para>
+                            Default: - (JSON protocol is disabled)
+                        </para>
+                        <para>
+                           Note: 2-Factor Authentication (2FA) is not supported. If 2FA is required, do
+not activate the JSON protocol.
+                        </para>
+                    </listitem>
+                </varlistentry>
             </variablelist>
         </refsect2>
 
@@ -1953,29 +1908,6 @@ pam_gssapi_indicators_map = sudo:pkinit, sudo-i:pkinit
                 Эти параметры можно использовать для настройки службы SSH.
             </para>
             <variablelist>
-                <varlistentry>
-                    <term>ssh_hash_known_hosts (логическое значение)</term>
-                    <listitem>
-                        <para>
-                            Следует ли хэшировать имена и адреса узлов в управляемом файле known_hosts.
-                        </para>
-                        <para>
-                            По умолчанию: false
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>ssh_known_hosts_timeout (целое число)</term>
-                    <listitem>
-                        <para>
-                            Разрешённое количество секунд, в течение которого узел хранится в
-управляемом файле known_hosts после запроса ключей этого узла.
-                        </para>
-                        <para>
-                            По умолчанию: 180
-                        </para>
-                    </listitem>
-                </varlistentry>
                 <varlistentry>
                     <term>ssh_use_certificate_keys (логическое значение)</term>
                     <listitem>
@@ -2083,10 +2015,20 @@ GID будет иметь то же значение, что и UID. Домаш�
 разрешён доступ к ответчику PAC. Имена пользователей разрешаются в UID при
 запуске.
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            По умолчанию: 0, &sssd_user_name; (доступ к ответчику PAC разрешён только
+root и пользователям службы SSSD)
+                        </para>
+                        <para condition="without_non_root_user_support">
                             По умолчанию: 0 (доступ к ответчику PAC разрешён только пользователю root)
                         </para>
-                        <para>
+                        <para condition="with_non_root_user_support">
+                            Обратите внимание, что при использовании этой опции значения по умолчанию
+будут перезаписаны. Если всё равно требуется разрешить пользователю root
+и/или пользователю «&sssd_user_name;» доступ к ответчику PAC (типичный
+случай), необходимо явно добавить их в список разрешенных UID.
+                        </para>
+                        <para condition="without_non_root_user_support">
                             Обратите внимание: несмотря на то, что в качестве стандартного значения
 используется UID 0, оно будет перезаписано этим параметром. Если всё равно
 требуется разрешить пользователю root доступ к ответчику PAC (типичный
@@ -2118,6 +2060,11 @@ PAC можно использовать для определения участ
 является значением по умолчанию для поставщиков данных IPA и AD. Если для
 параметра krb5_validate установлено значение «False», проверка PAC будет
 пропущена.
+			</para>
+			<para>
+                            Please note that the checks listed below only apply to PACs issued by Active
+Directory or recent versions of FreeIPA. PACs issued e.g. by a plain MIT
+Kerberos KDC will not contain the needed PAC data buffers to run the checks.
 			</para>
                         <para>
 			    Следующие параметры можно использовать отдельно или в виде разделённого
@@ -2417,9 +2364,13 @@ NSS, то есть после возможной замены пробелов, 
                             Чтобы выполнить перечисление для домена, SSSD потребуется загрузить и
 сохранить ВСЕ записи пользователей и групп с удалённого сервера.
                         </para>
+                        <para condition="without_ext_enumeration">
+                            Функция поддерживается только для доменов с id_provider = ldap или
+id_provider = proxy.
+                        </para>
                         <para>
                             Примечание: если включить перечисление, во время его выполнения
-производительность SSSD умеренно снижается. Перечисление может занять до
+производительность SSSD серьёзно снижается. Перечисление может занять до
 нескольких минут после запуска SSSD. В это время отдельные запросы
 информации отправляются непосредственно в LDAP, хотя это может выполняться
 медленно из-за ресурсоёмкой обработки перечисления. Сохранение большого
@@ -2444,29 +2395,11 @@ NSS, то есть после возможной замены пробелов, 
                             По вышеуказанным причинам не рекомендуется включать перечисление, особенно в
 средах большого размера.
                         </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>subdomain_enumerate (строка)</term>
-                    <listitem>
                         <para>
-                            Следует ли выполнять перечисление для каких-либо автоматически обнаруженных
-доверенных доменов. Поддерживаемые значения: <variablelist>
-                                <varlistentry>
-                                    <term>all</term>
-                                    <listitem><para>Выполнить перечисление для всех обнаруженных доверенных доменов</para></listitem>
-                                </varlistentry>
-                                <varlistentry>
-                                    <term>none</term>
-                                    <listitem><para>Не выполнять перечисление для обнаруженных доверенных доменов</para></listitem>
-                                </varlistentry>
-                            </variablelist> При необходимости можно указать список из
-одного или нескольких имён доверенных доменов, чтобы включить перечисление
-только для них.
-                        </para>
-                        <para>
-                            По умолчанию: none
+                            Примечание: прокси-провайдер тестируется с открытыми модулями, такими как
+«libnss_files» и «libnss_ldap». Сторонние модули должны соответствовать
+документированному поведению модулей nss, которые будут использоваться в
+этой конфигурации.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -2653,18 +2586,19 @@ NSS, то есть после возможной замены пробелов, 
                     <term>cache_credentials (логическое значение)</term>
                     <listitem>
                         <para>
-                            Determines if user credentials are also cached in the local LDB cache. The
-cached credentials refer to passwords, which includes the first (long term)
-factor of two-factor authentication, not other authentication
-mechanisms. Passkey and Smartcard authentications are expected to work
-offline as long as a successful online authentication is recorded in the
-cache without additional configuration.
+                            Определяет, кэшируются ли учётные данные пользователя также в локальном кэше
+LDB. Кэшированные учётные данные относятся к паролям, которые включают в
+себя первый (долгосрочный) фактор двухфакторной аутентификации, а не другие
+механизмы аутентификации. Ожидается, что аутентификация по ключу и
+смарт-карте будет работать в автономном режиме, пока успешная
+онлайн-аутентификация записывается в кэш без дополнительной настройки.
                         </para>
                         <para>
-                            Take a note that while credentials are stored as a salted SHA512 hash, this
-still potentially poses some security risk in case an attacker manages to
-get access to a cache file (normally requires privileged access) and to
-break a password using brute force attack.
+                            Обратите внимание, что несмотря на то, что учётные данные хранятся в виде
+зашифрованного хэша SHA512, это по-прежнему потенциально представляет
+некоторую угрозу безопасности в случае, если злоумышленнику удастся получить
+доступ к файлу кеша (обычно требуется привилегированный доступ) и взломать
+пароль с помощью атаки грубой силы.
                         </para>
                         <para>
                             По умолчанию: FALSE
@@ -2739,27 +2673,27 @@ break a password using brute force attack.
                         <para>
                             <quote>proxy</quote>: поддержка устаревшего поставщика NSS.
                         </para>
-                        <para condition="with_files_provider">
-                            <quote>files</quote>: поставщик данных ФАЙЛОВ. Дополнительные сведения о
-зеркалировании локальных пользователей и групп в SSSD: <citerefentry>
-<refentrytitle>sssd-files</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry>.
-                        </para>
                         <para>
                             <quote>ldap</quote>: поставщик данных LDAP. Дополнительные сведения о
 настройке LDAP: <citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
 <manvolnum>5</manvolnum> </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: поставщик данных FreeIPA и Red Hat Identity
+Management. Дополнительные сведения о настройке FreeIPA: <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: поставщик данных Active Directory. Дополнительные
 сведения о настройке Active Directory: <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: провайдер для поставщиков удостоверений (IdP),
+основанных на OAuth 2.0/OIDC. Дополнительные сведения: <citerefentry>
+<refentrytitle>sssd-idp</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry>.
                         </para>
                     </listitem>
@@ -2774,10 +2708,10 @@ FreeIPA.
                         </para>
                         <para>
                             Если задано значение «TRUE», во всех запросах к домену должны использоваться
-полные имена. Например, если этот параметр используется в домене LOCAL,
+полные имена. Например, если этот параметр используется в домене EXAMPLE,
 содержащем пользователя «test», с помощью команды <command>getent passwd
 test</command> его не удастся найти, а с помощью команды <command>getent
-passwd test@LOCAL</command> получится это сделать.
+passwd test@EXAMPLE</command> получится это сделать.
                         </para>
                         <para>
                             ПРИМЕЧАНИЕ: этот параметр не влияет на поиск сетевых групп, так как они
@@ -2839,15 +2773,21 @@ Kerberos. Дополнительные сведения о настройке Ke
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: поставщик данных FreeIPA и Red Hat Identity
+Management. Дополнительные сведения о настройке FreeIPA: <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: поставщик данных Active Directory. Дополнительные
 сведения о настройке Active Directory: <citerefentry>
 <refentrytitle>sssd-ad</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+                        </para>
+                        <para condition="with_idp_provider">
+                            <quote>idp</quote>: провайдер для аутентификации на основе OAuth
+2.0/OIDC. Дополнительные сведения: <citerefentry>
+<refentrytitle>sssd-idp</refentrytitle> <manvolnum>5</manvolnum>
 </citerefentry>.
                         </para>
                         <para>
@@ -2872,8 +2812,7 @@ PAM.
 включены в установленные внутренние серверы). Внутренние особые поставщики:
                         </para>
                         <para>
-                            <quote>permit</quote> — всегда разрешать доступ. Это единственный поставщик
-разрешённого доступа для локального домена.
+                            <quote>permit</quote> — всегда разрешать доступ.
                         </para>
                         <para>
                             <quote>deny</quote> — всегда отказывать в доступе.
@@ -2885,10 +2824,10 @@ LDAP. Дополнительные сведения о настройке LDAP: 
 </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: поставщик данных FreeIPA и Red Hat Identity
+Management. Дополнительные сведения о настройке FreeIPA: <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: поставщик данных Active Directory. Дополнительные
@@ -2935,10 +2874,10 @@ LDAP. Дополнительные сведения о настройке LDAP: 
 <manvolnum>5</manvolnum> </citerefentry>.
                         </para>
                         <para>
-                            <quote>ipa</quote>: FreeIPA and Red Hat Identity Management provider. See
-<citerefentry> <refentrytitle>sssd-ipa</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry> for more information on configuring
-FreeIPA.
+                            <quote>ipa</quote>: поставщик данных FreeIPA и Red Hat Identity
+Management. Дополнительные сведения о настройке FreeIPA: <citerefentry>
+<refentrytitle>sssd-ipa</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
                         </para>
                         <para>
                             <quote>ad</quote>: поставщик данных Active Directory. Дополнительные
@@ -2984,8 +2923,8 @@ FreeIPA.
                             <quote>none</quote> — явно отключить SUDO.
                         </para>
                         <para>
-                            По умолчанию: использовать значение <quote>id_provider</quote>, если этот
-параметр задан.
+                            По умолчанию: Значение <quote>id_provider</quote>, если этот параметр
+установлен и может обрабатывать запросы sudo.
                         </para>
                         <para>
                             Подробные инструкции по настройке sudo_provider доступны на справочной
@@ -3053,8 +2992,8 @@ Directory. Дополнительные сведения о настройке �
                             <quote>none</quote> — явно отключает получение данных поддоменов.
                         </para>
                         <para>
-                            По умолчанию: использовать значение <quote>id_provider</quote>, если этот
-параметр задан.
+                            По умолчанию: Значение <quote>id_provider</quote>, если этот параметр
+установлен и может обрабатывать запросы поддоменов.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3076,13 +3015,7 @@ Commander (работает только c IPA). Поддерживаемые п
 пользователей.
                         </para>
                         <para>
-                            По умолчанию: использовать <quote>id_provider</quote>, если этот параметр
-задан и поддерживает выполнение заданий, связанных с сеансами.
-                        </para>
-                        <para>
-                            <emphasis>ПРИМЕЧАНИЕ:</emphasis> чтобы эта возможность работала должным
-образом, SSSD необходимо запускать от имени пользователя root, а не от имени
-пользователя без привилегий.
+                            Default: <quote>none</quote>.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3116,8 +3049,8 @@ AD. Дополнительные сведения о настройке пост
                             <quote>none</quote> — явно отключить autofs.
                         </para>
                         <para>
-                            По умолчанию: использовать значение <quote>id_provider</quote>, если этот
-параметр задан.
+                            По умолчанию: Значение <quote>id_provider</quote>, если этот параметр
+установлен и может обрабатывать запросы autofs.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3139,8 +3072,8 @@ AD. Дополнительные сведения о настройке пост
                             <quote>none</quote> — явно отключить hostid.
                         </para>
                         <para>
-                            По умолчанию: использовать значение <quote>id_provider</quote>, если этот
-параметр задан.
+                            По умолчанию: Значение <quote>id_provider</quote>, если этот параметр
+установлен и может обрабатывать запросы hostid.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3172,8 +3105,8 @@ LDAP. Дополнительные сведения о настройке LDAP: 
                             <quote>none</quote> — явно отключает получение записей узлов и сетей.
                         </para>
                         <para>
-                            По умолчанию: использовать значение <quote>id_provider</quote>, если этот
-параметр задан.
+                            По умолчанию: Значение <quote>id_provider</quote>, если этот параметр
+установлен и может обрабатывать запросы резолвера.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3189,9 +3122,9 @@ LDAP. Дополнительные сведения о настройке LDAP: 
 домена.
                         </para>
                         <para>
-                            Default:
+                            Значение:
 <quote>^((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]*)|(?P&lt;name&gt;[^@]+))$</quote>
-which allows two different styles for user names:
+— оно позволяет назначать два разных стиля записи имён пользователей:
                             <itemizedlist>
                                 <listitem>
                                     <para>username</para>
@@ -3202,9 +3135,9 @@ which allows two different styles for user names:
                            </itemizedlist>
                         </para>
                         <para>
-                            Default for the AD and IPA provider:
+                            Значение по умолчанию для поставщиков данных AD и IPA:
 <quote>^(((?P&lt;domain&gt;[^\\]+)\\(?P&lt;name&gt;.+))|((?P&lt;name&gt;.+)@(?P&lt;domain&gt;[^@]+))|((?P&lt;name&gt;[^@\\]+)))$</quote>
-which allows three different styles for user names:
+— оно позволяет назначать три разных стиля записи имён пользователей:
                             <itemizedlist>
                                 <listitem>
                                     <para>username</para>
@@ -3220,11 +3153,12 @@ which allows three different styles for user names:
 обеспечения простой интеграции пользователей из доменов Windows.
                         </para>
                         <para>
-                            The default re_expression uses the <quote>@</quote> character as a separator
-between the name and the domain. As a result of this setting the default
-does not accept the <quote>@</quote> character in short names (as it is
-allowed in Windows group names). If a user wishes to use short names with
-<quote>@</quote> they must create their own re_expression.
+                            По умолчанию re_expression использует символ <quote>@</quote> в качестве
+разделителя между именем и доменом. Поэтому при использовании этого
+параметра по умолчанию невозможно использовать символ <quote>@</quote> в
+кратких именах (как это разрешено в названиях групп Windows). Если
+пользователь хочет использовать короткие имена с <quote>@</quote>, он должен
+создать собственное re_expression.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3391,18 +3325,18 @@ allowed in Windows group names). If a user wishes to use short names with
                 </varlistentry>
 
                 <varlistentry>
-                    <term>failover_primary_timeout (integer)</term>
+                    <term>failover_primary_timeout (целое число)</term>
                     <listitem>
                         <para>
-                            When no primary server is currently available, SSSD fail overs to a backup
-server. This option defines the amount of time (in seconds) to wait before
-SSSD tries to reconnect to a primary server again.
+                            Если основной сервер недоступен, SSSD переключается на резервный
+сервер. Этот параметр определяет время (в секундах) ожидания SSSD перед
+попыткой повторного подключения к основному серверу.
                         </para>
                         <para>
-                            Note: The minimum value is 31.
+                            Примечание: минимальное значение — 31.
                         </para>
                         <para>
-                            Default: 31
+                            По умолчанию: 31
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3487,12 +3421,6 @@ AD.
                             ldap_offline_timeout
                         </para>
                         <para>
-                            ldap_enumeration_refresh_timeout
-                        </para>
-                        <para>
-                            ldap_enumeration_refresh_offset
-                        </para>
-                        <para>
                             ldap_purge_cache_timeout
                         </para>
                         <para>
@@ -3504,9 +3432,6 @@ ldap_krb5_keytab не задан явно)
                         </para>
                         <para>
                             ldap_krb5_ticket_lifetime
-                        </para>
-                        <para>
-                            ldap_enumeration_search_timeout
                         </para>
                         <para>
                             ldap_connection_expire_timeout
@@ -3607,31 +3532,35 @@ subdomain_inherit = ldap_purge_cache_timeout
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>local_auth_policy (string)</term>
+                    <term>local_auth_policy (строка)</term>
                     <listitem>
                         <para>
-                            Local authentication methods policy. Some backends (i.e. LDAP, proxy
-provider) only support a password based authentication, while others can
-handle PKINIT based Smartcard authentication (AD, IPA), two-factor
-authentication (IPA), or other methods against a central instance. By
-default in such cases authentication is only performed with the methods
-supported by the backend. With this option additional methods can be enabled
-which are evaluated and checked locally.
+                            Локальная политика методов проверки подлинности. Некоторые серверные части
+(например, LDAP, прокси-провайдер) поддерживают только парольную
+аутентификацию, а другие могут обрабатывать аутентификацию на основе
+смарт-карт PKINIT (AD, IPA), двухфакторную аутентификацию (IPA) и другие
+методы с центральным экземпляром. По умолчанию в таких случаях
+аутентификация выполняется только с помощью методов, поддерживаемых
+серверной частью. С помощью этой опции можно включить дополнительные методы,
+которые оцениваются и проверяются локально.
                         </para>
                         <para>
-                            There are three possible values for this option: match, only,
-enable. <quote>match</quote> is used to match offline and online states for
-Kerberos methods. <quote>only</quote> ignores the online methods and only
-offer the local ones. enable allows explicitly defining the methods for
-local authentication. As an example, <quote>enable:passkey</quote>, only
-enables passkey for local authentication. Multiple enable values should be
-comma-separated, such as <quote>enable:passkey, enable:smartcard</quote>
+                            Для этого параметра предусмотрено три возможных значения: match, only,
+enable. <quote>match</quote> используется для установления соответствия
+между автономными и сетевыми состояниями методов
+Kerberos. <quote>only</quote> – игнорировать сетевые методы и предлагать
+только локальные. enable – позволяет явно определить методы локальной
+аутентификации. Например, <quote>enable:passkey</quote>, включает для
+локальной аутентификации только метод на основе ключа доступа. Несколько
+значений enable должны быть разделены запятыми, например,
+<quote>enable:passkey, enable:smartcard</quote>
                         </para>
 
                         <para>
-                            The following table shows which authentication methods, if configured
-properly, are currently enabled or disabled for each backend, with the
-default local_auth_policy: <quote>match</quote>
+                            В приведенной ниже таблице показаны, какие методы аутентификации, если они
+правильно настроены, в настоящее время включены или выключены для каждого
+серверного компонента, при использовании значения по умолчанию
+local_auth_policy: <quote>match</quote>
                         </para>
                         <informaltable frame='all'>
                         <tgroup cols='3'>
@@ -3641,30 +3570,32 @@ default local_auth_policy: <quote>match</quote>
 
                         <thead>
                         <row><entry namest='c1' nameend='c3' align='center'>
-                            local_auth_policy = match (default)</entry></row>
-                        <row><entry></entry><entry>Passkey</entry>
-                            <entry>Smartcard</entry></row>
+                            local_auth_policy = match (по умолчанию)</entry></row>
+                        <row><entry></entry><entry>Ключ</entry>
+                            <entry>Смарт-карта</entry></row>
                         </thead>
                         <tbody>
                         <row><entry>IPA</entry><entry>enabled</entry>
                             <entry><para>enabled</para>
                             </entry></row>
-                        <row><entry>AD</entry><entry>disabled</entry>
+                        <row><entry>AD</entry><entry>выключено</entry>
                             <entry><para>enabled</para></entry>
                             </row>
-                        <row><entry>LDAP</entry><entry>disabled</entry>
-                            <entry><para>disabled</para></entry>
+                        <row><entry>LDAP</entry><entry>выключено</entry>
+                            <entry><para>выключено</para></entry>
                             </row>
                         </tbody></tgroup></informaltable>
                         <para>
-                            Please note that if local Smartcard authentication is enabled and a
-Smartcard is present, Smartcard authentication will be preferred over the
-authentication methods supported by the backend.  I.e. there will be a PIN
-prompt instead of e.g. a password prompt.
+                            Обратите внимание: если включена локальная аутентификация с помощью
+смарт-карты и смарт-карта присутствует, аутентификация с помощью смарт-карты
+будет предпочтительнее методов аутентификации, поддерживаемых серверной
+частью. Т.е., например, вместо запроса пароля будет предложено ввести
+PIN-код.
                         </para>
                         <para>
-                            The following configuration example allows local users to authenticate
-locally using any enabled method (i.e. smartcard, passkey).  <programlisting>
+                            Следующий пример конфигурации позволяет локальным пользователям проходить
+локальную аутентификацию с использованием любого из включенных методов
+(например, смарт-карты, ключа доступа).  <programlisting>
 [domain/shadowutils]
 id_provider = proxy
 proxy_lib_name = files
@@ -3672,12 +3603,8 @@ auth_provider = none
 local_auth_policy = only
 </programlisting>
                         </para>
-                        <para condition="with_files_provider">
-                            It is expected that the <quote>files</quote> provider ignores the
-local_auth_policy option and supports Smartcard authentication by default.
-                        </para>
                         <para>
-                            Default: match
+                            По умолчанию: match
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3735,6 +3662,13 @@ UID и GID которых имеют одно и то же значение, и 
                             </variablelist>
                         </para>
                         <para>
+                            Для поставщиков идентификаторов на основе LDAP (LDAP, IPA и AD) значение по
+умолчанию для настроенного домена обычно равно False, поскольку источники
+имеют концепцию первичной группы. <phrase
+condition="with_idp_provider">Поставщик идентификаторов IdP использует True,
+поскольку у IdP обычно нет первичных групп.</phrase>
+                        </para>
+                        <para>
                             В случае поддоменов, «False» является значением по умолчанию для поддоменов,
 которые используют назначенные идентификаторы POSIX, а «True» — для
 поддоменов, которые используют автоматическое сопоставление идентификаторов.
@@ -3766,9 +3700,10 @@ auto_private_groups = false
                             Цель, которой пересылает данные прокси PAM.
                         </para>
                         <para>
-                            Default: not set by default, you have to take an existing pam configuration
-or create a new one and add the service name here. As an alternative you can
-enable local authentication with the local_auth_policy option.
+                            По умолчанию: не задано по умолчанию; следует воспользоваться существующей
+конфигурацией PAM или создать новую и добавить здесь имя службы. В качестве
+альтернативы можно включить локальную аутентификацию с помощью опции
+local_auth_policy.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -3979,9 +3914,9 @@ SSSD необходима возможность сопоставления се
 LDAP, таких как <quote>ldap</quote>, <quote>AD</quote> или
 <quote>ipa</quote>.</para>
                             </listitem>
-                            <listitem condition="with_files_provider">
-                                <para>RULE_NAME для поставщика данных <quote>files</quote>, который пытается найти
-пользователя с таким же именем.</para>
+                            <listitem>
+                                <para>Если значение maprule не установлено и поставщиком данных является
+<quote>proxy</quote>, именем совпадающего пользователя считается RULE_NAME.</para>
                             </listitem>
                         </itemizedlist>
                     </para>
@@ -4015,33 +3950,6 @@ sssd.conf. Если поставщик данных поддерживает п�
                 </listitem>
             </varlistentry>
         </variablelist>
-        <para condition="with_files_provider">
-            Чтобы упростить настройку и уменьшить количество её параметров, для
-поставщика данных <quote>files</quote> предусмотрены некоторые особые
-свойства:
-            <itemizedlist>
-                <listitem>
-                    <para>
-                        Если значение maprule не задано, именем совпадающего пользователя считается
-RULE_NAME
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        Если используется maprule, необходимо заключать в скобки как отдельное имя
-пользователя, так и шаблон наподобие
-<quote>{subject_rfc822_name.short_name}</quote>. Например:
-<quote>(username)</quote> или
-<quote>({subject_rfc822_name.short_name})</quote>
-                    </para>
-                </listitem>
-                <listitem>
-                    <para>
-                        параметр <quote>domains</quote> игнорируется
-                    </para>
-                </listitem>
-            </itemizedlist>
-        </para>
     </refsect1>
 
     <refsect1 id='prompting_configuration'>
@@ -4061,8 +3969,9 @@ RULE_NAME
 случаев. Следующие параметры обеспечивают более гибкую настройку.
         </para>
         <para>
-            Each supported authentication method has its own configuration subsection
-under <quote>[prompting/...]</quote>. Currently there are: <variablelist>
+            Для каждого поддерживаемого способа проверки подлинности предусмотрен
+отдельный подраздел конфигурации: <quote>[prompting/...]</quote>. В
+настоящее время это: <variablelist>
             <varlistentry>
                 <term>[prompting/password]</term>
                 <listitem>
@@ -4092,43 +4001,51 @@ under <quote>[prompting/...]</quote>. Currently there are: <variablelist>
 необязательным и должно быть возможно выполнить вход, указав либо только
 пароль, либо оба фактора, следует использовать двухэтапный запрос.
                     </para>
+                    <para>
+                    Некоторые клиенты, например, SSH с 'PasswordAuthentication yes', генерируют
+собственные запросы и не используют запросы, предоставляемые SSSD или
+другими модулями PAM. Кроме того, для SSH с PasswordAuthentication, если
+доступна двухфакторная аутентификация, SSSD ожидает, что регистрационные
+данные, введенные пользователем при запросе пароля SSH, всегда будут
+представлять собой два фактора в одной строке, даже если двухфакторная
+аутентификация необязательна.
+                    </para>
                 </listitem>
             </varlistentry>
-        </variablelist>
-<variablelist>
+        </variablelist> <variablelist>
             <varlistentry condition="build_passkey">
                 <term>[prompting/passkey]</term>
                 <listitem>
-                    <para>to configure passkey authentication prompting, allowed options are:
+                    <para>допустимые параметры для настройки аутентификации по ключу доступа:
 <variablelist>
                     <varlistentry>
                         <term>interactive</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message and wait before testing the presence
-of a passkey device.  Recommended if your device doesn’t have a tactile
-trigger.
+                            <para>логическое значение, если True, отправить запрос и подождать, прежде чем
+проверить наличие устройства ключа. Рекомендуется, если устройство не имеет
+тактильного переключателя.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>interactive_prompt</term>
                         <listitem>
-                            <para>to change the message of the interactive prompt.
+                            <para>изменить сообщение интерактивного запроса.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch</term>
                         <listitem>
-                            <para>boolean value, if True prompt a message to remind the user to touch the
-device.
+                            <para>логическое значение, если True, отправить сообщение для напоминания
+пользователю о необходимости коснуться устройства.
                             </para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term>touch_prompt</term>
                         <listitem>
-                            <para>to change the message of the touch prompt.
+                            <para>изменить сообщение запроса касания.
                             </para>
                         </listitem>
                         </varlistentry>
@@ -4154,7 +4071,6 @@ device.
 [sssd]
 domains = LDAP
 services = nss, pam
-config_file_version = 2
 
 [nss]
 filter_groups = root
@@ -4188,10 +4104,10 @@ use_fully_qualified_names = false
 </programlisting>
         </para>
         <para>
-            3. The following example shows the configuration of a certificate mapping
-rule. It is valid for the configured domain <quote>my.domain</quote> and
-additionally for the subdomains <quote>your.domain</quote> and uses the full
-certificate in the search filter.  <programlisting>
+            3. В следующем примере показана конфигурация правила сопоставления
+сертификатов. Правило действительно для настроенного домена
+<quote>my.domain</quote>, а также для поддоменов <quote>your.domain</quote>,
+и использует полный сертификат в фильтре поиска.  <programlisting>
 [certmap/my.domain/rule_name]
 matchrule = &lt;ISSUER&gt;^CN=My-CA,DC=MY,DC=DOMAIN$
 maprule = (userCertificate;binary={cert!bin})

@@ -38,14 +38,14 @@ fi
 SSSD=@sbindir@/sssd
 
 LOCK_FILE=@localstatedir@/lock/subsys/sssd
-PID_FILE=@localstatedir@/run/sssd.pid
+PID_FILE=/run/sssd/sssd.pid
 
 TIMEOUT=15
 
 start() {
     [ -x $SSSD ] || exit 5
     echo -n $"Starting $prog: "
-    daemon $SSSD -f -D
+    daemon $SSSD -D --logger=files
     RETVAL=$?
     echo
     [ "$RETVAL" = 0 ] && touch $LOCK_FILE

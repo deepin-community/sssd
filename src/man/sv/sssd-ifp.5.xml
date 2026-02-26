@@ -80,13 +80,16 @@ komma åt InfoPipe-respondenten, vilket man typiskt vill, måste du lägga till
                     <term>user_attributes (sträng)</term>
                     <listitem>
                         <para>
-                            Anger den kommaseparerade listan över vit- eller svartlistade attribut.
+                            Specifies the comma-separated list of white or blacklisted attributes. This
+option only applies to the <quote>Users</quote> interface. The deprecated
+<quote>GetUserAttr</quote> interface does not utilize this option, it allows
+any attribute requested.
                         </para>
                         <para>
-                            Som standard tillåter bara InfoPipe-respondenten att standarduppsättningen
-av POSIX-attribut begärs.  Denna uppsättning är densamma som returneras av
-<citerefentry> <refentrytitle>getpwnam</refentrytitle>
-<manvolnum>3</manvolnum> </citerefentry> och inkluderar: <variablelist>
+                            By default, the InfoPipe responder `/Users` interface only allows the
+default set of POSIX attributes to be requested. This set is the same as
+returned by <citerefentry> <refentrytitle>getpwnam</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry> and includes: <variablelist>
                                 <varlistentry>
                                     <term>name</term>
                                     <listitem><para>användarens inloggningsnamn</para></listitem>
@@ -114,11 +117,12 @@ av POSIX-attribut begärs.  Denna uppsättning är densamma som returneras av
                             </variablelist>
                         </para>
                         <para>
-                            Det är möjligt att lägga till ett annat attribut till denna uppsättning
-genom att använda <quote>+attrnamn</quote> eller uttryckligen ta bort ett
-attribut genom att använda <quote>-attrnamn</quote>.  Till exempel, för att
-tillåta <quote>telephoneNumber</quote> men neka <quote>loginShell</quote>
-skulle man använda följande konfiguration: <programlisting>
+                            It is possible to add another attribute to this set by using
+<quote>+attr_name</quote> or explicitly remove an attribute using
+<quote>-attr_name</quote>. Added attributes will be made available in the
+<quote>extraAttributes</quote> array. For example, to allow
+<quote>telephoneNumber</quote> but deny <quote>loginShell</quote>, you would
+use the following configuration: <programlisting>
 user_attributes = +telephoneNumber, -loginShell
                         </programlisting>
                         </para>

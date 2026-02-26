@@ -24,6 +24,7 @@
 #include "confdb/confdb.h"
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "util/mmap_cache.h"
 #include "sss_client/idmap/sss_nss_idmap.h"
 #include "responder/nss/nss_private.h"
@@ -51,9 +52,6 @@ struct sss_mc_ctx {
     enum sss_mc_type type;  /* mmap cache type */
     char *file;             /* mmap cache file name */
     int fd;                 /* file descriptor */
-
-    uid_t uid;              /* User ID of owner */
-    gid_t gid;              /* Group ID of owner */
 
     uint32_t seed;          /* pseudo-random seed to avoid collision attacks */
     time_t valid_time_slot; /* maximum time the entry is valid in seconds */
@@ -650,9 +648,7 @@ static errno_t sss_mc_get_record(struct sss_mc_ctx **_mcc,
         if (ret == EFAULT) {
             DEBUG(SSSDBG_CRIT_FAILURE,
                   "Fatal internal mmap cache error, invalidating cache!\n");
-            (void)sss_mmap_cache_reinit(talloc_parent(mcc),
-                                        -1, -1, -1, -1,
-                                        _mcc);
+            (void)sss_mmap_cache_reinit(talloc_parent(mcc), -1, -1, _mcc);
         }
         return ret;
     }
@@ -773,7 +769,7 @@ static errno_t sss_mmap_cache_validate_or_reinit(struct sss_mc_ctx **_mcc)
 
 done:
     if (reinit) {
-        return sss_mmap_cache_reinit(talloc_parent(mcc), -1, -1, -1, -1, _mcc);
+        return sss_mmap_cache_reinit(talloc_parent(mcc), -1, -1, _mcc);
     }
 
     return ret;
@@ -1278,36 +1274,16 @@ static errno_t sss_mc_create_file(struct sss_mc_ctx *mc_ctx)
     int ret, uret;
 
     /* temporarily relax umask as we need the file to be readable
-     * by everyone for now */
-    old_mask = umask(0022);
+     * by everyone and writeable by group */
+    old_mask = umask(0002);
 
     errno = 0;
-    mc_ctx->fd = open(mc_ctx->file, O_CREAT | O_EXCL | O_RDWR, 0644);
+    mc_ctx->fd = open(mc_ctx->file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
     umask(old_mask);
     if (mc_ctx->fd == -1) {
         ret = errno;
         DEBUG(SSSDBG_CRIT_FAILURE, "Failed to open mmap file %s: %d(%s)\n",
                                     mc_ctx->file, ret, strerror(ret));
-        return ret;
-    }
-
-    /* Make sure that the memory cache files are chowned to sssd.sssd even
-     * if the nss responder runs as root. This is because the specfile
-     * has the ownership recorded as sssd.sssd
-     */
-    ret = fchown(mc_ctx->fd, mc_ctx->uid, mc_ctx->gid);
-    if (ret != 0) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "Failed to chown mmap file %s: %d(%s)\n",
-                                   mc_ctx->file, ret, strerror(ret));
-        return ret;
-    }
-
-    ret = fchmod(mc_ctx->fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "Failed to chmod mmap file %s: %d(%s)\n",
-                                   mc_ctx->file, ret, strerror(ret));
         return ret;
     }
 
@@ -1393,7 +1369,6 @@ static int mc_ctx_destructor(struct sss_mc_ctx *mc_ctx)
 #define POSIX_FALLOCATE_ATTEMPTS 3
 
 errno_t sss_mmap_cache_init(TALLOC_CTX *mem_ctx, const char *name,
-                            uid_t uid, gid_t gid,
                             enum sss_mc_type type, size_t n_elem,
                             time_t timeout, struct sss_mc_ctx **mcc)
 {
@@ -1441,9 +1416,6 @@ errno_t sss_mmap_cache_init(TALLOC_CTX *mem_ctx, const char *name,
         goto done;
     }
 
-    mc_ctx->uid = uid;
-    mc_ctx->gid = gid;
-
     mc_ctx->type = type;
 
     mc_ctx->valid_time_slot = timeout;
@@ -1474,8 +1446,19 @@ errno_t sss_mmap_cache_init(TALLOC_CTX *mem_ctx, const char *name,
     /* Attempt allocation several times, in case of EINTR */
     for (int i = 0; i < POSIX_FALLOCATE_ATTEMPTS; i++) {
         ret = posix_fallocate(mc_ctx->fd, 0, mc_ctx->mmap_size);
-        if (ret != EINTR)
-            break;
+        if (ret == EINTR) {
+            continue;
+        }
+        /* Copy-on-write file systems such as ZFS and Btrfs can't
+         * really support the posix_fallocate operation.
+         * Fall back to ftruncate() in this case */
+        if (ret == ENOSYS || ret == EOPNOTSUPP) {
+            ret = ftruncate(mc_ctx->fd, mc_ctx->mmap_size);
+            if (ret == -1) {
+                ret = errno;
+            }
+        }
+        break;
     }
     if (ret) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Failed to allocate file %s: %d(%s)\n",
@@ -1537,7 +1520,6 @@ done:
 }
 
 errno_t sss_mmap_cache_reinit(TALLOC_CTX *mem_ctx,
-                              uid_t uid, gid_t gid,
                               size_t n_elem,
                               time_t timeout, struct sss_mc_ctx **mc_ctx)
 {
@@ -1575,14 +1557,6 @@ errno_t sss_mmap_cache_reinit(TALLOC_CTX *mem_ctx,
         timeout = (*mc_ctx)->valid_time_slot;
     }
 
-    if (uid == (uid_t)-1) {
-        uid = (*mc_ctx)->uid;
-    }
-
-    if (gid == (gid_t)-1) {
-        gid = (*mc_ctx)->gid;
-    }
-
     talloc_free(*mc_ctx);
 
     /* make sure we do not leave a potentially freed pointer around */
@@ -1590,7 +1564,6 @@ errno_t sss_mmap_cache_reinit(TALLOC_CTX *mem_ctx,
 
     ret = sss_mmap_cache_init(mem_ctx,
                               name,
-                              uid, gid,
                               type,
                               n_elem,
                               timeout,

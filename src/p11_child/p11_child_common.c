@@ -27,10 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <popt.h>
-#include <sys/prctl.h>
 
+#include "util/child_bootstrap.h"
 #include "util/util.h"
-#include "util/child_common.h"
+#include "util/sss_prctl.h"
 #include "providers/backend.h"
 #include "util/crypto/sss_crypto.h"
 #include "util/cert.h"
@@ -63,12 +63,12 @@ static int do_work(TALLOC_CTX *mem_ctx, enum op_mode mode, const char *ca_db,
                    const char *cert_b64, const char *pin,
                    const char *module_name, const char *token_name,
                    const char *key_id, const char *label, const char *uri,
-                   char **multi)
+                   time_t timeout, char **multi)
 {
     int ret;
     struct p11_ctx *p11_ctx;
 
-    ret = init_p11_ctx(mem_ctx, ca_db, wait_for_card, &p11_ctx);
+    ret = init_p11_ctx(mem_ctx, ca_db, wait_for_card, timeout, &p11_ctx);
     if (ret != EOK) {
         DEBUG(SSSDBG_OP_FAILURE, "init_p11_ctx failed.\n");
         return ret;
@@ -105,6 +105,7 @@ done:
 
 static errno_t p11c_recv_data(TALLOC_CTX *mem_ctx, int fd, char **pin)
 {
+    static const size_t IN_BUF_SIZE = 2048;
     uint8_t buf[IN_BUF_SIZE];
     ssize_t len;
     errno_t ret;
@@ -147,9 +148,6 @@ int main(int argc, const char *argv[])
 {
     int opt;
     poptContext pc;
-    int dumpable = 1;
-    int debug_fd = -1;
-    const char *opt_logger = NULL;
     errno_t ret = 0;
     TALLOC_CTX *main_ctx = NULL;
     enum op_mode mode = OP_NONE;
@@ -164,18 +162,12 @@ int main(int argc, const char *argv[])
     char *key_id = NULL;
     char *label = NULL;
     char *cert_b64 = NULL;
-    long chain_id = 0;
+    long timeout = -1;
     bool wait_for_card = false;
     char *uri = NULL;
 
     struct poptOption long_options[] = {
-        POPT_AUTOHELP
-        SSSD_DEBUG_OPTS
-        {"dumpable", 0, POPT_ARG_INT, &dumpable, 0,
-         _("Allow core dumps"), NULL },
-        {"debug-fd", 0, POPT_ARG_INT, &debug_fd, 0,
-         _("An open file descriptor for the debug logs"), NULL},
-        SSSD_LOGGER_OPTS
+        SSSD_BASIC_CHILD_OPTS
         {"auth", 0, POPT_ARG_NONE, NULL, 'a', _("Run in auth mode"), NULL},
         {"pre", 0, POPT_ARG_NONE, NULL, 'p', _("Run in pre-auth mode"), NULL},
         {"wait_for_card", 0, POPT_ARG_NONE, NULL, 'w', _("Wait until card is available"), NULL},
@@ -200,8 +192,8 @@ int main(int argc, const char *argv[])
          _("certificate to verify, base64 encoded"), NULL},
         {"uri", 0, POPT_ARG_STRING, &uri, 0,
          _("PKCS#11 URI to restrict selection"), NULL},
-        {"chain-id", 0, POPT_ARG_LONG, &chain_id,
-         0, _("Tevent chain ID used for logging purposes"), NULL},
+        {"timeout", 0, POPT_ARG_LONG, &timeout,
+         0, _("OCSP communication timeout"), NULL},
         POPT_TABLEEND
     };
 
@@ -306,28 +298,11 @@ int main(int argc, const char *argv[])
 
     poptFreeContext(pc);
 
-    prctl(PR_SET_DUMPABLE, (dumpable == 0) ? 0 : 1);
-
-    debug_prg_name = talloc_asprintf(NULL, "p11_child[%d]", getpid());
-    if (debug_prg_name == NULL) {
-        ERROR("talloc_asprintf failed.\n");
-        ret = ENOMEM;
-        goto done;
+    sss_child_basic_settings.name = "p11_child";
+    sss_child_basic_settings.is_responder_invoked = true;
+    if (!sss_child_setup_basics(&sss_child_basic_settings)) {
+        _exit(-1);
     }
-
-    if (debug_fd != -1) {
-        opt_logger = sss_logger_str[FILES_LOGGER];
-        ret = set_debug_file_from_fd(debug_fd);
-        if (ret != EOK) {
-            opt_logger = sss_logger_str[STDERR_LOGGER];
-            ERROR("set_debug_file_from_fd failed.\n");
-        }
-    }
-
-    sss_chain_id_set_format(DEBUG_CHAIN_ID_FMT_CID);
-    sss_chain_id_set((uint64_t)chain_id);
-
-    DEBUG_INIT(debug_level, opt_logger);
 
     DEBUG(SSSDBG_TRACE_FUNC, "p11_child started.\n");
 
@@ -382,9 +357,19 @@ int main(int argc, const char *argv[])
         }
     }
 
+    /* sanity check for timeout value */
+    if (timeout > INT32_MAX) {
+        fprintf(stderr,
+                "Timeout value [%li] is too long, using [%d]\n",
+                timeout, INT32_MAX);
+        timeout = INT32_MAX;
+    } else if (timeout < -1) {
+        timeout = -1;
+    }
+
     ret = do_work(main_ctx, mode, ca_db, cert_verify_opts, wait_for_card,
                   cert_b64, pin, module_name, token_name, key_id, label, uri,
-                  &multi);
+                  timeout, &multi);
 
 done:
     fprintf(stdout, "%d\n%s", ret, multi ? multi : "");

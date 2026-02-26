@@ -1,0 +1,1394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-ad</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-ad</refname>
+        <refpurpose>Proveedor SSSD Active Directory</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página de manual describe la configuración del proveedor AD para
+<citerefentry> <refentrytitle>sssd</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>. Para una referencia detallada de sintaxis, vea la sección
+<quote>FILE FORMAT</quote> de la página de manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            El proveedor AD es el punto final usado para conectar a un servidor Active
+Directory. Este proveedor requiere que la máquina esté unida al dominio AD y
+que una tabla de claves esté disponible. La comunicación con el punto final
+se efectúa sobre un canal cifrado GSSAPI, las opciones SSL/TLS no deberían
+ser usadas con el proveedor y serán reemplazadas por la utilización
+Kerberos.
+        </para>
+        <para>
+            El proveedor AD mantiene la conexión a Active Directory 2008 R2 o
+posteriores. Las versiones anteriores pueden funcionar, pero no está
+mantenido.
+        </para>
+        <para>
+            El proveedor AD puede ser usado para obtener información de usuario y
+autenticar usuarios desde dominios de confianza. Actualmente solo se
+reconocen los dominios de confianza del mismo bosque. Además, los servidores
+de dominios de confianza siempre se descubren automáticamente.
+        </para>
+        <para>
+            El proveedor AD habilita a SSSD para usar el proveedor de identidad
+<citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> y el proveedor de autenticación
+<citerefentry> <refentrytitle>sssd-krb5</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> con optimizaciones para entornos
+Active Directory. El proveedor AD provider aceptas las mismas opciones
+usadas por los proveedores sssd-ldap y sssd-krb5 cn algunas excepciones. Sin
+embargo, no es necesario ni recomendable establecer estas opciones.
+        </para>
+        <para>
+            El proveedor AD copia principalmente las opciones predeterminadas
+tradicionales de los proveedores ldap y krb5 con algunas excepciones, las
+diferencias están listadas en la sección <quote>OPCIONES PREDETERMINADAS
+MODIFICADAS</quote>.
+        </para>
+        <para>
+            El proveedor AD puede ser también usado como un proveedor de acceso chpass,
+sudo y autofs. No se requiere configuración del proveedor de acceso en el
+lado cliente.
+        </para>
+        <para>
+            Si está configurado <quote>auth_provider=ad</quote> o
+<quote>access_provider=ad</quote> en sssd.conf id_provider debe ser también
+establecido a <quote>ad</quote>.
+        </para>
+        <para>
+            De manera predeterminada, el proveedor AD mapeará los valores UID y GID
+desde el parámetro objectSID en Active Directory. Para detalles sobre esto,
+vea la sección <quote>MAPEO DE ID</quote> abajo. Si usted desea deshabilitar
+el mapeo de ID y en su lugar confiar en los atributos POSIX definidos en
+Active Directory, usted debería establecer <programlisting>
+ldap_id_mapping = False
+            </programlisting> Si se usarán los atributos POSIX, se
+recomienda que por razones de rendimientos estos atributos sean también
+replicados en el Catálogo Global. Si los atributos POSIX están replicados,
+SSSD intentará localizar el dominio de una ID numérica pedida con la ayuda
+del Catálogo Global y solo busca en ese dominio. Por el contrario, si los
+atributos POSIX no están replicados en el Catálogo Global, SSSD debe buscar
+en todos los dominios del bosque secuencialmente. Por favor advierta que la
+opción <quote>cache_first</quote> option también podría ser útil para
+acelerar las búsquedas sin dominio. Advierta que si en el Catálogo Global
+solo esta presente un subconjunto de atributos POSIX, los atributos no
+replicados no se leen actualmente desde el puerto LDAP.
+        </para>
+        <para>
+            Los usuarios, grupos y otras entidades servidas por SSSD son tratadas
+siempre como sensibles a mayúsculas y minúsculas en el proveedor AD por
+compatibilidad con la implementación LDAP de Active Directory.
+        </para>
+        <para>
+            SSSD solo resuelve grupos de seguridad de Active Directory. Para obtener más
+información sobre los tipos de grupos de AD, consulte: <ulink
+url="https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups">Grupos
+de seguridad de Active Directory</ulink>
+        </para>
+        <para>
+            SSSD filtra los grupos locales de dominio de los dominios remotos del bosque
+de AD. De forma predeterminada, se filtran, por ejemplo, al seguir una
+jerarquía de grupos anidados en dominios remotos, ya que no son válidos en
+el dominio local. Esto se realiza para cumplir con la asignación de
+pertenencia a grupos de Active Directory, que se puede ver en el PAC del
+ticket Kerberos de un usuario emitido por Active Directory.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPCIONES DE CONFIGURACIÓN</title>
+        <para>Vea la sección  <quote>DOMAIN SECTIONS</quote> de la página de manual
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para detalles sobre la
+configuración de un dominio SSSD. <variablelist>
+                <varlistentry>
+                    <term>ad_domain (cadena)</term>
+                    <listitem>
+                        <para>
+                            Especifica el nombre del dominio Active Directory. Esto es opcional. Si no
+se suministra, se usa la configuración del nombre de dominio.
+                        </para>
+                        <para>
+                            Para una operativa apropiada, esta opción sería especificada en la versión
+minúscula de la versión larga del dominio Active Directory.
+                        </para>
+                        <para>
+                            El nombre corto de dominio (también conocido como el NetBIOS o el nombre
+pano) es auto-detectado por SSSD.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_enabled_domains (cadena)</term>
+                    <listitem>
+                        <para>
+                            Una lista separada por comas de dominios Active Directory habilitados. Si se
+suministra, SSSD ignorará cualquier dominio no listado en esta opción. Si se
+deja sin establecer, estarán todos los dominios disponibles del bosque AD.
+                        </para>
+                        <para>
+                            Durante el descubrimiento de dominios, SSSD filtrará algunos dominios cuyos
+indicadores o atributos indiquen que no pertenecen al bosque local o no son
+de confianza. Si se configura ad_enabled_domains, SSSD intentará habilitar
+todos los dominios listados.
+                        </para>
+                        <para>
+                            Para una operativa apropiada, esta opción debe ser especificada en
+minúsculas y con el nombre totalmente cualificado del dominio Active
+Directory. Por ejemplo: <programlisting>
+ad_enabled_domains = sales.ejemplo.com, eng.ejemplo.com
+                            </programlisting>
+                        </para>
+                        <para>
+                            El nombre breve de dominio (también conocido como NetBIOS o el nombre plano)
+será auto-detectado por SSSD.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_server, ad_backup_server (cadena)</term>
+                    <listitem>
+                        <para>
+                            La lista separada por comas de nombres de host de los servidores AD a los
+que SSSD debería conectarse en orden de preferencia. Para mas información
+sobre conmutación por error y redundancia del servidor, vea la sección
+<quote>CONMUTACIÓN POR ERROR</quote>.
+                        </para>
+                        <para>
+                            Esto es opcional si el auto-descubrimiento está habilitado. Para mas
+información sobre el descubrimiento de servicio, consulte la sección
+<quote>DESCUBRIMIENTO DE SERVICIO</quote>.
+                        </para>
+                        <para>
+                            Nota: Los dominios de confianza siempre detectarán automáticamente los
+servidores aunque el servidor primario esté definido explícitamente en la
+opción ad_server.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_hostname (cadena)</term>
+                    <listitem>
+                        <para>
+                            Opcional. En máquinas donde el nombre de host(5) no refleja el nombre
+completo, sssd intentará expandir el nombre breve. Si no es posible o si
+realmente se debería usar el nombre breve, configure este parámetro
+explícitamente.
+                        </para>
+                        <para>
+                            Este campo se utiliza para determinar el principal del host utilizado en la
+tabla de claves y para realizar actualizaciones dinámicas de DNS. Debe
+coincidir con el nombre de host para el que fue emitida la tabla de claves.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_enable_dns_sites (booleano)</term>
+                    <listitem>
+                        <para>
+                            Habilita sitios DNS: descubrimiento de servicio basado en el lugar.
+                        </para>
+                        <para>
+                            Si esta a true y el servicio de descubrimiento (vea el párrafo Servicio de
+Descubrimiento al final de la página de manual) está habilitado, SSSD
+intentará primero descubrir el servidor Active Directory usando Active
+Directory Site Discovery y recurre a loas registros DNS SRV si no encuentra
+sitio AD. La configuración DNS SRV, incluyendo el descubrimiento de dominio,
+se usa durante el descubrimiento de sitio también.
+                        </para>
+                        <para>
+                            Predeterminado: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_access_filter (cadena)</term>
+                    <listitem>
+                        <para>
+                            Especifica un filtro de control de acceso LDAP que un usuario debe cumplir
+para obtener acceso. La opción <quote>access_provider</quote> debe estar
+establecida explícitamente en <quote>ad</quote> para que esta opción tenga
+efecto. Si desea usar <quote>ad_access_filter</quote> como único esquema de
+control de acceso, debe deshabilitar el control de acceso basado en GPO
+(consulte la opción <quote>ad_gpo_access_control</quote> para obtener más
+información).
+                        </para>
+                        <para>
+                            Esta opción también soporta que se especifiquen diferentes filtros por
+dominio o bosque. Este filtro extendido consiste en:
+<quote>KEYWORD:NAME:FILTER</quote>. La palabra clave puede ser
+<quote>DOM</quote>, <quote>FOREST</quote> o ninguna.
+                        </para>
+                        <para>
+                            Si la palabra clave es igual a <quote>DOM</quote> o es ninguna,
+<quote>NOMBRE</quote> especifica el dominio o subdominio al que se aplica el
+filtro. Si la palabra clave es igual a <quote>BOSQUE</quote>, el filtro
+iguala a todos los dominios del bosque especificado por
+<quote>NOMBRE</quote>.
+                        </para>
+                        <para>
+                            Se pueden separar múltiples filtros con el carácter <quote>?</quote>, de
+modo similar a como funcionan las bases de búsqueda.
+                        </para>
+                        <para>
+                            La membresía de grupo anidada debe ser buscada usando una OID especial
+<quote>:1.2.840.113556.1.4.1941:</quote> además de la sintaxis completa
+DOM:domain.example.org: para asegurar que el analizador no intente
+interpretar el carácter dos puntos asociado con el OID. Si usted no usa este
+OID la membresía de grupo anidada no será resuelta. Vea el ejemplo de
+utilización abajo y vaya aquí para ampliar información sobre OID: <ulink
+url="https://msdn.microsoft.com/en-us/library/cc223367.aspx"> [MS-ADTS]
+sección extensiones LDAP</ulink>
+                        </para>
+                        <para>
+                            Siempre se usa la coincidencia mas especifica. Por ejemplo, si la opción
+especifica un filtro para un dominio del que el usuario es miembro y un
+filtro global, se aplicará el filtro por dominio. Si hay mas coincidencias
+con la misma especificación se usa la primera.
+                        </para>
+                        <para>
+                            Ejemplos:
+                        </para>
+                        <programlisting>
+# aplicar filtro sobre el dominio llamado dom1 solo:
+dom1:(memberOf=cn=admins,ou=groups,dc=dom1,dc=com)
+
+# aplicar filtro sobre el dominio llamado dom2 solo:
+DOM:dom2:(memberOf=cn=admins,ou=groups,dc=dom2,dc=com)
+
+# aplicar filtro sobre un bosque llamado EJEMPLO.COM solo:
+BOSQUE:EJEMPLO.COM:(memberOf=cn=admins,ou=groups,dc=ejemplo,dc=com)
+
+# aplicar filtro para un miembro de un grupo anidado en dom1:
+DOM:dom1:(memberOf:1.2.840.113556.1.4.1941:=cn=nestedgroup,ou=groups,dc=ejemplo,dc=com)
+                        </programlisting>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_site (cadena)</term>
+                    <listitem>
+                        <para>
+                          Especifica el sitio AD al que el cliente intentará conectar.  Si esta opción
+no es proporcionada, el sitio AD será auto-descubierto.
+                        </para>
+                        <para>
+                            Por defecto: No definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_enable_gc (booleano)</term>
+                    <listitem>
+                        <para>
+                            De modo predeterminado, SSSD conecta primero al Catálogo Global para
+recuperar usuarios de los dominios de confianza y usa el puerto LDAP para
+recuperar membresías de grupo o plan de reserva. Inhabilitando esta opción
+hace que SSSD solo conecte al puerto LDAP del servidor AD actual.
+                        </para>
+                        <para>
+                            Advierta que inhabilitando el soporte de Catálogo Global no deshabilita la
+recogida de usuarios de los dominios de confianza. SSSD conectaría al puerto
+LDAP de los dominios de confianza en su lugar. Sin embargo, Catálogo Global
+debe ser usado con el objetivo de resolver las membresías de grupo de
+dominio cruzado.
+                        </para>
+                        <para>
+                            Predeterminado: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_access_control (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción especifica el modo de operación para la funcionalidad de control
+de acceso basado en GPO: si opera en modo deshabilitado, modo reforzado o
+modo permisivo. Por favor advierta que la opción
+<quote>access_provider</quote> debe ser explícitamente establecida a
+<quote>ad</quote> con el objetivo de que esta opción tenga efecto.
+                        </para>
+                        <para>
+                            La funcionalidad de control de acceso basado en GPO usa ajustes de política
+GPO para determinar si un usuario concreto tiene autorizado acceder al
+host. Para mas información sobre los ajustes de política soportados vea las
+opciones <quote>ad_gpo_map</quote>.
+                        </para>
+                        <para>
+                            Tenga en cuenta que la versión actual de SSSD no es compatible con los
+grupos integrados de Active Directory. SSSD ignorará los grupos integrados
+(como los administradores con SID S-1-5-32-544) en las reglas de control de
+acceso de GPO. Consulte el sistema de seguimiento de incidencias
+https://github.com/SSSD/sssd/issues/5063.
+                        </para>
+                        <para>
+                            Antes de realizar el control de acceso, SSSD aplica el filtrado de seguridad
+de la directiva de grupo en los GPO. Por cada inicio de sesión de usuario,
+la aplicabilidad de los GPOs que están enlazados al host es comprobado. Para
+que un GPO se aplique a un usuario, el usuario o al menos uno de los grupos
+a los que pertenece debe tener los siguientes permisos en el GPO:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        Lectura: el usuario o uno de sus grupos debe tener acceso de lectura a las
+propiedad de la GPO (RIGHT_DS_READ_PROPERTY)
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        Aplicar Directiva de Grupo: el usuario o al menos uno de sus grupos debe
+tener permiso para aplicar la GPO (RIGHT_DS_CONTROL_ACCESS).
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para>
+                            Por defecto, el grupo Usuarios Autenticados está presente sobre un GPO y
+este grupo tiene derechos de acceso tanto de Lectura como de Aplicar
+Directiva de Grupo. Puesto que la autenticación de un usuario debe haberse
+completado correctamente antes del filtrado de seguridad GPO y el control de
+acceso está arrancado, los permisos del grupo Usuarios Autenticados sobre el
+GPO se aplicarán siempre también al usuario.
+                        </para>
+                        <para>
+                            AVISO: Si el modo operativo está establecido para cumplir, es posible que a
+usuarios que antes se les permitía el acceso se les deniegue ahora (como
+dictan los ajustes de directiva GPO). Con el objetivo de facilitar una
+transición suave a los administradores, hay un modo permisivo disponible que
+no aplicará las reglas de control de acceso, pero evaluará y sacará un
+mensaje de registro de sistema si el acceso debería haber sido denegado. Al
+examinar los registros los administradores puede hacer los cambios
+necesarios antes de establecer el modo reforzado. Para registrar el control
+de acceso basado en GPO, se requiere un nivel de depuración 'funciones de
+seguimiento' (consulte las páginas de manual <citerefentry>
+<refentrytitle>sssctl</refentrytitle> <manvolnum>8</manvolnum>
+</citerefentry>).
+                        </para>
+                        <para>
+                            Hay tres valores soportados para esta opción:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        disabled (deshabilitado): Las reglas de control de acceso basadas en GPO no
+son evaluadas ni aplicadas.
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        enforcing (hacer cumplir): Las reglas de control de acceso basadas en GPO
+son evaluadas y aplicadas.
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        permissive (permisivo): Las reglas de control de acceso GPO son evaluadas
+pero no se hacen cumplir.  En su lugar, se emitirá un mensaje de registro de
+sistema indicando que se hubiera denegado el acceso al sistema del usuario
+si el valor de la opción estuviera establecido al aplicar.
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para condition="gpo_default_permissive">
+                            Predeterminado: permissive
+                        </para>
+                        <para condition="gpo_default_enforcing">
+                            Predeterminado: enforcing
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_implicit_deny (booleano)</term>
+                    <listitem>
+                        <para>
+                            Normalmente cuando no se encuentras GPOs aplicables los usuarios tienen
+permitido el acceso. Cuando se establece esta opción a True los usuarios
+tendrán permitido el acceso solo cuando este explícitamente permitido por
+una regla GPO. En otro caso el acceso de usuarios será denegado. Esto se
+puede usar para fortalecer la seguridad, pero tenga cuidado al usar esta
+opción, ya que puede denegar el acceso incluso a los usuarios en el grupo de
+administradores integrados si no se aplican reglas de GPO.
+                        </para>
+
+                        <para>
+                            Por defecto: False
+                        </para>
+
+                        <para>
+                            Las siguientes 2 tablas ilustrarían cuando un usuario está concedido o
+rechazado basado en conceder y denegar derechos de acceso definidos en el
+lado del servidor y los parámetros de ad_gpo_implicit_deny.
+                        </para>
+                        <informaltable frame='all'>
+                        <tgroup cols='3'>
+                        <colspec colname='c1' align='center'/>
+                        <colspec colname='c2' align='center'/>
+                        <colspec colname='c3' align='center'/>
+                        <thead>
+                        <row><entry namest='c1' nameend='c3' align='center'>
+                            ad_gpo_implicit_deny = False (predeterminado)</entry></row>
+                        <row><entry>conceder-reglas</entry><entry>denegar-reglas</entry>
+                            <entry>resultados</entry></row>
+                        </thead>
+                        <tbody>
+                        <row><entry>no se encuentra</entry><entry>no se encuentra</entry>
+                            <entry><para>todos los usuarios están concedidos</para>
+                            </entry></row>
+                        <row><entry>no se encuentra</entry><entry>presente</entry>
+                            <entry><para>solo los usuarios no dentro de reglas-denegación son concedidos</para></entry></row>
+                        <row><entry>presente</entry><entry>no se encuentra</entry>
+                            <entry><para>solo los usuarios en conceder-reglas son concedidos</para></entry></row>
+                        <row><entry>presente</entry><entry>presente</entry>
+                            <entry><para>solo los usuarios en conceder-reglas y no en denegar-reglas son concedidos</para></entry></row>
+                        </tbody></tgroup></informaltable>
+
+                        <informaltable frame='all'>
+                        <tgroup cols='3'>
+                        <colspec colname='c1' align='center'/>
+                        <colspec colname='c2' align='center'/>
+                        <colspec colname='c3' align='center'/>
+                        <thead>
+                        <row><entry namest='c1' nameend='c3' align='center'>
+                            ad_gpo_implicit_deny = True</entry></row>
+                        <row><entry>conceder-reglas</entry><entry>denegar-reglas</entry>
+                            <entry>resultados</entry></row>
+                        </thead>
+                        <tbody>
+                        <row><entry>no se encuentra</entry><entry>no se encuentra</entry>
+                            <entry><para>ningún usuario está concedido</para>
+                            </entry></row>
+                        <row><entry>no se encuentra</entry><entry>presente</entry>
+                            <entry><para>ningún usuario está concedido</para>
+                            </entry></row>
+                        <row><entry>presente</entry><entry>no se encuentra</entry>
+                            <entry><para>solo los usuarios en conceder-reglas son concedidos</para></entry></row>
+                        <row><entry>presente</entry><entry>presente</entry>
+                            <entry><para>solo los usuarios en conceder-reglas y no en denegar-reglas son concedidos</para></entry></row>
+                        </tbody></tgroup></informaltable>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_ignore_unreadable (booleano)</term>
+                    <listitem>
+                        <para>
+                            Normalmente cuando algunos contenedores de directivas de grupo (objeto AD)
+de objetos aplicables de directivas de grupo no son legibles por SSSD se les
+niega el acceso a los usuarios. Esta opción permite ignorar los contenedores
+de directivas de grupo y con ello las directivas asociadas si sus atributos
+en los contenedores de normativa de grupo no son legibles por SSSD.
+                        </para>
+                        <para>
+                            Por defecto: False
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+
+
+                <varlistentry>
+                    <term>ad_gpo_cache_timeout (entero)</term>
+                    <listitem>
+                        <para>
+                            La cantidad de tiempo entre búsquedas de los archivos de directiva GPO
+contra el servidor AD. Esto reducirá la latencia y la carga sobre el
+servidor AD si hay muchas peticiones de control de acceso hechas en un
+período breve.
+                        </para>
+                        <para>
+                            Predeterminado: 5 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_interactive (cadena)</term>
+                    <listitem>
+                        <para>
+                            Un listado separada por comas de nombres de servicios PAM para los que se
+evalúa el control de acceso basado en GPO según las configuraciones de
+directiva InteractiveLogonRight y DenyInteractiveLogonRight. Solo se evalúan
+las GPO para las que el usuario tiene permiso de lectura y aplicación de
+directivas de grupo (consulte la opción
+<quote>ad_gpo_access_control</quote>). Si una GPO evaluada contiene la
+configuración de denegación de inicio de sesión interactivo para el usuario
+o uno de sus grupos, se le deniega el acceso local. Si ninguna de las GPO
+evaluadas tiene definido un derecho de inicio de sesión interactivo, se le
+concede al usuario acceso local. Si al menos una GPO evaluada contiene la
+configuración de derecho de inicio de sesión interactivo, se le concede al
+usuario acceso local solo si dicha GPO o al menos uno de sus grupos forma
+parte de la configuración de directiva.
+                        </para>
+                        <para>
+                            Nota: utilizar el Editor de Gestión de Directiva de Grupo este valor es
+invocado «Concede acceder localmente» y «Deniega acceso localmente».
+                        </para>
+                        <para>
+                            Es posible añadir otro nombre de servicio PAM al conjunto predeterminado
+usando <quote>+nombre_servicio</quote> o quitar explícitamente nombre de
+servicio PAM de los predeterminados usando <quote>–nombre_servicio</quote>.
+Por ejemplo, con el objetivo de reemplazar un nombre de servicio PAM por
+autenticación con Smartcards (p.e. <quote>login</quote>) con un nombre de
+servicio PAM personalizado (p.e. <quote>mi_servicio_pam</quote>), debería
+usar la siguiente configuración: <programlisting>
+ad_gpo_map_interactive = +mi_servicio_pam, -login
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predeterminado: el conjunto predeterminado de nombres de servicio PAM
+incluye:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        login
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        su
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        su-l
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-fingerprint
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-password
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        gdm-smartcard
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        kdm
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        lightdm
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        lxdm
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        sddm
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        unity
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        xdm
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_remote_interactive (cadena)</term>
+                    <listitem>
+                        <para>
+                            Un listado separado por comas de nombres de servicio PAM para los que el
+control de acceso basado en GPO se evalúa según las opciones de directiva
+RemoteInteractiveLogonRight y DenyRemoteInteractiveLogonRight. Solo se
+evalúan las GPO para las cuales el usuario tenga permiso de Lectura y
+Aplicación de Directivas de Grupo (consulte la opción
+<quote>ad_gpo_access_control</quote>). Si una GPO evaluada contiene la
+opción de denegación de inicio de sesión remoto para el usuario o uno de sus
+grupos, se le deniega el acceso interactivo remoto. Si ninguna de las GPO
+evaluadas tiene definido un derecho de inicio de sesión interactivo remoto,
+se le concede acceso remoto. Si al menos una GPO evaluada contiene la
+configuración de derecho de inicio de sesión interactivo remoto, se le
+concede acceso remoto solo si dicha GPO o al menos uno de sus grupos forma
+parte de la configuración de directiva.
+                        </para>
+                        <para>
+                            Nota: al utilizar el Editor de Gestión de Directrices de Grupo, este valor
+se denomina «Conceder Inicio de Sesión a Través de Servicios de Escritorio
+Remoto» y «Denegar Inicio de Sesión a Través de Servicios de Escritorio
+Remoto».
+                        </para>
+                        <para>
+                            Es posible añadir otro nombre de servicio PAM al conjunto predeterminado
+usando <quote>+service_name</quote> o quitar explícitamente nombre de
+servicio PAM de los predeterminados usando <quote>–service_name</quote>. Por
+ejemplo, con el objetivo de reemplazar un nombre de servicio PAM por
+autenticación con Smartcards (p.e. <quote>login</quote>) con un nombre de
+servicio PAM personalizado (p.e. <quote>my_pam_service</quote>), debería
+usar la siguiente configuración: <programlisting>
+ad_gpo_map_remote_interactive = +mi_servicio_pam, -sshd
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predeterminado: el conjunto predeterminado de nombres de servicio PAM
+incluye:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        sshd
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        cockpit
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_network (cadena)</term>
+                    <listitem>
+                        <para>
+                            Una lista separada por comas de nombres de servicios PAM para los que se
+evalúa el control de acceso basado en GPO según las configuraciones de
+directiva NetworkLogonRight y DenyNetworkLogonRight. Solo se evalúan las GPO
+para las que el usuario tiene permiso de lectura y aplicación de directivas
+de grupo (consulte la opción <quote>ad_gpo_access_control</quote>). Si una
+GPO evaluada contiene la configuración de denegación de inicio de sesión de
+red para el usuario o uno de sus grupos, se le deniega el acceso de inicio
+de sesión de red. Si ninguna de las GPO evaluadas tiene definido un derecho
+de inicio de sesión de red, se le concede al usuario acceso de inicio de
+sesión. Si al menos una GPO evaluada contiene la configuración de derechos
+de inicio de sesión de red, se le concede al usuario acceso de inicio de
+sesión solo si dicha GPO o al menos uno de sus grupos forma parte de la
+configuración de directiva.
+                        </para>
+                        <para>
+                            Nota: al utilizar el Editor de Gestión de Directiva de Grupo este valor es
+invocado «Acceder a este equipo desde la red» y «Denegar acceso a este
+equipo desde la red».
+                        </para>
+                        <para>
+                            Es posible añadir otro nombre de servicio PAM al conjunto predeterminado
+usando <quote>+service_name</quote> o explícitamente quitar un nombre de
+servicio PAM desde el conjunto predeterminado usando
+<quote>-service_name</quote>. Por ejemplo, con el fin de reemplazar un
+nombre de servicio PAM por defecto para este derecho de acceso
+(p.ej. <quote>ftp</quote>) con un nombre de servicio PAM apropiado
+(p.ej. <quote>my_pam_service</quote>), utilizaría la configuración
+siguiente: <programlisting>
+ad_gpo_map_network = +mi_servicio_pam, -ftp
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predeterminado: el conjunto predeterminado de nombres de servicio PAM
+incluye:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        ftp
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        samba
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_batch (string)</term>
+                    <listitem>
+                        <para>
+                            Una coma-lista separada de PAM nombres de servicio para qué control de
+acceso GPO basado es evaluó basado en las directivas BatchLogonRight y
+DenyBatchLogonRight de ajustes.  Sólo aquellos GPO está evaluado para qué el
+usuario ha Leído y Aplicado el permiso de Directiva del Grupo (consulte la
+opción <quote>ad_gpo_access_control</quote>).  Si un evaluado GPO contiene
+la denegación del ajuste de acceso del usuario o uno de sus grupos, el
+usuario es denegado el acceso de entrada del lote.  Si ninguno de los GPO
+evaluados tiene un lote de acceso bien definido, el usuario tiene acceso de
+entrada concedido. Si al menos uno GPO evaluado contiene ajustes del lote de
+derechos de acceso correcto, el usuario solo tiene concedido el accedo de
+entrada, si su acceso o al menos uno de sus grupos es parte de los ajustes
+de directivas.
+                        </para>
+                        <para>
+                            Nota: Utilizando el Editor de Gestión de Directiva de Grupo este valor es
+invocado «Concede acceder como una tarea de lote» y «Deniega acceso como una
+tarea de lote».
+                        </para>
+                        <para>
+                            Es posible añadir otro nombre de servicio PAM al conjunto predeterminado
+usando <quote>+service_name</quote> o quitar explícitamente el nombre del
+servicio PAM de los predeterminados usando <quote>-service_name</quote>. Por
+ejemplo, con el destino de reemplazar un nombre de servicio PAM por
+autenticación con Smartcards (e.g. <quote>crond</quote>) con un nombre de
+servicio PAM personalizado (e.g. <quote>my_pam_service</quote>), debería
+usar la siguiente configuración: <programlisting>
+ad_gpo_map_batch = +mi_servicio_pam, -crond
+                            </programlisting>
+                        </para>
+                        <para>Nota: nombre de servicio cron puede diferir según distribución de Linux
+utilizada.</para>
+                        <para>
+                            Predeterminado: el conjunto predeterminado de nombres de servicio PAM
+incluye:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        crond
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_service (cadena)</term>
+                    <listitem>
+                        <para>
+                            UN listado separado por coma de nombres del servicio PAM para el cual el
+acceso de control basado en GPO es evaluado basado en la directiva de
+opciones ServiceLogonRight y DenyServiceLogonRight.  Solo aquellos GPOs son
+evaluados para el cual el usuario ha Leído y Aplicado permiso de Directiva
+de Grupo (consulte la opción <quote>ad_gpo_access_control</quote>).  Si un
+GPO evaluado contiene el parámetro de denegación de acceso del servicio para
+el usuario o uno de sus grupos, el usuario está denegado el servicio de
+acceso definido, el acceso de presentación del usuario es concedido. Si al
+menos uno evaluó GPO contiene opciones de derechos de acceso al servicio, si
+esto o al menos uno de sus grupos es parte de las opciones de directiva.
+                        </para>
+                        <para>
+                            Nota: utilice el Editor de Gestión de Directiva de Grupo este valor es
+invocado «Conceder acceso como un servicio» y «Denegar acceso como un
+servicio».
+                        </para>
+                        <para>
+                            Es posible de añadir un nombre de servicio PAM al conjunto predeterminado
+utilizando <quote>+service_name</quote>.  Desde el conjunto predeterminado
+esté vacío, no es posible de retirar un nombre de servicio PAM desde el
+conjunto predeterminado.  Por ejemplo, para añadir un nombre de servicio pam
+(p. ej. <quote>mi_servicio_pam</quote>), utilizaría la configuración
+siguiente: <programlisting>
+ad_gpo_map_service = +mi_servicio_pam
+                            </programlisting>
+                        </para>
+                        <para>
+                          Predeterminado: no definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_permit (string)</term>
+                    <listitem>
+                        <para>
+                            Un listado separado por coma de nombres del servicio PAM para el cual el
+acceso basado en GPO siempre es concedido, a pesar de cualquier Derecho de
+Acceso GPO.
+                        </para>
+                        <para>
+                            Es posible añadir otro nombre de servicio PAM al conjunto predeterminado
+usando <quote>+nombre_servicio</quote> o quitar explícitamente nombre de
+servicio PAM de los predeterminados usando
+<quote>-nombre_servicio</quote>. Por ejemplo, con el objetivo de reemplazar
+un nombre de servicio PAM por autenticación con Smartcards
+(p.e. <quote>login</quote>) con un nombre de servicio PAM personalizado
+(p.e. <quote>mi_servicio_pam</quote>), debería usar la siguiente
+configuración: <programlisting>
+ad_gpo_map_permit = +mi_servicio_pam, -sudo
+                            </programlisting>
+                        </para>
+                        <para>
+                            Predeterminado: el conjunto predeterminado de nombres de servicio PAM
+incluye:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        polkit-1
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        sudo
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        sudo-i
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        systemd-user
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_map_deny (cadena)</term>
+                    <listitem>
+                        <para>
+                            Un listado separado por coma de nombres de servicio PAM para cual acceso
+basado en GPO siempre está negado, a toda costa de cualquiera de los
+Derechos de Acceso de GPO.
+                        </para>
+                        <para>
+                            Es posible de añadir un nombre de servicio PAM al conjunto predeterminado
+utilizando <quote>+service_name</quote>.  Desde el conjunto predeterminado
+esté vacío, no es posible de retirar un nombre de servicio PAM desde el
+conjunto predeterminado.  Por ejemplo, para añadir un nombre de servicio pam
+(p. ej. <quote>mi_servicio_pam</quote>), utilizaría la configuración
+siguiente: <programlisting>
+ad_gpo_map_deny = +mi_servicio_pam
+                            </programlisting>
+                        </para>
+                        <para>
+                          Predeterminado: no definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_gpo_default_right (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción define como el controla del acceso es evaluado para nombres de
+servicio PAM que no estén explícitamente listado dentro de una de los
+listados explícitamente en una de las opciones de ad_gpo_map_*. Esta opción
+puede ser establecida dentro de dos maneras diferentes. Primero, esta opción
+puede ser fijada para utilizar un derecho de acceso por defecto. Por
+ejemplo, si esta puesta a 'interactive', significa que los nombres del
+servicio PAM no asignado serán procesados basados en las opciones de
+directiva InteractiveLogonRight y
+DenyInteractiveLogonRight. Alternativamente, esta opción puede ser
+establecida a cualquiera siempre que permita o siempre deniegue acceso para
+nombres de servicio PAM no relacionados.
+                        </para>
+                        <para>
+                            Los valores admitidos para esta opción incluyen:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        interactivo
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        remote_interactive
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        network
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        batch
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        service
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        permit
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        deny
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                        </para>
+                        <para>
+                            Predeterminado: deny (deniega)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_maximum_machine_account_password_age (entero)</term>
+                    <listitem>
+                        <para>
+                            SSSD comprobará una vez al día si la contraseña de la cuenta de la máquina
+es más antigua que la dada en días e intenta renovarlo. Un valor de 0
+inhabilita el intento de renovación.
+                        </para>
+                        <para>
+                            Predeterminado: 30 días
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_machine_account_password_renewal_opts (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción sólo sería utilizada para probar la tarea de renovación de
+cuenta de máquina de prueba. La opción espera 3 enteros y una serie separada
+por dos puntos (':'). El primer entero define el intervalo en segundos
+cuanto a menudo la tarea es ejecutada. El segundo especifica el inicio del
+tiempo de espera en segundos antes que la tarea sea ejecutada por primera
+vez al arrancar. El tercer valor opcional especifica un desplazamiento
+aleatorio maximal para los dos valores previos para evitar actualizaciones
+de muchos hosts al mismo tiempo ("tronando problema de manada"). Si falta o
+está vacío este valor en la cadena del valor será utilizado el '0'.
+                        </para>
+                        <para>
+                            El valor de cadena cuarta opcional identifica el ayudante binario el cuál
+sería utilizado para la renovación.  Actualmente <command>adcli</command> y
+<command>realm</command> son mantenidos. Si falta este valor o está vacío en
+la cadena de valor <command>realm</command> será utilizado. Desde que es
+inicializado el ayudante como el usuario SSSD esté ejecutando como ahí
+podría ser el cambio que la renovación fallará si este usuario no tiene
+permisos para modificar el archivo keytab donde las credenciales de la
+cuenta de la máquina esté almacenada. Esto típicamente será el caso para
+<command>adcli</command>.
+                        </para>
+                        <para>
+                            <command>realm</command> no está actualizando directamente el keytab pero
+está invocando el proceso <command>realmd</command>, lo cual ejecuta como
+usuario root, para esta tarea. <command>realmd</command> puede conceder
+acceso a usuarios no privilegiados con la ayuda de PolicyKit y pordefecto
+SSSD proporciona reglas adecuadas para como el usuario SSSD está ejecutando.
+                        </para>
+                        <para>
+                            Predeterminado: 86400:750:300:realm (24h, 12m30s y 5m)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_update_samba_machine_account_password (booleano)</term>
+                    <listitem>
+                        <para>
+                            Si habilitado, cuando SSSD renueva la contraseña de cuenta de la máquina,
+también será actualizada en la base de datos de Samba. Esto previene que
+Samba copie la contraseña de la cuenta de la máquina al salir de la fecha
+cuando la configuración a utilizar AD para autenticación.
+                        </para>
+                        <para>
+                            Predeterminado: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ad_use_ldaps (bool)</term>
+                    <listitem>
+                        <para>
+                            Por defecto SSSD utiliza el puerto LDAP 389 en plano y el puerto 3.628 del
+Catálogo Global. Si esta opción está puesta a True SSSD utilizará el puerto
+636 de LDAPS y el puerto 3.629 de Catálogo Global con protección
+LDAPS. Desde AD no concede tener múltiples capas de cifrado en una única
+conexión y aún deseamos utilizar SASL/GSSAPI o SASL/GSS-SPNEGO para la
+autentificación de la propuesta de SASL maxssf esté establecida a 0 (cero)
+para tales conexiones.
+                        </para>
+                        <para>
+                            Por defecto: False
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update (booleano)</term>
+                    <listitem>
+                        <para>
+                            Opcional. Esta opción dice a SSSD para actualizar automáticamente el
+servidor de Directorio Activo DNS con la dirección IP de este cliente. La
+actualización está asegurada utilizando GSS-TSIG. Como una consecuencia, el
+administrador de Directorio Activo solo necesita conceder actualizaciones
+seguras para la zona de DNS. La dirección IP de la conexión AD LDAP es
+utilizada para las actualizaciones, si no está especificada por otro lado en
+utilizar la opción <quote>dyndns_iface</quote>.
+                        </para>
+                        <para>
+                            NOTA: en sistemas más antiguos (como RHEL 5), para que este comportamiento
+trabaje fiablemente, el reino por defecto Kerberos debe ser fijado
+apropiadamente en /etc/krb5.conf
+                        </para>
+                        <para>
+                            Predeterminado: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_ttl (entero)</term>
+                    <listitem>
+                        <para>
+                            El TTL a aplicar al registro del cliente DNS cuando lo actualiza.  Si
+dyndns_update está a false esto no tiene efecto. Esto anula el TTL del lado
+servidor si se establece por un administrador.
+                        </para>
+                        <para>
+                            Por defecto: 3.600 (segundos)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_iface (cadena)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
+                        </para>
+                        <para>
+                            NOTA: aunque todavía es posible usar la opción anterior
+<emphasis>ipa_dyndns_iface</emphasis>, los usuarios deberían migrar usando
+<emphasis>dyndns_iface</emphasis> en su archivo de configuración.
+                        </para>
+                        <para>
+                            Predeterminado: Usa las direcciones IP de la interfaz las cuales son
+utilizadas para la conexión IPA LDAP
+                        </para>
+                        <para>
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_refresh_interval (entero)</term>
+                    <listitem>
+                        <para>
+                            Qué a menudo tener que el fin posterior actúa periódico DNS actualización
+además de la actualización automática actuada cuándo el fin posterior va
+on-line.  Esta opción es opcional y aplicable solo cuando dyndns_update es
+cierta. Nota que el valor posible más bajo es 60 segundos en-caso si el
+valor está proporcionado menos de 60, el parámetro asumirá valor más bajo
+sólo.
+                        </para>
+                        <para>
+                            Predeterminado: 86400 (24 horas)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update_ptr (booleano)</term>
+                    <listitem>
+                        <para>
+                            Si el registro PTR debería ser explícitamente actualizado cuando se
+actualizan los registros DNS del cliente. Aplicable solo cuando
+dyndns_update está a true.
+                        </para>
+                        <para>
+                            Tenga en cuenta que el parámetro
+<emphasis>dyndns_update_per_family</emphasis> no se aplica a las
+actualizaciones de registros PTR. Estas actualizaciones siempre se envían
+por separado.
+                        </para>
+                        <para>
+                            Predeterminado: True
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_force_tcp (booleano)</term>
+                    <listitem>
+                        <para>
+                            Si la utilidad nsupdate debería usar de manera predeterminada TCP cuando se
+comunica con el servidor DNS.
+                        </para>
+                        <para>
+                            Predeterminado: False (permitir a nsupdate elegir el protocolol)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_auth (cadena)</term>
+                    <listitem>
+                        <para>
+                            Si la utilidad nsupdate debe usar la autenticación GSS-TSIG para
+actualizaciones seguras con el servidor DNS, las actualizaciones inseguras
+se pueden enviar fijando esta opción a 'none'.
+                        </para>
+                        <para>
+                            Predeterminado: GSS-TSIG
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_auth_ptr (cadena)</term>
+                    <listitem>
+                        <para>
+                            Si la utilidad nsupdate debe usar la autenticación GSS-TSIG para
+actualizaciones seguras de PTR con el servidor DNS, las actualizaciones
+inseguras se pueden enviar fijando esta opción a 'none'.
+                        </para>
+                        <para>
+                            Por defecto: lo mismo que dyndns_auth
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_server (cadena)</term>
+                    <listitem>
+                        <para>
+                            El servidor DNA a usar cuando se lleva a cabo una actualización DNS
+update. En la mayoría de las configuraciones se recomienda dejar esta opción
+sin establecer.
+                        </para>
+                        <para>
+                            El establecimiento de esta opción tiene sentido en entornos donde el
+servidor DNS es distinto del servidor de identidad o cuando utilizamos DNS
+cifrado.
+                        </para>
+                        <para>
+                           El parámetro puede ser una cadena simple que contenga el nombre DNS o la
+dirección IP. También puede ser un URI. Este URI puede ser similar a
+<emphasis>dns://servername/</emphasis> o
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            El segundo ejemplo habilita el protocolo DNS sobre TLS para actualizaciones
+de DNS. La utilidad nsupdate debe ser compatible con DoT; consulte la
+instrucción <emphasis>man nsupdate</emphasis> antes de habilitarla en SSSD.
+                        </para>
+                        <para>
+                            Tenga en cuenta que esta opción solo se usará en un intento de recuperación
+cuando el intento anterior de usar la configuración auto-detectada falló o
+cuando está habilitado DNS-over-TLS.
+                        </para>
+                        <para>
+                            Predeterminado: None (permitir a nsupdate elegir el servidor)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_update_per_family (booleano)</term>
+                    <listitem>
+                        <para>
+                            La actualización DNS es llevada a cabo de manera predeterminada en dos pasos
+- actualización IPv4 y después actualización IPv6. En algunos casos puede
+ser deseable llevar a cabo la actualización IPv4 e IPv6 en un único paso.
+                        </para>
+                        <para>
+                            Predeterminado: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cacert (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción especifica el archivo de los certificados de las autoridades
+certificadoras (en formato PEM) para verificar el certificado TLS del
+servidor remoto cuando se utiliza DoT.
+                        </para>
+                        <para>
+                            Predeterminado: None (utiliza almacén de certificado global)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción configura el archivo de certificado(s) para la autenticación del
+transporte DoT al servidor remoto. Se espera que el archivo de la cadena de
+certificados esté en formato PEM.
+                        </para>
+                        <para>
+                            Las opciones <emphasis>dyndns_dot_cert</emphasis> y
+<emphasis>dyndns_dot_key</emphasis> deben estar configuradas para lograr la
+autenticación TLS mutua.
+                        </para>
+                        <para>
+                            Por defecto: None (No utilice autenticación TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción configura el archivo de clave para el cifrado autenticado del
+transporte DoT al servidor remoto. Se espera que el archivo de clave privada
+esté en formato PEM.
+                        </para>
+                        <para>
+                            Por defecto: None (No utilice autenticación TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/override_homedir.xml" />
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/homedir_substring.xml" />
+
+                <varlistentry>
+                    <term>krb5_confd_path (cadena)</term>
+                    <listitem>
+                        <para>
+                            Ruta absoluta de un directorio donde SSSD debe colocar fragmentos de
+configuración de Kerberos.
+                        </para>
+                        <para>
+                            Para deshabilitar la creación de fragmentos de configuración establezca el
+parámetro a 'none'.
+                        </para>
+                        <para>
+                            Predeterminado: no establecido (krb5.include.d subdirectorio del directorio
+pubconf de SSSD)
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ad_modified_defaults.xml" />
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/failover.xml" />
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/service_discovery.xml" />
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ldap_id_mapping.xml" />
+
+    <refsect1 id='example'>
+        <title>EJEMPLO</title>
+        <para>
+            El siguiente ejemplo asume que SSSD está correctamente configurado y
+example.com es uno de los dominios en la sección
+<replaceable>[sssd]</replaceable>. Este ejemplo muestra sólo las opciones
+específicas del proveedor AD.
+        </para>
+        <para>
+<programlisting>
+[domain/EJEMPLO]
+id_provider = ad
+auth_provider = ad
+access_provider = ad
+chpass_provider = ad
+
+ad_server = dc1.ejemplo.com
+ad_hostname = client.ejemplo.com
+ad_domain = ejemplo.com
+</programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='notes'>
+        <title>NOTAS</title>
+        <para>
+            El proveedor de control de acceso AD comprueba si la cuenta está
+expirada. Tiene el mismo efecto que la siguiente configuración del proveedor
+LDAP: <programlisting>
+access_provider = ldap
+ldap_access_order = expire
+ldap_account_expire_policy = ad
+</programlisting>
+        </para>
+        <para>
+            Aun así, a no ser que el <quote>anuncio</quote> proveedor de control del
+acceso es explícitamente configurado, el default proveedor de acceso es
+<quote>permiso</quote>. Complacer nota que si configuras un proveedor de
+acceso otro que <quote>anuncio</quote>, necesitas poner todos los parámetros
+de conexión (como las URL de LDAP y detalles de cifrado manualmente.
+        </para>
+        <para>
+            Cuándo el autofs el proveedor está puesto a <quote>anuncio</quote>, la
+relación de atributo de esquema RFC2307 (nisMap, nisObject, …) Está
+utilizado, porque estos atributos están incluidos en el esquema por defecto
+del Directorio Activo.
+        </para>
+        <para>
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

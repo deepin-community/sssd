@@ -1,12 +1,12 @@
 <refsect1 id='modified-default-options'>
-    <title>MODIFIED DEFAULT OPTIONS</title>
+    <title>OPÇÕES PREDEFINIDAS MODIFICADAS</title>
     <para>
-        Certain option defaults do not match their respective backend provider
-defaults, these option names and AD provider-specific defaults are listed
-below:
+        Certas predefinições de opções não correspondem às suas predefinições de
+backend respectivos, estes nomes de opção e predefinições específicas de
+provedor AD estão listadas em baixo:
     </para>
     <refsect2 id='krb5_modifications'>
-        <title>KRB5 Provider</title>
+        <title>Provedor KRB5</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -21,7 +21,7 @@ below:
         </itemizedlist>
     </refsect2>
     <refsect2 id='ldap_modifications'>
-        <title>LDAP Provider</title>
+        <title>Provedor LDAP</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -63,40 +63,41 @@ below:
                     ldap_sasl_authid = sAMAccountName@REALM (typically SHORTNAME$@REALM)
                 </para>
                 <para>
-                    The AD provider looks for a different principal than the LDAP provider by
-default, because in an Active Directory environment the principals are
-divided into two groups - User Principals and Service Principals. Only User
-Principal can be used to obtain a TGT and by default, computer object's
-principal is constructed from its sAMAccountName and the AD realm. The
-well-known host/hostname@REALM principal is a Service Principal and thus
-cannot be used to get a TGT with.
+                    Por predefinição um provedor AD procura um principal diferente que o
+provedor LDAP, porque num ambiente Active Directory os principais são
+divididos em dois grupos - Principais de Utilizador e Principais de
+Serviço. Apenas o Principal de Utilizador pode ser usado para obter um TGT e
+por predefinição, o principal de objecto de computador é constituído pelo
+seu sAMAccountName e o reino AD, O principal host/hostname@REALM well-known
+é um Principal de Serviço e assim não pode ser usado para se obter TGT com
+ele.
                 </para>
             </listitem>
         </itemizedlist>
     </refsect2>
     <refsect2 id='nss_modifications'>
-        <title>NSS configuration</title>
+        <title>Configuração do NSS</title>
         <itemizedlist>
             <listitem>
                 <para>
                     fallback_homedir = /home/%d/%u
                 </para>
                 <para>
-                    The AD provider automatically sets "fallback_homedir = /home/%d/%u" to
-provide personal home directories for users without the homeDirectory
-attribute. If your AD Domain is properly populated with Posix attributes,
-and you want to avoid this fallback behavior, you can explicitly set
-"fallback_homedir = %o".
+                    O provedor AD define automaticamente "fallback_homedir = /home/%d/%u" para
+fornecer directórios home pessoais para utilizadores sem o atributo
+homeDirectory. Se o seu Domínio AD está povoado apropriadamente com
+atributos Posix, e você quer evitar este comportamento de recurso, você pode
+explicitamente definir "fallback_homedir = %o".
                 </para>
                 <para>
-                    Note that the system typically expects a home directory in /home/%u
-folder. If you decide to use a different directory structure, some other
-parts of your system may need adjustments.
+                    Note que o sistema tipicamente espera um directório home na pasta /home/%u:
+Se você decidir usar uma estrutura diferente de directórios, outras partes
+do seu sistema podem precisar de ser ajustadas.
                 </para>
                 <para>
-                    For example automated creation of home directories in combination with
-selinux requires selinux adjustment, otherwise the home directory will be
-created with wrong selinux context.
+                    Como exemplo a criação automática de directórios home em combinação com
+selinux requer afinação do selinux, caso contrário o directório home será
+criado com contexto selinux errado.
                 </para>
             </listitem>
         </itemizedlist>

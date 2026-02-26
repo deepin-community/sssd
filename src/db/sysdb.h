@@ -30,7 +30,6 @@
 
 #define CACHE_SYSDB_FILE "cache_%s.ldb"
 #define CACHE_TIMESTAMPS_FILE "timestamps_%s.ldb"
-#define LOCAL_SYSDB_FILE "sssd.ldb"
 
 #define SYSDB_INDEXES "@INDEXLIST"
 #define SYSDB_IDXATTR "@IDXATTR"
@@ -134,6 +133,7 @@
 #define SYSDB_CANONICAL_UPN "canonicalUserPrincipalName"
 #define SYSDB_CCACHE_FILE "ccacheFile"
 #define SYSDB_DN_FOR_MEMBER_HASH_TABLE "dnForMemberHashTable"
+#define SYSDB_AD_SAMACCOUNTNAME "adSAMAccountName"
 
 #define SYSDB_ORIG_DN "originalDN"
 #define SYSDB_ORIG_OBJECTCLASS "originalObjectClass"
@@ -170,9 +170,9 @@
 #define SYSDB_SUBDOMAIN_DNS "dnsName"
 #define SYSDB_SUBDOMAIN_ID "domainID"
 #define SYSDB_SUBDOMAIN_MPG "mpg"
-#define SYSDB_SUBDOMAIN_ENUM "enumerate"
 #define SYSDB_SUBDOMAIN_FOREST "memberOfForest"
 #define SYSDB_SUBDOMAIN_TRUST_DIRECTION "trustDirection"
+#define SYSDB_SUBDOMAIN_TRUST_TYPE "trustType"
 #define SYSDB_UPN_SUFFIXES "upnSuffixes"
 #define SYSDB_SITE "site"
 #define SYSDB_ENABLED "enabled"
@@ -206,13 +206,15 @@
 #define SYSDB_VIEW_NAME "viewName"
 #define SYSDB_OVERRIDE_CLASS "override"
 #define SYSDB_OVERRIDE_ANCHOR_UUID "overrideAnchorUUID"
+#define SYSDB_OVERRIDE_ANCHOR "overrideAnchor"
 #define SYSDB_OVERRIDE_USER_CLASS "userOverride"
 #define SYSDB_OVERRIDE_GROUP_CLASS "groupOverride"
 #define SYSDB_OVERRIDE_DN "overrideDN"
 #define SYSDB_OVERRIDE_OBJECT_DN "overrideObjectDN"
 #define SYSDB_USE_DOMAIN_RESOLUTION_ORDER "useDomainResolutionOrder"
 #define SYSDB_DOMAIN_RESOLUTION_ORDER "domainResolutionOrder"
-#define SYSDB_PASSKEY_USER_VERIFICATION "passkeyUserVerification"
+#define SYSDB_DOMAIN_TEMPLATE_SHELL "templateLoginShell"
+#define SYSDB_DOMAIN_TEMPLATE_HOMEDIR "templateHomeDirectory"
 #define SYSDB_SESSION_RECORDING "sessionRecording"
 
 #define SYSDB_NEXTID_FILTER "("SYSDB_NEXTID"=*)"
@@ -238,7 +240,7 @@
 #define SYSDB_GRGID_MPG_FILTER "(|(&("SYSDB_GC")("SYSDB_GIDNUM"=%lu))(&("SYSDB_UC")("SYSDB_GIDNUM"=%lu)("SYSDB_UIDNUM"=%lu)))"
 #define SYSDB_GRENT_MPG_FILTER "("SYSDB_MPGC")"
 
-#define SYSDB_INITGR_FILTER "(&("SYSDB_GC")("SYSDB_GIDNUM"=*))"
+#define SYSDB_INITGR_FILTER "("SYSDB_GC")"
 
 #define SYSDB_NETGR_FILTER "(&("SYSDB_NC")(|("SYSDB_NAME_ALIAS"=%s)("SYSDB_NAME_ALIAS"=%s)("SYSDB_NAME"=%s)))"
 #define SYSDB_NETGR_TRIPLES_FILTER "(|("SYSDB_NAME_ALIAS"=%s)("SYSDB_NAME"=%s)("SYSDB_NAME_ALIAS"=%s)("SYSDB_MEMBEROF"=%s))"
@@ -276,19 +278,44 @@
                         SYSDB_ORIG_DN, \
                         NULL}
 
-#define SYSDB_GRSRC_ATTRS {SYSDB_NAME, SYSDB_GIDNUM, \
-                           SYSDB_MEMBERUID, \
-                           SYSDB_MEMBER, \
-                           SYSDB_GHOST, \
-                           SYSDB_DEFAULT_ATTRS, \
-                           SYSDB_SID_STR, \
-                           SYSDB_OVERRIDE_DN, \
-                           SYSDB_OVERRIDE_OBJECT_DN, \
-                           SYSDB_DEFAULT_OVERRIDE_NAME, \
-                           SYSDB_UUID, \
-                           ORIGINALAD_PREFIX SYSDB_NAME, \
-                           ORIGINALAD_PREFIX SYSDB_GIDNUM, \
-                           NULL}
+/* Strictly speaking it should return 'const char * const *' but
+ * that gets really unreadable.
+ */
+__attribute__((always_inline))
+static inline const char **SYSDB_GRSRC_ATTRS(const struct sss_domain_info *domain)
+{
+    static const char * __SYSDB_GRSRC_ATTRS_NO_MEMBERS[] = {
+        SYSDB_NAME, SYSDB_GIDNUM,
+        SYSDB_DEFAULT_ATTRS,
+        SYSDB_SID_STR,
+        SYSDB_OVERRIDE_DN,
+        SYSDB_OVERRIDE_OBJECT_DN,
+        SYSDB_DEFAULT_OVERRIDE_NAME,
+        SYSDB_UUID,
+        NULL
+    };
+    static const char * __SYSDB_GRSRC_ATTRS_WITH_MEMBERS[] = {
+        SYSDB_NAME, SYSDB_GIDNUM,
+        SYSDB_MEMBERUID,
+        SYSDB_MEMBER,
+        SYSDB_GHOST,
+        SYSDB_DEFAULT_ATTRS,
+        SYSDB_SID_STR,
+        SYSDB_OVERRIDE_DN,
+        SYSDB_OVERRIDE_OBJECT_DN,
+        SYSDB_DEFAULT_OVERRIDE_NAME,
+        SYSDB_UUID,
+        ORIGINALAD_PREFIX SYSDB_NAME,
+        ORIGINALAD_PREFIX SYSDB_GIDNUM,
+        NULL
+    };
+
+    if (domain && domain->ignore_group_members) {
+        return __SYSDB_GRSRC_ATTRS_NO_MEMBERS;
+    } else {
+        return __SYSDB_GRSRC_ATTRS_WITH_MEMBERS;
+    }
+}
 
 #define SYSDB_NETGR_ATTRS {SYSDB_NAME, SYSDB_NETGROUP_TRIPLE, \
                            SYSDB_NETGROUP_MEMBER, \
@@ -564,8 +591,9 @@ errno_t sysdb_subdomain_store(struct sysdb_ctx *sysdb,
                               const char *flat_name, const char *dns_name,
                               const char *domain_id,
                               enum sss_domain_mpg_mode mpg_mode,
-                              bool enumerate, const char *forest,
+                              const char *forest,
                               uint32_t trust_direction,
+                              uint32_t trust_type,
                               struct ldb_message_element *upn_suffixes);
 
 errno_t sysdb_update_subdomains(struct sss_domain_info *domain,
@@ -603,10 +631,10 @@ struct sss_domain_info *new_subdomain(TALLOC_CTX *mem_ctx,
                                       const char *dns_name,
                                       const char *id,
                                       enum sss_domain_mpg_mode mpg_mode,
-                                      bool enumerate,
                                       const char *forest,
                                       const char **upn_suffixes,
                                       uint32_t trust_direction,
+                                      uint32_t trust_type,
                                       struct confdb_ctx *confdb,
                                       bool enabled);
 
@@ -626,6 +654,23 @@ errno_t sysdb_update_view_name(struct sysdb_ctx *sysdb, const char *view_name);
 
 errno_t sysdb_get_view_name(TALLOC_CTX *mem_ctx, struct sysdb_ctx *sysdb,
                             char **view_name);
+
+errno_t sysdb_update_override_template(struct sysdb_ctx *sysdb,
+                                       const char *view_name,
+                                       const char *anchor,
+                                       const char *home_dir,
+                                       const char *login_shell);
+
+errno_t sysdb_domain_update_domain_template(struct sss_domain_info *parent,
+                                            struct sysdb_ctx *sysdb,
+                                            const char *subdom_name,
+                                            const char *home_dir,
+                                            const char *login_shell);
+
+errno_t sysdb_update_domain_template(struct sysdb_ctx *sysdb,
+                                     struct ldb_dn *dn,
+                                     const char *home_dir,
+                                     const char *login_shell);
 
 errno_t sysdb_update_view_domain_resolution_order(
                                         struct sysdb_ctx *sysdb,
@@ -664,6 +709,8 @@ errno_t sysdb_invalidate_overrides(struct sysdb_ctx *sysdb);
 
 errno_t sysdb_apply_default_override(struct sss_domain_info *domain,
                                      struct sysdb_attrs *override_attrs,
+                                     const char *global_template_homedir,
+                                     const char *global_template_shell,
                                      struct ldb_dn *obj_dn);
 
 errno_t sysdb_search_by_orig_dn(TALLOC_CTX *mem_ctx,
@@ -731,8 +778,7 @@ errno_t sysdb_add_overrides_to_object(struct sss_domain_info *domain,
                                       const char **req_attrs);
 
 errno_t sysdb_add_group_member_overrides(struct sss_domain_info *domain,
-                                         struct ldb_message *obj,
-                                         bool expect_override_dn);
+                                         struct ldb_message *obj);
 
 errno_t sysdb_getpwnam_with_views(TALLOC_CTX *mem_ctx,
                                   struct sss_domain_info *domain,
@@ -803,9 +849,8 @@ struct sysdb_upgrade_ctx {
 
 int sysdb_init_ext(TALLOC_CTX *mem_ctx,
                    struct sss_domain_info *domains,
-                   struct sysdb_upgrade_ctx *upgrade_ctx,
-                   bool chown_dbfile,
-                   uid_t uid, gid_t gid);
+                   bool create_missing_cache,
+                   struct sysdb_upgrade_ctx *upgrade_ctx);
 
 /* used to initialize only one domain database.
  * Do NOT use if sysdb_init has already been called */
@@ -825,12 +870,6 @@ int sysdb_getpwnam(TALLOC_CTX *mem_ctx,
 int sysdb_getpwuid(TALLOC_CTX *mem_ctx,
                    struct sss_domain_info *domain,
                    uid_t uid,
-                   struct ldb_result **res);
-
-int sysdb_getpwupn(TALLOC_CTX *mem_ctx,
-                   struct sss_domain_info *domain,
-                   bool domain_scope,
-                   const char *upn,
                    struct ldb_result **res);
 
 int sysdb_enumpwent(TALLOC_CTX *mem_ctx,
@@ -1022,6 +1061,13 @@ int sysdb_search_user_by_upn_res(TALLOC_CTX *mem_ctx,
                                  const char **attrs,
                                  struct ldb_result **out_res);
 
+int sysdb_search_user_by_upn_with_view_res(TALLOC_CTX *mem_ctx,
+                                           struct sss_domain_info *domain,
+                                           bool domain_scope,
+                                           const char *upn,
+                                           const char **attrs,
+                                           struct ldb_result **out_res);
+
 int sysdb_search_user_by_upn(TALLOC_CTX *mem_ctx,
                              struct sss_domain_info *domain,
                              bool domain_scope,
@@ -1120,7 +1166,9 @@ int sysdb_add_user(struct sss_domain_info *domain,
 
 /* Add group (only basic attrs and w/o checks) */
 int sysdb_add_basic_group(struct sss_domain_info *domain,
-                          const char *name, gid_t gid);
+                          const char *name,
+                          bool is_posix,
+                          gid_t gid);
 
 /* Add group (all checks) */
 int sysdb_add_group(struct sss_domain_info *domain,
@@ -1204,6 +1252,13 @@ errno_t sysdb_store_override(struct sss_domain_info *domain,
                              const char *view_name,
                              enum sysdb_member_type type,
                              struct sysdb_attrs *attrs, struct ldb_dn *obj_dn);
+
+errno_t sysdb_store_override_template(struct sss_domain_info *domain,
+                                      struct sysdb_attrs *attrs,
+                                      const char *global_template_homedir,
+                                      const char *global_template_shell,
+                                      const char *view_name,
+                                      struct ldb_dn *obj_dn);
 
 /*
  * Cache the time of last initgroups invocation. Typically this is not done when
@@ -1392,7 +1447,7 @@ errno_t sysdb_remove_attrs(struct sss_domain_info *domain,
                            char **remove_attrs);
 
 /**
- * @brief Return direct parents of an object in the cache
+ * @brief Return name of direct parents of an object in the cache
  *
  * @param[in]  mem_ctx         Memory context the result should be allocated
  *                             on
@@ -1417,6 +1472,37 @@ errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
                                  enum sysdb_member_type mtype,
                                  const char *name,
                                  char ***_direct_parents);
+
+/**
+ * @brief Return requested attribute of direct parents of an object in the cache
+ *
+ * @param[in]  mem_ctx         Memory context the result should be allocated
+ *                             on
+ * @param[in]  dom             domain the object is in
+ * @param[in]  parent_dom      domain which should be searched for direct
+ *                             parents if NULL all domains in the given cache
+ *                             are searched
+ * @param[in]  mtype           Type of the object, SYSDB_MEMBER_USER or
+ *                             SYSDB_MEMBER_GROUP
+ * @param[in]  name            Name of the object
+ * @param[in]  attr_name       Name of the attribute to return, if NULL
+ *                             SYSDB_NAME will be used
+ * @param[out] _direct_parents List of the requested attribute of the direct
+ *                             parent groups
+ *
+ *
+ * @return
+ *  - EOK:    success
+ *  - EINVAL: wrong mtype
+ *  - ENOMEM: Memory allocation failed
+ */
+errno_t sysdb_get_direct_parents_ex(TALLOC_CTX *mem_ctx,
+                                    struct sss_domain_info *dom,
+                                    struct sss_domain_info *parent_dom,
+                                    enum sysdb_member_type mtype,
+                                    const char *name,
+                                    const char *attr_name,
+                                    char ***_direct_parents);
 
 /* === Functions related to ID-mapping === */
 
@@ -1499,6 +1585,7 @@ errno_t sysdb_remove_mapped_data(struct sss_domain_info *domain,
 #define SYSDB_GPO_GUID_ATTR "gpoGUID"
 #define SYSDB_GPO_VERSION_ATTR "gpoVersion"
 #define SYSDB_GPO_TIMEOUT_ATTR "gpoPolicyFileTimeout"
+#define SYSDB_GPO_PATH_ATTR "gpoPath"
 
 #define SYSDB_TMPL_GPO_BASE SYSDB_GPO_CONTAINER","SYSDB_DOM_BASE
 #define SYSDB_TMPL_GPO SYSDB_GPO_GUID_ATTR"=%s,"SYSDB_TMPL_GPO_BASE
@@ -1511,7 +1598,9 @@ errno_t sysdb_remove_mapped_data(struct sss_domain_info *domain,
         NULL }
 
 errno_t sysdb_gpo_store_gpo(struct sss_domain_info *domain,
+                            const char *gpo_dpname,
                             const char *gpo_guid,
+                            const char *gpo_cache_path,
                             int gpo_version,
                             int cache_timeout,
                             time_t now);
@@ -1524,6 +1613,18 @@ errno_t sysdb_gpo_get_gpo_by_guid(TALLOC_CTX *mem_ctx,
 errno_t sysdb_gpo_get_gpos(TALLOC_CTX *mem_ctx,
                            struct sss_domain_info *domain,
                            struct ldb_result **_result);
+
+struct ldb_dn *sysdb_gpos_base_dn(TALLOC_CTX *mem_ctx,
+                                  struct sss_domain_info *dom);
+
+errno_t
+sysdb_gpo_canon_guid(const char *gpo_guid,
+                     TALLOC_CTX *mem_ctx,
+                     char **canon_gpo_guid);
+
+errno_t sysdb_gpo_delete_gpo_by_guid(TALLOC_CTX *mem_ctx,
+                                     struct sss_domain_info *domain,
+                                     const char *gpo_guid);
 
 /* === Functions related to GPO Result object === */
 
@@ -1551,11 +1652,6 @@ errno_t sysdb_get_sids_of_members(TALLOC_CTX *mem_ctx,
                                   const char ***_sids,
                                   const char ***_dns,
                                   size_t *_n);
-
-errno_t sysdb_get_user_members_recursively(TALLOC_CTX *mem_ctx,
-                                           struct sss_domain_info *dom,
-                                           struct ldb_dn *group_dn,
-                                           struct ldb_result **members);
 
 errno_t sysdb_handle_original_uuid(const char *orig_name,
                                    struct sysdb_attrs *src_attrs,

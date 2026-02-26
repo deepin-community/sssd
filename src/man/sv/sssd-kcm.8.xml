@@ -35,9 +35,8 @@ till som en <quote>”KCM-server"</quote>.  Klienten och servern kommunicerar
 via ett UNIX-uttag.
         </para>
         <para>
-            KCM-servern håller reda på ägaren till varje kreditiv-cache och utför
-åtkomstkontroller baserat på AID:t och GID:t på KCM-klienten.
-Root-användaren har åtkomst till alla kreditiv-cachar.
+            The KCM server keeps track of each credential caches's owner and performs
+access check control based on the UID and GID of the KCM client.
         </para>
         <para>
             KCM-kreditiv-cachen har flera intressanta egenskaper:

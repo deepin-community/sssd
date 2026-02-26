@@ -258,12 +258,13 @@ ad_enabled_domains = sales.example.com, eng.example.com
                     <term>ad_access_filter (string)</term>
                     <listitem>
                         <para>
-                            This option specifies LDAP access control
-                            filter that the user must match in order
-                            to be allowed access. Please note that the
-                            <quote>access_provider</quote> option must be
-                            explicitly set to <quote>ad</quote> in order
-                            for this option to have an effect.
+                            Specifies an LDAP access control filter that a user
+                            must match to gain access. The <quote>access_provider</quote>
+                            option must be explicitly set to <quote>ad</quote>
+                            for this option to take effect. If you want to use the
+                            <quote>ad_access_filter</quote> as the only access control
+                            scheme, you must disable GPO based access control
+                            (see option <quote>ad_gpo_access_control</quote> for details).
                         </para>
                         <para>
                             The option also supports specifying different
@@ -1079,15 +1080,43 @@ ad_gpo_map_deny = +my_pam_service
                     <listitem>
                         <para>
                             This option should only be used to test the machine
-                            account renewal task. The option expects 2 integers
-                            separated by a colon (':'). The first integer
-                            defines the interval in seconds how often the task
-                            is run. The second specifies the initial timeout in
-                            seconds before the task is run for the first time
-                            after startup.
+                            account renewal task. The option expects 3 integers
+                            and a string separated by a colon (':'). The first
+                            integer defines the interval in seconds how often
+                            the task is run. The second specifies the initial
+                            timeout in seconds before the task is run for the
+                            first time after startup. The optional third value
+                            specifies a maximal random offset to the previous
+                            two values to avoid updates of many hosts at the
+                            same time ("thundering herd problem"). If this
+                            value is missing or empty in the value string '0'
+                            will be used.
                         </para>
                         <para>
-                            Default: 86400:750 (24h and 15m)
+                            The optional fourth string value identifies the
+                            helper binary which should be used for the renewal.
+                            Currently <command>adcli</command> and
+                            <command>realm</command> are supported. If this
+                            value is missing or empty in the value string
+                            <command>realm</command> will be used. Since
+                            the helper is started as the user SSSD is running
+                            as there might be the chance that the renewal will
+                            fail if this user does not has permissions to
+                            modify the keytab file where the machine account
+                            credentials are stored. This will typically be the
+                            case for <command>adcli</command>.
+                        </para>
+                        <para>
+                            <command>realm</command> is not updating the keytab
+                            directly but is calling the
+                            <command>realmd</command> process, which runs as
+                            root user, for this task. <command>realmd</command>
+                            can allow access to non-privileged users with the
+                            help of PolicyKit and by default SSSD provides
+                            suitable rules for the user SSSD is running as.
+                        </para>
+                        <para>
+                            Default: 86400:750:300:realm (24h, 12m30s and 5m)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1121,55 +1150,6 @@ ad_gpo_map_deny = +my_pam_service
                             SASL/GSSAPI or SASL/GSS-SPNEGO for authentication
                             the SASL security property maxssf is set to 0 (zero)
                             for those connections.
-                        </para>
-                        <para>
-                            Default: False
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>ad_allow_remote_domain_local_groups (boolean)</term>
-                    <listitem>
-                        <para>
-                            If this option is set to <quote>true</quote> SSSD
-                            will not filter out Domain Local groups from remote
-                            domains in the AD forest. By default they are
-                            filtered out e.g. when following a nested group
-                            hierarchy in remote domains because they are not
-                            valid in the local domain. To be compatible with
-                            other solutions which make AD users and groups
-                            available on Linux client this option was added.
-                        </para>
-                        <para>
-                            Please note that setting this option to
-                            <quote>true</quote> will be against the intention of
-                            Domain Local group in Active Directory and
-                            <emphasis>SHOULD ONLY BE USED TO FACILITATE
-                            MIGRATION FROM OTHER SOLUTIONS</emphasis>. Although
-                            the group exists and user can be member of the group
-                            the intention is that the group should be only used
-                            in the domain it is defined and in no others. Since
-                            there is only one type of POSIX groups the only way
-                            to achieve this on the Linux side is to ignore those
-                            groups. This is also done by Active Directory as can
-                            be seen in the PAC of the Kerberos ticket for a
-                            local service or in tokenGroups requests where
-                            remote Domain Local groups are missing as well.
-                        </para>
-                        <para>
-                            Given the comments above, if this option is set to
-                            <quote>true</quote> the tokenGroups request must be
-                            disabled by setting
-                            <quote>ldap_use_tokengroups</quote> to
-                            <quote>false</quote> to get consistent
-                            group-memberships of a users. Additionally the
-                            Global Catalog lookup should be skipped as well by
-                            setting <quote>ad_enable_gc</quote> to
-                            <quote>false</quote>. Finally it might be necessary
-                            to modify <quote>ldap_group_nesting_level</quote> if
-                            the remote Domain Local groups can only be found
-                            with a deeper nesting level.
                         </para>
                         <para>
                             Default: False
@@ -1223,15 +1203,50 @@ ad_gpo_map_deny = +my_pam_service
                             Optional. Applicable only when dyndns_update
                             is true. Choose the interface or a list of interfaces
                             whose IP addresses should be used for dynamic DNS
-                            updates. Special value <quote>*</quote> implies that
-                            IPs from all interfaces should be used.
+                            updates. The name of interface can be a wildcard
+                            pattern prefixed with <emphasis>!</emphasis> for
+                            interface excluding. First match stops the
+                            evaluation. For example list
+                            <emphasis>!eth1, *</emphasis> instruct SSSD to use
+                            all interfaces except <emphasis>eth1</emphasis>.
+                            See <emphasis>man 7 glob</emphasis> for
+                            details about patterns.
+                        </para>
+                        <para>
+                            NOTE: While it is still possible to use the old
+                            <emphasis>ipa_dyndns_iface</emphasis> option, users
+                            should migrate to using <emphasis>dyndns_iface</emphasis>
+                            in their config file.
                         </para>
                         <para>
                             Default: Use the IP addresses of the interface which
                             is used for AD LDAP connection
                         </para>
                         <para>
-                            Example: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when
+                            <emphasis>dyndns_update</emphasis> is true.
+                            A list of IP addresses or IP networks to be used for
+                            dynamic DNS updates. Network addresses must be in
+                            CIDR format. An entry can be prefixed with
+                            <emphasis>!</emphasis> to indicate exclusion.
+                            The <emphasis>best match</emphasis> is used to
+                            determine whether an address is included or excluded
+                            (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1327,12 +1342,26 @@ ad_gpo_map_deny = +my_pam_service
                         <para>
                             Setting this option makes sense for environments
                             where the DNS server is different from the identity
-                            server.
+                            server or when we use encrypted DNS.
+                        </para>
+                        <para>
+                           The parameter can be a simple string containing
+                           DNS name or IP address. It can also be an URI.
+                           The URI can look like
+                           <emphasis>dns://servername/</emphasis> or
+                           <emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            The second example enables DNS-over-TLS protocol for
+                            DNS updates. The nsupdate utility must support DoT -
+                            check the <emphasis>man nsupdate</emphasis> before
+                            enabling it in SSSD.
                         </para>
                         <para>
                             Please note that this option will be only used in
                             fallback attempt when previous attempt using
-                            autodetected settings failed.
+                            autodetected settings failed or when DNS-over-TLS
+                            is enabled.
                         </para>
                         <para>
                             Default: None (let nsupdate choose the server)
@@ -1351,6 +1380,56 @@ ad_gpo_map_deny = +my_pam_service
                         </para>
                         <para>
                             Default: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cacert (string)</term>
+                    <listitem>
+                        <para>
+                            This option specifies the file of the certificate
+                            authorities certificates (in PEM format) in order
+                            to verify the remote server TLS certificate when
+                            using  DoT.
+                        </para>
+                        <para>
+                            Default: None (use global certificate store)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (string)</term>
+                    <listitem>
+                        <para>
+                            This option sets the certificate(s) file for
+                            authentication for the DoT transport to the remote
+                            server. The certificate chain file is expected to
+                            be in PEM format.
+                        </para>
+                        <para>
+                            The <emphasis>dyndns_dot_cert</emphasis> and
+                            <emphasis>dyndns_dot_key</emphasis> options must be
+                            both set to achieve mutual TLS authentication.
+                        </para>
+                        <para>
+                            Default: None (Do not use TLS authentication)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (string)</term>
+                    <listitem>
+                        <para>
+                            This option sets the key file for authenticated
+                            encryption for the DoT transport to the remote
+                            server. The private key file is expected to
+                            be in PEM format.
+                        </para>
+                        <para>
+                            Default: None (Do not use TLS authentication)
                         </para>
                     </listitem>
                 </varlistentry>

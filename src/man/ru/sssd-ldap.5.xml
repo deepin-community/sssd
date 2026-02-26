@@ -30,13 +30,16 @@
             Возможно настроить SSSD на использование нескольких доменов LDAP.
         </para>
         <para>
-            LDAP back end supports id, auth, access and chpass providers. If you want to
-authenticate against an LDAP server either TLS/SSL or LDAPS is
-required. <command>sssd</command> <emphasis>does not</emphasis> support
-authentication over an unencrypted channel.  Even if the LDAP server is used
-only as an identity provider, an encrypted channel is strongly
-recommended. Please refer to <quote>ldap_access_filter</quote> config option
-for more information about using LDAP as an access provider.
+            Внутренний сервер LDAP поддерживает поставщиков данных идентификаторов (id),
+проверки подлинности (auth), управления доступом (access) и смены пароля
+(chpass). Если проверка подлинности должна выполняться на сервере LDAP,
+требуется TLS/SSL или LDAPS. <command>sssd</command> <emphasis>не</emphasis>
+поддерживает проверку подлинности по незашифрованному каналу. Даже если
+сервер LDAP используется только как поставщик данных идентификации,
+настоятельно рекомендуется использовать зашифрованный канал. Дополнительные
+сведения об использовании LDAP в качестве поставщика данных управления
+доступом доступны в описании параметра конфигурации
+<quote>ldap_access_filter</quote>.
         </para>
     </refsect1>
 
@@ -148,6 +151,44 @@ LDAP. Использование нескольких значений не по
                 </varlistentry>
 
                 <varlistentry>
+                    <term>ldap_read_rootdse (строка)</term>
+                    <listitem>
+                        <para>
+                            SSSD считывает RootDSE для получения информации о LDAP и его
+возможностях. По умолчанию это выполняется анонимно. Однако сервер LDAP
+может запретить такой доступ. В таких случаях можно использовать этот
+параметр для управления поведением SSSD.
+                        </para>
+                        <para>
+                            Допустимые значения:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        anonymous
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        authenticated
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        never
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                            По умолчанию, при использовании параметра «anonymous», SSSD пытается считать
+RootDSE анонимно. Если попытка неудачна, SSSD повторяет её с
+аутентификацией.
+                        </para>
+                        <para>
+                            По умолчанию: anonymous
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
                     <term>ldap_schema (строка)</term>
                     <listitem>
                         <para>
@@ -212,6 +253,14 @@ rfc2307bis и IPA записи участников групп упорядоч�
                                 <listitem>
                                     <para>
                                         ldap_modify — прямое изменение userPassword (не рекомендуется).
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        exop_force — попытаться использовать расширенную операцию изменения пароля
+(RFC 3062), даже если не осталось льготных входов. В зависимости от типа и
+конфигурации LDAP-сервера смена пароля может завершиться неудачей, поскольку
+аутентифицированная привязка может быть невозможна.
                                     </para>
                                 </listitem>
                             </itemizedlist>
@@ -294,10 +343,6 @@ rfc2307bis и IPA записи участников групп упорядоч�
                         <para>
                             Указывает время ожидания SSSD (в секундах) перед обновлением своего кэша
 перечисленных записей.
-                        </para>
-                        <para>
-                            Этот параметр также может быть задан для каждого поддомена отдельно или
-унаследован с помощью <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             По умолчанию: 300
@@ -397,6 +442,20 @@ Server 2008 и выше, также будет необходимо отключ
                     </listitem>
                 </varlistentry>
 
+                <varlistentry condition="with_subid">
+                    <term>ldap_subid_ranges_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Необязательный параметр. Использовать указанную строку как базу поиска
+объектов, связанных с подчиненными диапазонами объектов.
+                        </para>
+                        <para>
+                            Default: the value of <emphasis>cn=subids,%basedn</emphasis> for IPA
+otherwise <emphasis>ldap_search_base</emphasis>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
                 <varlistentry>
                     <term>ldap_service_search_base (строка)</term>
                     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ldap_search_bases.xml" />
@@ -442,10 +501,6 @@ Server 2008 и выше, также будет необходимо отключ
 перечислений пользователей и групп, по истечении которого поиск будет
 отменён и будут возвращены кэшированные результаты (и выполнен переход в
 автономный режим)
-                        </para>
-                        <para>
-                            Этот параметр также может быть задан для каждого поддомена отдельно или
-унаследован с помощью <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             По умолчанию: 60
@@ -613,12 +668,15 @@ RootDSE, но не смогут использовать его.
                             Отключить получение диапазонов Active Directory.
                         </para>
                         <para>
-                            Active Directory ограничивает количество участников, которые могут быть
-получены за один поиск, с помощью политики MaxValRange (значение по
-умолчанию — 1500 участников). Если группа содержит большее количество
-участников, ответ будет включать специфичное для AD расширение
-диапазона. Этот параметр отключает обработку расширения диапазона,
-следовательно, большие группы будут показаны как группы без участников.
+                            Active Directory ограничивает количество участников, которые можно получить
+за один запрос, с помощью политики MaxValRange, значение которой по
+умолчанию составляет 1500 участников. Если группа содержит более 1500
+участников, в ответе используется специфичное для AD расширение
+диапазона. При включении этого параметра SSSD не будет обрабатывать
+расширение диапазона. В результате большие группы будут отображаться как не
+имеющие участников. Этот параметр не позволяет SSSD считывать последующие
+диапазоны. Чтобы получить всех участников группы, необходимо увеличить
+значение MaxValRange в настройках Active Directory.
                         </para>
                         <para>
                             По умолчанию: false
@@ -768,7 +826,8 @@ AD, не имеет доступа к определенной записи ил
                             Позволяет указать путь к каталогу, в котором хранятся сертификаты центра
 сертификации, каждый в своём файле. Обычно имена файлов — это хэш
 сертификата, за которым следует «.0». Для создания корректных имён можно
-использовать команду <command>cacertdir_rehash</command>, если она доступна.
+использовать команду <command>openssl rehash</command> или
+<command>c_rehash</command>, если соответствующая команда доступна.
                         </para>
                         <para>
                             По умолчанию: использовать стандартные параметры OpenLDAP, которые обычно
@@ -821,12 +880,13 @@ AD, не имеет доступа к определенной записи ил
                     <term>ldap_id_use_start_tls (логическое значение)</term>
                     <listitem>
                         <para>
-                            Specifies that the id_provider connection must also use <systemitem
-class="protocol">tls</systemitem> to protect the channel.
-<emphasis>true</emphasis> is strongly recommended for security reasons.
+                            Позволяет указать, что подключение id_provider должно также использовать
+<systemitem class="protocol">tls</systemitem> для защиты канала. Из
+соображений безопасности настоятельно рекомендуется использовать значение
+<emphasis>true</emphasis>.
                         </para>
                         <para>
-                            По умолчанию: false
+                            По умолчанию: true
                         </para>
                     </listitem>
                 </varlistentry>
@@ -909,6 +969,7 @@ netbiosname$@REALM
 host/hostname@REALM
 *$@REALM
 host/*@REALM
+netbiosname$@*
 host/*
                             </programlisting> Если они не найдены,
 возвращается первый участник из таблицы ключей.
@@ -1168,10 +1229,10 @@ chpass_provider=krb5.
 данными о количестве дней с момента выполнения действия по смены пароля.
                         </para>
                         <para>
-                            Рекомендуется установить этот параметр явно, если используется
-«ldap_pwd_policy = shadow», чтобы сообщить SSSD, будет ли сервер LDAP
-автоматически обновлять атрибут shadowLastChange LDAP после смены пароля или
-SSSD должен обновить его.
+                            It is recommended to set this option explicitly if "ldap_pwd_policy =
+shadow" is used to let SSSD know if the LDAP server will update
+shadowLastChange LDAP attribute automatically after a password change or if
+SSSD has to update it.
                         </para>
                         <para>
                             По умолчанию: false
@@ -1316,31 +1377,32 @@ pwd_expire_policy_renew: </emphasis> эти параметры полезны, �
 и для проверки подлинности используются не пароли, а, например, ключи SSH.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Разница между этими параметрами заключается в действиях, которые
+предпринимаются, если срок действия пароля пользователя истёк:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_reject - user is denied to log in,
+                                        pwd_expire_policy_reject — пользователю отказано во входе в систему,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_warn - user is still able to log in,
+                                        pwd_expire_policy_warn — пользователь по-прежнему может войти в систему,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                        pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                        pwd_expire_policy_renew — пользователю будет предложено немедленно изменить
+свой пароль.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
                             Следует учитывать, что для работы этой возможности необходимо указать
-«access_provider = ldap». Также необходимо указать соответствующую политику
-паролей в качестве значения параметра «ldap_pwd_policy».
+«access_provider = ldap». Кроме того, в качестве значения параметра
+«ldap_pwd_policy» необходимо указать shadow или mit_kerberos. Эти параметры
+не работают с политиками паролей на стороне сервера.
                         </para>
                         <para>
                             <emphasis>authorized_service</emphasis>: использовать атрибут
@@ -1474,6 +1536,38 @@ SSSD обычно удаляет записи «отсутствующих» п�
                         </para>
                         <para>
                             По умолчанию: 0 (отладка libldap отключена)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_use_ppolicy (логическое значение)</term>
+                    <listitem>
+                        <para>
+                            Включает запросы и использование элементов управления политикой паролей на
+стороне сервера. Отключение этого параметра позволяет взаимодействовать со
+службами, отправляющими обратно недопустимое расширение ppolicy.
+                        </para>
+                        <para>
+                            По умолчанию: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>lldap_ppolicy_pwd_change_threshold (целое число)</term>
+                    <listitem>
+                        <para>
+                            Принуждает изменить пароль, если включены средства управления политикой
+паролей на стороне сервера, а оставшееся количество льготных попыток входа,
+возвращаемое сервером после аутентификации, достигает или снижается ниже
+порогового значения. Следует обратить внимание, что минимальное полезное
+значение равно 2, поскольку изменение пароля потребляет 2 дополнительные
+попытки льготного входа, одну для проверки текущего пароля и вторую для
+выполнения смены пароля.
+                        </para>
+                        <para>
+                            По умолчанию: 0
                         </para>
                     </listitem>
                 </varlistentry>

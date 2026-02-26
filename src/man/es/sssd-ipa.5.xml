@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
 "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
 <reference>
-<title>Páginas de manual de SSSD</title>
+<title>Páginas del manual de SSSD</title>
 <refentry>
     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
 
@@ -14,11 +14,11 @@
 
     <refnamediv id='name'>
         <refname>sssd-ipa</refname>
-        <refpurpose>Proveedor SSSD IPA</refpurpose>
+        <refpurpose>Proveedor IPA SSSD</refpurpose>
     </refnamediv>
 
     <refsect1 id='description'>
-        <title>DESCRIPCION</title>
+        <title>DESCRIPCIÓN</title>
         <para>
             Este página de manual describe la configuración del proveedor IPA para
 <citerefentry> <refentrytitle>sssd</refentrytitle> <manvolnum>8</manvolnum>
@@ -51,9 +51,10 @@ están listadas en la sección <quote>OPCIONES PREDETERMINADAS
 MODIFICADAS</quote>.
         </para>
         <para>
-            As an access provider, the IPA provider has a minimal configuration (see
-<quote>ipa_access_order</quote>) as it mainly uses HBAC (host-based access
-control) rules. Please refer to freeipa.org for more information about HBAC.
+            Como proveedor de acceso, el proveedor IPA tiene una configuración mínima
+(consulte <quote>ipa_access_order</quote>) como mayormente utiliza reglas
+HBAC (control de acceso basado en el host). Por favor refiérase a
+freeipa.org para más información sobre HBAC.
         </para>
         <para>
             Si <quote>auth_provider=ipa</quote> o <quote>access_provider=ipa</quote>
@@ -61,9 +62,9 @@ está configurado en sssd.conf id_provider se debe establecer también a
 <quote>ipa</quote>.
         </para>
         <para>
-            El porveedor IPA usara el respondedor PAC si las entradas Kerberos de los
+            El proveedor IPA usara el contestador PAC si las entradas Kerberos de los
 usuario de reinos confiables contienen un PAC. Para hacer la configuración
-más fácil el respondedor PAC es iniciado automáticamente si la ID del
+más fácil el contestador PAC es iniciado automáticamente si la ID del
 proveedor IPA está configurada.
         </para>
     </refsect1>
@@ -88,12 +89,12 @@ se usa el nombre de configuración del dominio.
                     <term>ipa_server, ipa_backup_server (cadena)</term>
                     <listitem>
                         <para>
-                            La lista separada por comas de direcciones IP o nombres de host de los
+                            El listado separado por comas de direcciones IP o nombres de host de los
 servidores IPA a los que SSSD se conectaría en orden de preferencia. Para
 más información sobre conmutación en error y redundancia de servidores, vea
-la sección <quote>FAILOVER</quote>. Esto es opcional si autodiscovery está
-habilitado. Para más información sobre el servicio descubridor, vea la
-sección <quote>SERVICE DISCOVERY</quote>.
+la sección <quote>FAILOVER</quote>.  Esto es opcional si autodiscovery está
+habilitado. Para más información sobre el servicio descubridor, consulte la
+sección <quote>DESCUBRIMIENTO DE SERVICIO</quote>.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -120,14 +121,9 @@ conexión IPA LDAP se usa para las actualizaciones, si no se especifica de
 otra manera utilizando la opción <quote>dyndns_iface</quote>.
                         </para>
                         <para>
-                            NOTA: Sobre sistemas más antiguos (como RHEL 5), para que este
-comportamiento trabaje fiablemente, el reino por defecto Kerberos debe ser
-fijado apropiadamente en /etc/krb5.conf
-                        </para>
-                        <para>
-                            AVISO: Aunque todas es posible usar la vieja opción
-<emphasis>ipa_dyndns_update</emphasis>, los usuarios deberían migrar para
-usar <emphasis>dyndns_update</emphasis> en su fichero de configuración.
+                            NOTA: en sistemas más antiguos (como RHEL 5), para que este comportamiento
+trabaje fiablemente, el reino por defecto Kerberos debe ser fijado
+apropiadamente en /etc/krb5.conf
                         </para>
                         <para>
                             Predeterminado: false
@@ -144,12 +140,7 @@ dyndns_update está a false esto no tiene efecto. Esto anula el TTL del lado
 servidor si se establece por un administrador.
                         </para>
                         <para>
-                            AVISO: Aunque todavía es posible usar la antigua opción
-<emphasis>ipa_dyndns_ttl</emphasis>, los usuarios deberían migrar usando
-<emphasis>dyndns_ttl</emphasis> en su fichero de configuración.
-                        </para>
-                        <para>
-                            Por defecto: 1200 (segundos)
+                            Por defecto: 1.200 (segundos)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -158,22 +149,40 @@ servidor si se establece por un administrador.
                     <term>dyndns_iface (cadena)</term>
                     <listitem>
                         <para>
-                            Opcional. Aplicable solo cuando dyndns_update está a true. Elija la interfaz
-o la lista de interfaces cuyas direcciones IP serían usadas para las
-actualizaciones DNS dinámicas. El valor especial <quote>*</quote> implica
-que las IPs de todas las interfaces serían las usadas.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
                         </para>
                         <para>
-                            AVISO: Aunque todavía es posible usar la vieja opción
-<emphasis>ipa_dyndns_iface</emphasis>, los usuarios deberían migrar usando
-<emphasis>dyndns_iface</emphasis> en su fichero de configuración.
+                            Predeterminado: utiliza las direcciones IP de la interfaz que es usada para
+la conexión IPA LDAP
                         </para>
                         <para>
-                            Predeterminado: Usa las direcciones IP de la interfaz que es usada para la
-conexión IPA LDAP
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
                         </para>
                         <para>
-                            Ejemplo: dyndns_iface = em1, vnet1, vnet2
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -193,38 +202,15 @@ se pueden enviar fijando esta opción a 'none'.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>dyndns_auth_ptr (string)</term>
+                    <term>dyndns_auth_ptr (cadena)</term>
                     <listitem>
                         <para>
-                            Whether the nsupdate utility should use GSS-TSIG authentication for secure
-PTR updates with the DNS server, insecure updates can be sent by setting
-this option to 'none'.
+                            Si la utilidad nsupdate debe usar la autenticación GSS-TSIG para
+actualizaciones seguras de PTR con el servidor DNS, las actualizaciones
+inseguras se pueden enviar fijando esta opción a 'none'.
                         </para>
                         <para>
-                            Default: Same as dyndns_auth
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>ipa_enable_dns_sites (booleano)</term>
-                    <listitem>
-                        <para>
-                            Habilita sitios DNS - descubrimiento de servicio basado en la ubicación.
-                        </para>
-                        <para>
-                            Si es ciertp y descubrimiento de servicio (vea el párrafo Descubrimiento del
-Servicio en la parte inferior de la página de manual) está habilitado, SSSD
-primero intentará la localización basada en el descubrimiento usando una
-consulta que contenga "_location.hostname.example.com" y después irá al
-descubrimiento tradicional SRV. Si la localización basada en el
-descubrimiento tiene éxito, los servidores IPA localizados con la
-localización basada en el descubrimiento son tratados como servidores
-primarios y los servidores IPA localizados usando el descubrimiento
-tradicional SRV son usados como servidores de respaldo
-                        </para>
-                        <para>
-                            Predeterminado: false
+                            Por defecto: lo mismo que dyndns_auth
                         </para>
                     </listitem>
                 </varlistentry>
@@ -239,7 +225,7 @@ se conecta. Esto es una posibilidad opcional y aplicable solo cuando
 dyndns_update está a true.
                         </para>
                         <para>
-                            Predeterminado: 0 (deshabilitado)
+                            Predeterminado: 0 (inhabilitado)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -258,8 +244,10 @@ puesto que el servidor IPA genera los registros PTR automáticamente cuando
 se cambian los registros que envía.
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Tenga en cuenta que el parámetro
+<emphasis>dyndns_update_per_family</emphasis> no se aplica a las
+actualizaciones de registros PTR. Estas actualizaciones siempre se envían
+por separado.
                         </para>
                         <para>
                             Predeterminado: False (deshabilitado)
@@ -290,11 +278,24 @@ sin establecer.
                         </para>
                         <para>
                             El establecimiento de esta opción tiene sentido en entornos donde el
-servidor DNS es distinto del servidor de identidad.
+servidor DNS es distinto del servidor de identidad o cuando utilizamos DNS
+cifrado.
+                        </para>
+                        <para>
+                           El parámetro puede ser una cadena simple que contenga el nombre DNS o la
+dirección IP. También puede ser un URI. Este URI puede ser similar a
+<emphasis>dns://servername/</emphasis> o
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            El segundo ejemplo habilita el protocolo DNS sobre TLS para actualizaciones
+de DNS. La utilidad nsupdate debe ser compatible con DoT; consulte la
+instrucción <emphasis>man nsupdate</emphasis> antes de habilitarla en SSSD.
                         </para>
                         <para>
                             Tenga en cuenta que esta opción solo se usará en un intento de recuperación
-cuando el intento anterior de usar la configuración autodetectada falló.
+cuando el intento anterior de usar la configuración auto-detectada falló o
+cuando está habilitado DNS-over-TLS.
                         </para>
                         <para>
                             Predeterminado: None (permitir a nsupdate elegir el servidor)
@@ -317,47 +318,95 @@ ser deseable llevar a cabo la actualización IPv4 e IPv6 en un único paso.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_access_order (string)</term>
+                    <term>dyndns_dot_cacert (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción especifica el archivo de los certificados de las autoridades
+certificadoras (en formato PEM) para verificar el certificado TLS del
+servidor remoto cuando se utiliza DoT.
+                        </para>
+                        <para>
+                            Predeterminado: None (utiliza almacén de certificado global)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción configura el archivo de certificado(s) para la autenticación del
+transporte DoT al servidor remoto. Se espera que el archivo de la cadena de
+certificados esté en formato PEM.
+                        </para>
+                        <para>
+                            Las opciones <emphasis>dyndns_dot_cert</emphasis> y
+<emphasis>dyndns_dot_key</emphasis> deben estar configuradas para lograr la
+autenticación TLS mutua.
+                        </para>
+                        <para>
+                            Por defecto: None (No utilice autenticación TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (cadena)</term>
+                    <listitem>
+                        <para>
+                            Esta opción configura el archivo de clave para el cifrado autenticado del
+transporte DoT al servidor remoto. Se espera que el archivo de clave privada
+esté en formato PEM.
+                        </para>
+                        <para>
+                            Por defecto: None (No utilice autenticación TLS)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_access_order (cadena)</term>
                     <listitem>
                         <para>
                             Lista separada por coma de opciones de control de acceso.  Los valores
 permitidos son:
                         </para>
                         <para>
-                            <emphasis>expire</emphasis>: use IPA's account expiration policy.
+                            <emphasis>caducar</emphasis>: Utilice la directiva de caducidad de cuenta
+IPA.
                         </para>
                         <para>
                             <emphasis>pwd_expire_policy_reject, pwd_expire_policy_warn,
-pwd_expire_policy_renew: </emphasis> Estas opciones son útiles si los
+pwd_expire_policy_renew: </emphasis>Estas opciones son útiles si los
 usuarios están interesados en que se les avise de que la contraseña está
 próxima a expirar y la autenticación está basada en la utilización de un
-método distinto a las contraseñas - por ejemplo claves SSH.
+método distinto a las contraseñas; por ejemplo claves SSH.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            La diferencia entre estas opciones es la acción tomado si la contraseña de
+usuario está caducada:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_reject - user is denied to log in,
+                                    pwd_expire_policy_reject: el usuario está denegado para acceder,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_warn - user is still able to log in,
+                                    pwd_expire_policy_warn: usuario aún es capaz de acceder,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                    pwd_expire_policy_renew: el usuario es solicitado para cambiar su contraseña
+inmediatamente.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
-                            Please note that 'access_provider = ipa' must be set for this feature to
-work.
+                            Por favor advierta que 'access_provider = ipa' debe estar establecido para
+que esta característica funcione.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -376,14 +425,10 @@ relacionados con Desktop Profile.
                 </varlistentry>
 
                 <varlistentry condition="with_subid">
-                    <term>ipa_subid_ranges_search_base (string)</term>
+                    <term>ipa_subid_ranges_search_base (cadena)</term>
                     <listitem>
                         <para>
-                            Optional. Use the given string as search base for subordinate ranges related
-objects.
-                        </para>
-                        <para>
-                            Default: the value of <emphasis>cn=subids,%basedn</emphasis>
+                            Deprecated. Use ldap_subid_ranges_search_base instead.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -411,7 +456,7 @@ relacionados.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_selinux_search_base (cadena)Opcional. </term>
+                    <term>ipa_selinux_search_base (cadena)</term>
                     <listitem>
                         <para>
                             Opcional. Usa la cadena dada como base de búsqueda para los mapas de usuario
@@ -513,9 +558,9 @@ pubconf de SSSD)
                     <term>ipa_deskprofile_refresh (entero)</term>
                     <listitem>
                         <para>
-                            La cantidad de tiempo entre búsquedas de reglas Desktop Profile contra el
+                            La cantidad de tiempo entre búsquedas de reglas Perfil Escritorio contra el
 servidor IPA. Esto reducirá la latencia y la carga sobre el servidor IPA si
-hay muchas solicitudes de perfiles de escritorio en un período corto.
+hay muchas solicitudes de perfiles de escritorio en un período breve.
                         </para>
                         <para>
                             Predeterminado: 5 (segundos)
@@ -622,8 +667,8 @@ solo nombres cortos de los usuarios de los dominios de confianza.
                 SSSD puede manejar vistas y anulaciones que son ofrecidas por FreeIPA 4.1 y
 versiones posteriores. Como todas las rutas y objectclasses son fijadas en
 el lado servidor no se necesita configurar nada. Para completar, las
-opciones relacionadas son listadas aquí con sus valores
-predeterminados. <variablelist>
+opciones relacionadas son listadas aquí con sus valores predeterminados.
+<variablelist>
                     <varlistentry>
                         <term>ipa_view_class (cadena)</term>
                         <listitem>
@@ -769,18 +814,19 @@ otra vez.
     <refsect1 id='trusted_domains'>
         <title>CONFIGURACIÓN DE DOMINIOS DE CONFIANZA</title>
         <para>
-            Some configuration options can also be set for a trusted domain.  A trusted
-domain configuration can be set using the trusted domain subsection as shown
-in the example below. Alternatively, the <quote>subdomain_inherit</quote>
-option can be used in the parent domain.  <programlisting>
-[domain/ipa.domain.com/ad.domain.com]
-ad_server = dc.ad.domain.com
+            También se pueden configurar algunas opciones para un dominio de
+confianza. La configuración de un dominio de confianza se puede establecer
+mediante la subsección correspondiente, como se muestra en el ejemplo
+siguiente. Como alternativa, se puede usar la opción
+<quote>subdomain_inherit</quote> en el dominio principal. <programlisting>
+[dominio/ipa.dominio.com/ad.dominio.com]
+ad_server = dc.ad.dominio.com
 </programlisting>
         </para>
         <para>
-            For more details, see the <citerefentry>
+            Para obtener más detalles, consulte la página del manual <citerefentry>
 <refentrytitle>sssd.conf</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> manual page.
+</citerefentry>.
         </para>
         <para>
             Se pueden ajustar diferentes opciones de configuración para un dominio de
@@ -803,6 +849,12 @@ un IPA maestro:
                         <para>ad_site</para>
                     </listitem>
                     <listitem>
+                        <para>ipa_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_backup_server</para>
+                    </listitem>
+                    <listitem>
                         <para>ldap_search_base</para>
                     </listitem>
                     <listitem>
@@ -816,11 +868,15 @@ un IPA maestro:
                     </listitem>
                 </itemizedlist>
             </para>
+            <para>
+                Las opciones con el prefijo 'ad_' o 'ipa_' solo se aplican a su respectivo
+tipo de subdominio.
+            </para>
         </refsect2>
         <refsect2 id='client_configuration'>
             <title>OPCIONES AJUSTABLES SOBRE CLIENTES IPA</title>
             <para>
-                Las siguientes opciones pueden ser establecidas en una sección subdominio
+                Las siguientes opciones pueden ser establecidas en una sección subdominio AD
 sobre un cliente IPA:
                 <itemizedlist>
                     <listitem>
@@ -864,10 +920,10 @@ específicas del proveedor ipa.
         </para>
         <para>
 <programlisting>
-[domain/example.com]
+[dominio/ejemplo.com]
 id_provider = ipa
-ipa_server = ipaserver.example.com
-ipa_hostname = myhost.example.com
+ipa_server = ipaserver.ejemplo.com
+ipa_hostname = mihost.ejemplo.com
 </programlisting>
         </para>
     </refsect1>

@@ -21,7 +21,6 @@
 #include <popt.h>
 
 #include "util/util.h"
-#include "util/child_common.h"
 #include "confdb/confdb.h"
 #include "responder/common/responder.h"
 #include "responder/ssh/ssh_private.h"
@@ -40,7 +39,7 @@ int ssh_process_init(TALLOC_CTX *mem_ctx,
     ssh_cmds = get_ssh_cmds();
     ret = sss_process_init(mem_ctx, ev, cdb,
                            ssh_cmds,
-                           SSS_SSH_SOCKET_NAME, -1, NULL, -1,
+                           SSS_SSH_SOCKET_NAME, SCKT_RSP_UMASK,
                            CONFDB_SSH_CONF_ENTRY,
                            SSS_BUS_SSH, SSS_SSH_SBUS_SERVICE_NAME,
                            sss_connection_setup,
@@ -69,28 +68,6 @@ int ssh_process_init(TALLOC_CTX *mem_ctx,
     }
 
     /* Get responder options */
-
-    /* Get ssh_hash_known_hosts option */
-    ret = confdb_get_bool(ssh_ctx->rctx->cdb,
-                          CONFDB_SSH_CONF_ENTRY, CONFDB_SSH_HASH_KNOWN_HOSTS,
-                          CONFDB_DEFAULT_SSH_HASH_KNOWN_HOSTS,
-                          &ssh_ctx->hash_known_hosts);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Error reading from confdb (%d) [%s]\n",
-              ret, strerror(ret));
-        goto fail;
-    }
-
-    /* Get ssh_known_hosts_timeout option */
-    ret = confdb_get_int(ssh_ctx->rctx->cdb,
-                         CONFDB_SSH_CONF_ENTRY, CONFDB_SSH_KNOWN_HOSTS_TIMEOUT,
-                         CONFDB_DEFAULT_SSH_KNOWN_HOSTS_TIMEOUT,
-                         &ssh_ctx->known_hosts_timeout);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Error reading from confdb (%d) [%s]\n",
-              ret, strerror(ret));
-        goto fail;
-    }
 
     ret = confdb_get_string(ssh_ctx->rctx->cdb, ssh_ctx,
                             CONFDB_SSH_CONF_ENTRY, CONFDB_SSH_CA_DB,
@@ -133,13 +110,13 @@ int ssh_process_init(TALLOC_CTX *mem_ctx,
     }
 
     /* The responder is initialized. Now tell it to the monitor. */
-    ret = sss_monitor_service_init(rctx, rctx->ev, SSS_BUS_SSH,
-                                   SSS_SSH_SBUS_SERVICE_NAME,
-                                   SSS_SSH_SBUS_SERVICE_VERSION,
-                                   MT_SVC_SERVICE,
-                                   &rctx->last_request_time, &rctx->mon_conn);
+    ret = sss_monitor_register_service(rctx, rctx->sbus_conn,
+                                       SSS_SSH_SBUS_SERVICE_NAME,
+                                       SSS_SSH_SBUS_SERVICE_VERSION,
+                                       MT_SVC_SERVICE);
     if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "fatal error setting up message bus\n");
+        DEBUG(SSSDBG_FATAL_FAILURE, "Unable to register to the monitor "
+              "[%d]: %s\n", ret, sss_strerror(ret));
         goto fail;
     }
 
@@ -164,14 +141,11 @@ int main(int argc, const char *argv[])
     char *opt_logger = NULL;
     struct main_context *main_ctx;
     int ret;
-    uid_t uid = 0;
-    gid_t gid = 0;
 
     struct poptOption long_options[] = {
         POPT_AUTOHELP
-        SSSD_MAIN_OPTS
-        SSSD_LOGGER_OPTS
-        SSSD_SERVER_OPTS(uid, gid)
+        SSSD_DEBUG_OPTS
+        SSSD_LOGGER_OPTS(&opt_logger)
         SSSD_RESPONDER_OPTS
         POPT_TABLEEND
     };
@@ -198,17 +172,7 @@ int main(int argc, const char *argv[])
     debug_log_file = "sssd_ssh";
     DEBUG_INIT(debug_level, opt_logger);
 
-    /* server_setup() might switch to an unprivileged user, so the permissions
-     * for p11_child.log have to be fixed first. We might call p11_child to
-     * validate certificates. */
-    ret = chown_debug_file("p11_child", uid, gid);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_MINOR_FAILURE,
-              "Cannot chown the p11_child debug file, "
-              "debugging might not work!\n");
-    }
-
-    ret = server_setup("ssh", true, 0, uid, gid,
+    ret = server_setup("ssh", true, 0, CONFDB_FILE,
                        CONFDB_SSH_CONF_ENTRY, &main_ctx, true);
     if (ret != EOK) {
         return 2;

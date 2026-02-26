@@ -30,16 +30,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
-#include <sys/prctl.h>
 #include <ldb.h>
 #include "util/util.h"
 #include "confdb/confdb.h"
 #include "util/sss_chain_id.h"
 #include "util/sss_chain_id_tevent.h"
-
-#ifdef HAVE_PRCTL
-#include <sys/prctl.h>
-#endif
+#include "util/sss_prctl.h"
 
 static TALLOC_CTX *autofree_ctx;
 
@@ -211,13 +207,16 @@ int pidfile(const char *file)
     int ret, err;
     size_t size;
     ssize_t written;
+    mode_t old_umask;
 
     ret = check_pidfile(file);
     if (ret != EOK) {
         return ret;
     }
 
+    old_umask = umask(0133);
     fd = open(file, O_CREAT | O_WRONLY | O_EXCL, 0644);
+    umask(old_umask);
     err = errno;
     if (fd == -1) {
         return err;
@@ -278,15 +277,6 @@ static void default_quit(struct tevent_context *ev,
     orderly_shutdown(0);
 }
 
-#ifndef HAVE_PRCTL
-static void sig_segv_abrt(int sig)
-{
-    DEBUG(SSSDBG_FATAL_FAILURE,
-          "Received signal %s, shutting down\n", strsignal(sig));
-    orderly_shutdown(1);
-}
-#endif /* HAVE_PRCTL */
-
 /*
   setup signal masks
 */
@@ -315,14 +305,6 @@ static void setup_signals(void)
      * these signals masked, we will have problems, as we won't receive them. */
     BlockSignals(false, SIGHUP);
     BlockSignals(false, SIGTERM);
-
-#ifndef HAVE_PRCTL
-        /* If prctl is not defined on the system, try to handle
-         * some common termination signals gracefully */
-    CatchSignal(SIGSEGV, sig_segv_abrt);
-    CatchSignal(SIGABRT, sig_segv_abrt);
-#endif
-
 }
 
 /*
@@ -354,18 +336,17 @@ static void server_stdin_handler(struct tevent_context *event_ctx,
 
 int die_if_parent_died(void)
 {
-#ifdef HAVE_PRCTL
     int ret;
 
     errno = 0;
-    ret = prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
+    ret = sss_prctl_set_parent_deathsig(SIGTERM);
     if (ret != 0) {
         ret = errno;
-        DEBUG(SSSDBG_OP_FAILURE, "prctl failed [%d]: %s\n",
+        DEBUG(SSSDBG_OP_FAILURE, "sss_prctl_set_parent_deathsig() failed [%d]: %s\n",
                                  ret, strerror(ret));
         return ret;
     }
-#endif
+
     return EOK;
 }
 
@@ -474,7 +455,7 @@ static const char *get_pid_path(void)
 
 int server_setup(const char *name, bool is_responder,
                  int flags,
-                 uid_t uid, gid_t gid,
+                 const char *db_file,
                  const char *conf_entry,
                  struct main_context **main_ctx,
                  bool allow_sss_loop)
@@ -491,7 +472,6 @@ int server_setup(const char *name, bool is_responder,
     struct logrotate_ctx *lctx;
     char *locale;
     int watchdog_interval;
-    pid_t my_pid;
     char *pidfile_name;
     int cfg_debug_level = SSSDBG_INVALID;
     bool dumpable = true;
@@ -516,28 +496,16 @@ int server_setup(const char *name, bool is_responder,
         return ENOMEM;
     }
 
-    my_pid = getpid();
-    ret = setpgid(my_pid, my_pid);
-    if (ret != EOK) {
-        ret = errno;
-        DEBUG(SSSDBG_MINOR_FAILURE,
-              "Failed setting process group: %s[%d]. "
-              "We might leak processes in case of failure\n",
-              sss_strerror(ret), ret);
-    }
-
-    if (!is_socket_activated()) {
-        ret = chown_debug_file(NULL, uid, gid);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_MINOR_FAILURE,
-                  "Cannot chown the debug files, debugging might not work!\n");
-        }
-
-        ret = become_user(uid, gid);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_FUNC_DATA,
-                  "Cannot become user [%"SPRIuid"][%"SPRIgid"].\n", uid, gid);
-            return ret;
+    if (!(flags & FLAGS_DAEMON)) { /* become_daemon() will take care otherwise */
+        if (getpgrp() != getpid()) {
+            ret = setpgid(0, 0);
+            if (ret != EOK) {
+                ret = errno;
+                DEBUG(SSSDBG_MINOR_FAILURE,
+                      "Failed setting process group: %s[%d]. "
+                      "We might leak processes in case of failure\n",
+                      sss_strerror(ret), ret);
+            }
         }
     }
 
@@ -624,8 +592,7 @@ int server_setup(const char *name, bool is_responder,
         return EIO;
     }
 
-    conf_db = talloc_asprintf(ctx, "%s/%s",
-                              get_db_path(), CONFDB_FILE);
+    conf_db = talloc_asprintf(ctx, "%s/%s", get_db_path(), db_file);
     if (conf_db == NULL) {
         DEBUG(SSSDBG_FATAL_FAILURE, "Out of memory, aborting!\n");
         return ENOMEM;
@@ -704,7 +671,7 @@ int server_setup(const char *name, bool is_responder,
               CONFDB_SERVICE_DEBUG_BACKTRACE_ENABLED, ret, strerror(ret));
         return ret;
     }
-    sss_debug_backtrace_enable(backtrace_enabled);
+    sss_set_debug_backtrace_enable(backtrace_enabled);
 
     /* before opening the log file set up log rotation */
     lctx = talloc_zero(ctx, struct logrotate_ctx);
@@ -740,21 +707,30 @@ int server_setup(const char *name, bool is_responder,
         }
     }
 
-    ret = confdb_get_bool(ctx->confdb_ctx,
-                          CONFDB_MONITOR_CONF_ENTRY,
-                          CONFDB_MONITOR_DUMPABLE,
-                          true, /* default value */
-                          &dumpable);
-    if (ret != EOK) {
-        DEBUG(SSSDBG_FATAL_FAILURE, "Failed to determine "CONFDB_MONITOR_DUMPABLE"\n");
-        return ret;
-    }
-    ret = prctl(PR_SET_DUMPABLE, dumpable ? 1 : 0);
-    if (ret != 0) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Failed to set PR_SET_DUMPABLE\n");
-        return ret;
-    } else if (!dumpable) {
-        DEBUG(SSSDBG_IMPORTANT_INFO, "Core dumps are disabled!\n");
+    /* Don't touch PR_SET_DUMPABLE for sssd_pam as it
+     * handles host keytab.
+     * Rely on system settings instead: this flag "is reset to the
+     * current value contained in the file /proc/sys/fs/suid_dumpable"
+     * when "the process executes a program that has file capabilities".
+     */
+    if (strcmp(name, "pam") != 0) {
+        ret = confdb_get_bool(ctx->confdb_ctx,
+                              CONFDB_MONITOR_CONF_ENTRY,
+                              CONFDB_MONITOR_DUMPABLE,
+                              true, /* default value */
+                              &dumpable);
+        if (ret != EOK) {
+            DEBUG(SSSDBG_FATAL_FAILURE,
+                  "Failed to determine "CONFDB_MONITOR_DUMPABLE"\n");
+            return ret;
+        }
+        ret = sss_prctl_set_dumpable(dumpable ? 1 : 0);
+        if (ret != 0) {
+            DEBUG(SSSDBG_CRIT_FAILURE, "Failed to set PR_SET_DUMPABLE\n");
+            return ret;
+        } else if (!dumpable) {
+            DEBUG(SSSDBG_IMPORTANT_INFO, "Core dumps are disabled!\n");
+        }
     }
 
     sss_chain_id_setup(ctx->event_ctx);
@@ -784,6 +760,27 @@ int server_setup(const char *name, bool is_responder,
 
 void server_loop(struct main_context *main_ctx)
 {
+    char *caps;
+    int ret;
+
+    ret = sss_log_caps_to_str(true, &caps);
+    if (ret != 0) {
+        DEBUG(SSSDBG_IMPORTANT_INFO, "Failed to log current capabilities\n");
+    } else {
+        DEBUG(SSSDBG_IMPORTANT_INFO,
+              "Entering main loop under uid=%"SPRIuid" (euid=%"SPRIuid") : "
+              "gid=%"SPRIgid" (egid=%"SPRIgid") with SECBIT_KEEP_CAPS = %d"
+              " and following capabilities:\n%s",
+              getuid(), geteuid(), getgid(), getegid(),
+              sss_prctl_get_keep_caps(),
+              caps ? caps : "   (nothing)\n");
+        if ((caps != NULL) && (strcmp(debug_prg_name, "pam") != 0)) {
+            /* 'sssd_pam' uses 'CAP_DAC_READ_SEARCH' file capability */
+            DEBUG(SSSDBG_CRIT_FAILURE, "Non empty capabilities set!\n");
+        }
+        talloc_free(caps);
+    }
+
     /* wait for events - this is where the server sits for most of its
        life */
     tevent_loop_wait(main_ctx->event_ctx);

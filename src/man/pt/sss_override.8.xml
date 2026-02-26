@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_override</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_override</refname>
+        <refpurpose>cria sobreposições locais de atributos de utilizador e grupo</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_override</command> <arg
+choice='plain'><replaceable>COMANDO</replaceable></arg> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            <command>sss_override</command> permite criar uma vista do lado cliente e
+permite modificar os valores selecionados de utilizadores e grupos
+específicos. Esta alteração só tem efeito em maquinas locais.
+        </para>
+        <para>
+            Os dados de sobreposição são guardados na cache do SSSD. Se a cache for
+apagada, todas as sobreposições locais são perdidas. Por favor note que após
+a primeira sobreposição ser criada usando qualquer dos seguintes comandos
+<emphasis>user-add</emphasis>, <emphasis>group-add</emphasis>,
+<emphasis>user-import</emphasis> ou <emphasis>group-import</emphasis>, o
+SSSD precisa de ser reiniciado para tomar efeito. O
+<emphasis>sss_override</emphasis> escreve mensagens quando é necessário ser
+reiniciado.
+        </para>
+        <para>
+            <emphasis>NOTA:</emphasis> As opções disponibilizadas neste manual apenas
+funcionam com <quote>ldap</quote> e <quote>AD</quote> <quote>
+id_provider</quote>. As sobreposições IPA podem ser geridas centralmente no
+servidor IPA.
+        </para>
+    </refsect1>
+
+    <refsect1 id='commands'>
+        <title>COMANDOS DISPONÍVEIS</title>
+        <para>
+            O argumento <emphasis>NOME</emphasis> é o nome do objecto original em todos
+os comandos. Não é possível sobrepor <emphasis>uid</emphasis> ou
+<emphasis>gid</emphasis> para 0.
+        </para>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>user-add</option> <emphasis>NOME</emphasis>
+<optional><option>-n,--name</option> NOME</optional>
+<optional><option>-u,--uid</option> UID</optional>
+<optional><option>-g,--gid</option> GID</optional>
+<optional><option>-h,--home</option> HOME</optional>
+<optional><option>-s,--shell</option> SHELL</optional>
+<optional><option>-c,--gecos</option> GECOS</optional>
+<optional><option>-x,--certificate</option> CERTIFICADO CODIFICADO EM
+BASE64</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Sobrepõe atributos de um utilizador. Por favor tenha atenção que chamar este
+comando irá substituir quaisquer sobreposição anterior para o utilizador
+(NOMEado).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-del</option> <emphasis>NOME</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Remove sobreposições do utilizador. No entanto tenha atenção que atributos
+sobrepostos podem ser retornados da cache de memória. Por favor veja a opção
+do SSSD <emphasis>memcache_timeout</emphasis> para mais detalhes.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-find</option> <optional><option>-d,--domain</option>
+DOMÍNIO</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Lista todos os utilizadores com sobreposições de definição.  Se o parâmetro
+<emphasis>DOMAIN</emphasis> estiver definido, são listados apenas
+utilizadores desse domínio.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-show</option> <emphasis>NOME</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Mostra sobreposições do utilizador.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-import</option> <emphasis>FICHEIRO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Importa sobreposições de utilizador de <emphasis>FICHEIRO</emphasis>.  O
+formato de dados é semelhante ao ficheiro passwd standard.  O formato é:
+                    </para>
+                    <para>
+                        original_name:name:uid:gid:gecos:home:shell:base64_encoded_certificate
+                    </para>
+                    <para>
+                        onde original_name é o nome original do utilizador cujos atributos devem ser
+sobrepostos. O resto dos campos correspondem a novos valores. Você pode
+omitir um valor simplesmente ao deixar o campo correspondente vazio.
+                    </para>
+                    <para>
+                        Exemplos:
+                    </para>
+                    <para>
+                        ckent:superman::::::
+                    </para>
+                    <para>
+                        ckent@krypton.com::501:501:Superman:/home/earth:/bin/bash:
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>user-export</option> <emphasis>FICHEIRO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Exporta todos os atributos de sobreposição e guarda-os em
+<emphasis>FICHEIRO</emphasis>. Veja <emphasis>user-import</emphasis> para o
+formato de dados.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-add</option> <emphasis>NOME</emphasis>
+<optional><option>-n,--name</option> NOME</optional>
+<optional><option>-g,--gid</option> GID</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Sobrepõe atributos de um grupo Por favor tenha atenção que chamar este
+comando irá substituir quaisquer sobreposição anterior para o grupo
+(NOMEado).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-del</option> <emphasis>NOME</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Remove sobreposições do grupo. No entanto tenha atenção que atributos
+sobrepostos podem ser retornados da cache de memória. Por favor veja a opção
+do SSSD <emphasis>memcache_timeout</emphasis> para mais detalhes.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-find</option> <optional><option>-d,--domain</option>
+DOMÍNIO</optional>
+                </term>
+                <listitem>
+                    <para>
+                        Lista todos os grupos com sobreposições de definição.  Se o parâmetro
+<emphasis>DOMAIN</emphasis> estiver definido, são listados apenas grupos
+desse domínio.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-show</option> <emphasis>NOME</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Mostra sobreposições do grupo.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-import</option> <emphasis>FICHEIRO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Importa sobreposições de grupo de <emphasis>FICHEIRO</emphasis>.  O formato
+de dados é semelhante ao ficheiro group standard.  O formato é:
+                    </para>
+                    <para>
+                        original_name:name:gid
+                    </para>
+                    <para>
+                        onde original_name é o nome original do grupo cujos atributos devem ser
+sobrepostos. O resto dos campos correspondem a novos valores. Você pode
+omitir um valor simplesmente ao deixar o campo correspondente vazio.
+                    </para>
+                    <para>
+                        Exemplos:
+                    </para>
+                    <para>
+                        admins:administrators:
+                    </para>
+                    <para>
+                        Domain Users:Users:501
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>group-export</option> <emphasis>FICHEIRO</emphasis>
+                </term>
+                <listitem>
+                    <para>
+                        Exporta todos os atributos de sobreposição e guarda-os em
+<emphasis>FICHEIRO</emphasis>. Veja <emphasis>group-import</emphasis> para o
+formato de dados.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES COMUNS</title>
+        <para>
+            Estas opções estão disponíveis com todos os comandos.
+        </para>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>--debug</option> <replaceable>NÍVEL</replaceable>
+                </term>
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/debug_levels_tools.xml" />
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

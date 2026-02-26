@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <refentryinfo>
+<productname>Complemento sss rpc.idmapd</productname> <author>
+<firstname>Noam</firstname> <surname>Meltzer</surname> <affiliation>
+<orgname>Primary Data Inc.</orgname> </affiliation> <contrib>Desarrollador
+(2013-2014)</contrib> </author> <author> <firstname>Noam</firstname>
+<surname>Meltzer</surname> <contrib>Desarrollador (2014-)</contrib>
+<email>tsnoam@gmail.com</email> </author></refentryinfo>
+
+    <refmeta>
+        <refentrytitle>sss_rpcidmapd</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_rpcidmapd</refname>
+        <refpurpose>directivas de configuración de complemento sss para rpc.idmapd</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='conf-file'>
+        <title>ARCHIVO DE CONFIGURACIÓN</title>
+        <para>
+            archivo de configuración de rpc.idmapd encontrado en
+<emphasis>/etc/idmapd.conf</emphasis>. Consulte
+<citerefentry><refentrytitle>idmapd.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+para más información.
+        </para>
+    </refsect1>
+
+    <refsect1 id='sss-conf-extension'>
+        <title>EXTENSIÓN DE CONFIGURACIÓN SSS</title>
+        <refsect2 id='enable-sss'>
+            <title>Habilitar complemento SSS</title>
+            <para>
+                En la sección <quote>[Translation]</quote>, modifica/establece atributo
+<quote>Method</quote> para contener <emphasis>sss</emphasis>.
+            </para>
+        </refsect2>
+        <refsect2 id='sss-conf-sect'>
+            <title>sección de configuración [sss]</title>
+            <para>
+                Con el fin de cambiar lo predeterminado de uno de los atributos de
+configuración del complemento <emphasis>sss</emphasis> listado debajo
+necesitará crear una sección de configuración para ello, nombrado
+<quote>[sss]</quote>.
+            </para>
+            <variablelist>
+                <title>Atributos de configuración</title>
+                <varlistentry>
+                    <term>memcache (bool)</term>
+                    <listitem>
+                        <para>
+                            Indica si sí o no utilizar la técnica de optimización de memcache.
+                        </para>
+                        <para>
+                            Predeterminado: True
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </refsect2>
+    </refsect1>
+
+    <refsect1 id='sssd-integration'>
+        <title>INTEGRACIÓN DE SSSD</title>
+        <para>
+            El complemento sss requiere el <emphasis>NSS Responder</emphasis> para ser
+habilitado en sssd.
+        </para>
+        <para>
+            El atributo <quote>use_fully_qualified_names</quote> debe ser habilitado en
+todos los dominios (los clientes NFSv4 esperan un nombre completamente
+cualificado para ser enviado por el cable).
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>EJEMPLO</title>
+        <para>
+            El ejemplo siguiente muestra un idmapd.conf mínimo el cual hace uso del
+complemento sss. <programlisting>
+[General]
+Verbosity = 2
+# el dominio debe ser sincronizado entre el servidor NFSv4 y clientes
+# Solaris/Illumos/AIX utilizan "localdomain" como predeterminado:
+Domain = default
+
+[Mapping]
+Nobody-User = nfsnobody
+Nobody-Group = nfsnobody
+
+[Translation]
+Method = sss
+</programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='see_also'>
+        <title>CONSULTE ADEMÁS</title>
+        <para>
+            <citerefentry> <refentrytitle>sssd</refentrytitle><manvolnum>8</manvolnum>
+</citerefentry>, <citerefentry> <refentrytitle>idmapd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>
+        </para>
+    </refsect1>
+</refentry>
+</reference>

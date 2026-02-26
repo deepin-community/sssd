@@ -85,59 +85,12 @@ sbus_connect_private(TALLOC_CTX *mem_ctx,
                      time_t *last_activity_time);
 
 /**
- * Connect to a private D-Bus bus at @address an perform its initialization
- * asynchronously. Usually, you can just call @sbus_connect_private which
- * will block for a while during Hello and RequestName calls, which is mostly
- * ok since it is done during process initialization. However, you have to
- * use asynchronous call if you are connecting to a server which runs on the
- * same process, otherwise it will end up in dead lock.
- *
- * If @last_activity_time pointer is given, it is updated with current time
- * each time an important event (such as method or property call) on the bus
- * occurs. It is not updated when an signal arrives.
- *
- * @param mem_ctx                Memory context.
- * @param ev                     Tevent context.
- * @param address                Remote end-point address.
- * @param dbus_name              Name of this end-point.
- * @param last_activity_time     Pointer to a time that is updated each time
- *                               an event occurs.
- *
- * @return Tevent request or NULL on error.
- *
- * @see sbus_server_create
- */
-struct tevent_req *
-sbus_connect_private_send(TALLOC_CTX *mem_ctx,
-                          struct tevent_context *ev,
-                          const char *address,
-                          const char *dbus_name,
-                          time_t *last_activity_time);
-
-/**
- * Recieve reply from @sbus_connect_private_send.
- *
- * @param mem_ctx                Memory context.
- * @param req                    Tevent request.
- * @param _conn                  Established sbus connection.
- *
- * @return EOK on success, other errno code on failure.
- *
- * @see sbus_server_create
- */
-errno_t sbus_connect_private_recv(TALLOC_CTX *mem_ctx,
-                                  struct tevent_req *req,
-                                  struct sbus_connection **_conn);
-
-/**
  * Create a new sbus server at socket address @address.
  *
  * @param mem_ctx                Memory context.
  * @param ev                     Tevent context.
  * @param address                Socket address.
  * @param use_symlink            If a symlink to @address should be created.
- * @param uid                    Socket owner uid.
- * @param gid                    Socket owner gid.
  * @param on_conn_cb             On new connection callback function.
  * @param on_conn_data           Private data passed to the callback.
  *
@@ -149,8 +102,6 @@ sbus_server_create(TALLOC_CTX *mem_ctx,
                    const char *address,
                    bool use_symlink,
                    uint32_t max_connections,
-                   uid_t uid,
-                   gid_t gid,
                    sbus_server_on_connection_cb on_conn_cb,
                    sbus_server_on_connection_data on_conn_data);
 
@@ -164,8 +115,6 @@ sbus_server_create(TALLOC_CTX *mem_ctx,
  *                               an event occurs on connection.
  * @param address                Socket address.
  * @param use_symlink            If a symlink to @address should be created.
- * @param uid                    Socket owner uid.
- * @param gid                    Socket owner gid.
  * @param on_conn_cb             On new connection callback function.
  * @param on_conn_data           Private data passed to the callback.
  *
@@ -179,8 +128,6 @@ sbus_server_create_and_connect_send(TALLOC_CTX *mem_ctx,
                                     const char *address,
                                     bool use_symlink,
                                     uint32_t max_connections,
-                                    uid_t uid,
-                                    gid_t gid,
                                     sbus_server_on_connection_cb on_conn_cb,
                                     sbus_server_on_connection_data on_conn_data);
 
@@ -388,6 +335,16 @@ sbus_connection_add_path(struct sbus_connection *conn,
 errno_t
 sbus_connection_add_path_map(struct sbus_connection *conn,
                              struct sbus_path *map);
+
+/**
+ * Terminate all outgoing requests for given member.
+ *
+ * @param conn      An sbus connection.
+ * @param member D-Bus member name (destination)
+ */
+void
+sbus_connection_terminate_member_requests(struct sbus_connection *conn,
+                                          const char *member);
 
 /**
  * Add new signal listener to the router.

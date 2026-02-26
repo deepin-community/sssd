@@ -598,36 +598,6 @@ static char *enum_filter(TALLOC_CTX *mem_ctx,
     return filter;
 }
 
-int sysdb_getpwupn(TALLOC_CTX *mem_ctx,
-                   struct sss_domain_info *domain,
-                   bool domain_scope,
-                   const char *upn,
-                   struct ldb_result **_res)
-{
-    TALLOC_CTX *tmp_ctx;
-    struct ldb_result *res;
-    static const char *attrs[] = SYSDB_PW_ATTRS;
-    errno_t ret;
-
-    tmp_ctx = talloc_new(NULL);
-    if (tmp_ctx == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "talloc_new() failed\n");
-        return ENOMEM;
-    }
-
-    ret = sysdb_search_user_by_upn_res(tmp_ctx, domain, domain_scope, upn, attrs, &res);
-    if (ret != EOK && ret != ENOENT) {
-        DEBUG(SSSDBG_OP_FAILURE, "sysdb_search_user_by_upn_res() failed.\n");
-        goto done;
-    }
-
-    *_res = talloc_steal(mem_ctx, res);
-
-done:
-    talloc_free(tmp_ctx);
-    return ret;
-}
-
 errno_t sysdb_search_ts_matches(TALLOC_CTX *mem_ctx,
                                 struct sysdb_ctx *sysdb,
                                 const char *attrs[],
@@ -814,6 +784,7 @@ static errno_t sysdb_enum_dn_filter(TALLOC_CTX *mem_ctx,
 {
     TALLOC_CTX *tmp_ctx = NULL;
     char *dn_filter;
+    char *sanitized_dn;
     const char *fqname;
     errno_t ret;
 
@@ -844,11 +815,18 @@ static errno_t sysdb_enum_dn_filter(TALLOC_CTX *mem_ctx,
     }
 
     for (size_t i = 0; i < ts_res->count; i++) {
+        ret = sss_filter_sanitize_dn(tmp_ctx,
+                                     ldb_dn_get_linearized(ts_res->msgs[i]->dn),
+                                     &sanitized_dn);
+        if (ret != EOK) {
+            goto done;
+        }
         dn_filter = talloc_asprintf_append(
                                   dn_filter,
                                   "(%s=%s)",
                                   SYSDB_DN,
-                                  ldb_dn_get_linearized(ts_res->msgs[i]->dn));
+                                  sanitized_dn);
+        talloc_free(sanitized_dn);
         if (dn_filter == NULL) {
             ret = ENOMEM;
             goto done;
@@ -1142,8 +1120,7 @@ int sysdb_getgrnam_with_views(TALLOC_CTX *mem_ctx,
 
         /* Must be called even without views to check to
          * SYSDB_DEFAULT_OVERRIDE_NAME */
-        ret = sysdb_add_group_member_overrides(domain, orig_obj->msgs[0],
-                                               DOM_HAS_VIEWS(domain));
+        ret = sysdb_add_group_member_overrides(domain, orig_obj->msgs[0]);
         if (ret != EOK) {
             DEBUG(SSSDBG_OP_FAILURE,
                   "sysdb_add_group_member_overrides failed.\n");
@@ -1176,13 +1153,14 @@ int sysdb_getgrnam(TALLOC_CTX *mem_ctx,
                    struct ldb_result **_res)
 {
     TALLOC_CTX *tmp_ctx;
-    static const char *attrs[] = SYSDB_GRSRC_ATTRS;
+    const char **attrs = SYSDB_GRSRC_ATTRS(domain);
     const char *fmt_filter;
     char *sanitized_name;
     struct ldb_dn *base_dn;
     struct ldb_result *res = NULL;
     char *lc_sanitized_name;
     const char *originalad_sanitized_name;
+    const char *objectcat;
     int ret;
 
     tmp_ctx = talloc_new(NULL);
@@ -1223,11 +1201,17 @@ int sysdb_getgrnam(TALLOC_CTX *mem_ctx,
         if (res->count > 0) {
             originalad_sanitized_name = ldb_msg_find_attr_as_string(
                     res->msgs[0], ORIGINALAD_PREFIX SYSDB_NAME, NULL);
+            objectcat = ldb_msg_find_attr_as_string(
+                        res->msgs[0], SYSDB_OBJECTCATEGORY, NULL);
+            DEBUG(SSSDBG_TRACE_FUNC, "Object category check: objectcat=%s\n",
+                  objectcat ? objectcat : "NULL");
 
             if (originalad_sanitized_name != NULL
                     && !sss_string_equal(domain->case_sensitive,
                                          originalad_sanitized_name,
-                                         sanitized_name)) {
+                                         sanitized_name)
+                    && objectcat != NULL
+                    && !strcmp(objectcat, "group")) {
                 fmt_filter = SYSDB_GRNAM_FILTER;
                 base_dn = sysdb_group_base_dn(tmp_ctx, domain);
                 res = NULL;
@@ -1337,8 +1321,7 @@ int sysdb_getgrgid_with_views(TALLOC_CTX *mem_ctx,
 
         /* Must be called even without views to check to
          * SYSDB_DEFAULT_OVERRIDE_NAME */
-        ret = sysdb_add_group_member_overrides(domain, orig_obj->msgs[0],
-                                               DOM_HAS_VIEWS(domain));
+        ret = sysdb_add_group_member_overrides(domain, orig_obj->msgs[0]);
         if (ret != EOK) {
             DEBUG(SSSDBG_OP_FAILURE,
                   "sysdb_add_group_member_overrides failed.\n");
@@ -1378,7 +1361,7 @@ int sysdb_getgrgid_attrs(TALLOC_CTX *mem_ctx,
     struct ldb_dn *base_dn;
     struct ldb_result *res = NULL;
     int ret;
-    static const char *default_attrs[] = SYSDB_GRSRC_ATTRS;
+    const char **default_attrs = SYSDB_GRSRC_ATTRS(domain);
     const char **attrs = NULL;
 
     tmp_ctx = talloc_new(NULL);
@@ -1484,7 +1467,7 @@ int sysdb_enumgrent_filter(TALLOC_CTX *mem_ctx,
                            struct ldb_result **_res)
 {
     TALLOC_CTX *tmp_ctx;
-    static const char *attrs[] = SYSDB_GRSRC_ATTRS;
+    const char **attrs = SYSDB_GRSRC_ATTRS(domain);
     const char *filter = NULL;
     const char *ts_filter = NULL;
     const char *base_filter;
@@ -1631,8 +1614,7 @@ int sysdb_enumgrent_filter_with_views(TALLOC_CTX *mem_ctx,
             }
         }
 
-        ret = sysdb_add_group_member_overrides(domain, res->msgs[c],
-                                               DOM_HAS_VIEWS(domain));
+        ret = sysdb_add_group_member_overrides(domain, res->msgs[c]);
         if (ret != EOK) {
             DEBUG(SSSDBG_OP_FAILURE,
                   "sysdb_add_group_member_overrides failed.\n");
@@ -2425,18 +2407,19 @@ done:
     return ret;
 }
 
-errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
-                                 struct sss_domain_info *dom,
-                                 struct sss_domain_info *parent_dom,
-                                 enum sysdb_member_type mtype,
-                                 const char *name,
-                                 char ***_direct_parents)
+errno_t sysdb_get_direct_parents_ex(TALLOC_CTX *mem_ctx,
+                                    struct sss_domain_info *dom,
+                                    struct sss_domain_info *parent_dom,
+                                    enum sysdb_member_type mtype,
+                                    const char *name,
+                                    const char *attr_name,
+                                    char ***_direct_parents)
 {
     errno_t ret;
     const char *dn;
     char *sanitized_dn;
     struct ldb_dn *basedn;
-    static const char *group_attrs[] = { SYSDB_NAME, NULL };
+    const char *group_attrs[] = { NULL, NULL };
     const char *member_filter;
     size_t direct_sysdb_count = 0;
     struct ldb_message **direct_sysdb_groups = NULL;
@@ -2489,6 +2472,11 @@ errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
     DEBUG(SSSDBG_TRACE_INTERNAL,
           "searching sysdb with filter [%s]\n", member_filter);
 
+    if (attr_name == NULL) {
+        attr_name = SYSDB_NAME;
+    }
+    group_attrs[0] = attr_name;
+
     ret = sysdb_search_entry(tmp_ctx, dom->sysdb, basedn,
                              LDB_SCOPE_SUBTREE, member_filter, group_attrs,
                              &direct_sysdb_count, &direct_sysdb_groups);
@@ -2510,10 +2498,11 @@ errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
 
     pi = 0;
     for(i = 0; i < direct_sysdb_count; i++) {
-        tmp_str = ldb_msg_find_attr_as_string(direct_sysdb_groups[i],
-                                                SYSDB_NAME, NULL);
+        tmp_str = ldb_msg_find_attr_as_string(direct_sysdb_groups[i], attr_name,
+                                              NULL);
         if (!tmp_str) {
-            DEBUG(SSSDBG_CRIT_FAILURE, "A group with no name?\n");
+            DEBUG(SSSDBG_CRIT_FAILURE, "A group with no attribute [%s]?\n",
+                                       attr_name);
             /* This should never happen, but if it does, just continue */
             continue;
         }
@@ -2535,6 +2524,17 @@ errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
 done:
     talloc_free(tmp_ctx);
     return ret;
+}
+
+errno_t sysdb_get_direct_parents(TALLOC_CTX *mem_ctx,
+                                 struct sss_domain_info *dom,
+                                 struct sss_domain_info *parent_dom,
+                                 enum sysdb_member_type mtype,
+                                 const char *name,
+                                 char ***_direct_parents)
+{
+    return sysdb_get_direct_parents_ex(mem_ctx, dom, parent_dom, mtype, name,
+                                       NULL, _direct_parents);
 }
 
 errno_t sysdb_get_real_name(TALLOC_CTX *mem_ctx,

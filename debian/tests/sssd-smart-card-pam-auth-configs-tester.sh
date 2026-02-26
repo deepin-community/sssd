@@ -12,7 +12,12 @@
 set -xe
 
 if [ -z "${AUTOPKGTEST_NORMAL_USER}" ]; then
-    adduser --quiet --disable-password _sssduser
+    adduser --quiet --disabled-password --allow-bad-names _sssduser || {
+        if [ $? -ne 11 ]; then
+            echo "failed to add test user";
+            exit 1
+        fi
+    }
     AUTOPKGTEST_NORMAL_USER="_sssduser"
 fi
 
@@ -169,12 +174,16 @@ function test_authentication() {
 
   cat <<EOF > /etc/sssd/sssd.conf || return 2
 [sssd]
-enable_files_domain = True
 services = pam
-#certificate_verification = $verification_options
+domains = local
 
-[certmap/implicit_files/${AUTOPKGTEST_NORMAL_USER}]
+[certmap/local/${AUTOPKGTEST_NORMAL_USER}]
 matchrule = <SUBJECT>.*Test Organization.*
+
+[domain/local]
+id_provider = proxy
+proxy_lib_name = files
+local_auth_policy = only
 
 [pam]
 pam_cert_db_path = $ca_db
@@ -197,7 +206,8 @@ EOF
       || return 2
   done
 
-  systemctl restart sssd || return 2
+  systemctl restart sssd ||
+    { systemctl status sssd || : ; journalctl -xeu sssd.service || : ; grep . /var/log/sssd/*.log || : ; return 2; }
 
   pam-auth-update --disable "${alternative_pam_configs[@]}" || return 2
 

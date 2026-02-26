@@ -276,7 +276,7 @@ static errno_t get_sc_services(TALLOC_CTX *mem_ctx, struct pam_ctx *pctx,
 
     const char *default_sc_services[] = {
         "login", "su", "su-l", "gdm-smartcard", "gdm-password", "kdm", "sudo",
-        "sudo-i", "gnome-screensaver", "polkit-1", NULL,
+        "sudo-i", "gnome-screensaver", "gdm-switchable-auth", "polkit-1", "vlock", NULL,
     };
     const int default_sc_services_size =
         sizeof(default_sc_services) / sizeof(default_sc_services[0]);
@@ -711,23 +711,15 @@ done:
 }
 
 struct pam_check_cert_state {
-    int child_status;
-    struct sss_child_ctx_old *child_ctx;
-    struct tevent_timer *timeout_handler;
     struct tevent_context *ev;
     struct sss_certmap_ctx *sss_certmap_ctx;
-
     struct child_io_fds *io;
-
     struct cert_auth_info *cert_list;
     struct pam_data *pam_data;
 };
 
 static void p11_child_write_done(struct tevent_req *subreq);
 static void p11_child_done(struct tevent_req *subreq);
-static void p11_child_timeout(struct tevent_context *ev,
-                              struct tevent_timer *te,
-                              struct timeval tv, void *pvt);
 
 struct tevent_req *pam_check_cert_send(TALLOC_CTX *mem_ctx,
                                        struct tevent_context *ev,
@@ -742,15 +734,10 @@ struct tevent_req *pam_check_cert_send(TALLOC_CTX *mem_ctx,
     struct tevent_req *req;
     struct tevent_req *subreq;
     struct pam_check_cert_state *state;
-    pid_t child_pid;
-    struct timeval tv;
-    int pipefd_to_child[2] = PIPE_INIT;
-    int pipefd_from_child[2] = PIPE_INIT;
-    const char *extra_args[20] = { NULL };
+    const char *extra_args[22] = { NULL };
     uint8_t *write_buf = NULL;
     size_t write_buf_len = 0;
     size_t arg_c;
-    uint64_t chain_id;
     const char *module_name = NULL;
     const char *token_name = NULL;
     const char *key_id = NULL;
@@ -778,10 +765,15 @@ struct tevent_req *pam_check_cert_send(TALLOC_CTX *mem_ctx,
     /* extra_args are added in revers order */
     arg_c = 0;
 
-    chain_id = sss_chain_id_get();
-
-    extra_args[arg_c++] = talloc_asprintf(mem_ctx, "%lu", chain_id);
-    extra_args[arg_c++] = "--chain-id";
+    if (timeout > 0) {
+        extra_args[arg_c++] = talloc_asprintf(mem_ctx, "%lu", timeout);
+        if (extra_args[arg_c - 1] == NULL) {
+            DEBUG(SSSDBG_CRIT_FAILURE, "talloc_asprintf failed.\n");
+            ret = ENOMEM;
+            goto done;
+        }
+        extra_args[arg_c++] = "--timeout";
+    }
 
     if (uri != NULL) {
         DEBUG(SSSDBG_TRACE_ALL, "Adding PKCS#11 URI [%s].\n", uri);
@@ -852,113 +844,59 @@ struct tevent_req *pam_check_cert_send(TALLOC_CTX *mem_ctx,
 
     state->ev = ev;
     state->sss_certmap_ctx = sss_certmap_ctx;
-    state->child_status = EFAULT;
-    state->io = talloc(state, struct child_io_fds);
-    if (state->io == NULL) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "talloc failed.\n");
-        ret = ENOMEM;
-        goto done;
-    }
-    state->io->write_to_child_fd = -1;
-    state->io->read_from_child_fd = -1;
-    talloc_set_destructor((void *) state->io, child_io_destructor);
 
-    ret = pipe(pipefd_from_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-    ret = pipe(pipefd_to_child);
-    if (ret == -1) {
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE,
-              "pipe failed [%d][%s].\n", ret, strerror(ret));
-        goto done;
-    }
-
-    child_pid = fork();
-    if (child_pid == 0) { /* child */
-        exec_child_ex(state, pipefd_to_child, pipefd_from_child,
-                      P11_CHILD_PATH, P11_CHILD_LOG_FILE, extra_args, false,
-                      STDIN_FILENO, STDOUT_FILENO);
-
-        /* We should never get here */
-        DEBUG(SSSDBG_CRIT_FAILURE, "BUG: Could not exec p11 child\n");
-    } else if (child_pid > 0) { /* parent */
-
-        state->io->read_from_child_fd = pipefd_from_child[0];
-        PIPE_FD_CLOSE(pipefd_from_child[1]);
-        sss_fd_nonblocking(state->io->read_from_child_fd);
-
-        state->io->write_to_child_fd = pipefd_to_child[1];
-        PIPE_FD_CLOSE(pipefd_to_child[0]);
-        sss_fd_nonblocking(state->io->write_to_child_fd);
-
-        /* Set up SIGCHLD handler */
-        ret = child_handler_setup(ev, child_pid, NULL, NULL, &state->child_ctx);
-        if (ret != EOK) {
-            DEBUG(SSSDBG_OP_FAILURE, "Could not set up child handlers [%d]: %s\n",
-                ret, sss_strerror(ret));
-            ret = ERR_P11_CHILD;
-            goto done;
-        }
-
-        /* Set up timeout handler */
-        tv = sss_tevent_timeval_current_ofs_time_t(timeout);
-        state->timeout_handler = tevent_add_timer(ev, req, tv,
-                                                  p11_child_timeout, req);
-        if(state->timeout_handler == NULL) {
-            ret = ERR_P11_CHILD;
-            goto done;
-        }
-
-        if (pd->cmd == SSS_PAM_AUTHENTICATE) {
-            ret = get_p11_child_write_buffer(state, pd, &write_buf,
-                                             &write_buf_len);
-            if (ret != EOK) {
-                DEBUG(SSSDBG_OP_FAILURE,
-                      "get_p11_child_write_buffer failed.\n");
-                goto done;
-            }
-        }
-
-        if (write_buf_len != 0) {
-            subreq = write_pipe_send(state, ev, write_buf, write_buf_len,
-                                     state->io->write_to_child_fd);
-            if (subreq == NULL) {
-                DEBUG(SSSDBG_OP_FAILURE, "write_pipe_send failed.\n");
-                ret = ERR_P11_CHILD;
-                goto done;
-            }
-            tevent_req_set_callback(subreq, p11_child_write_done, req);
-        } else {
-            subreq = read_pipe_send(state, ev, state->io->read_from_child_fd);
-            if (subreq == NULL) {
-                DEBUG(SSSDBG_OP_FAILURE, "read_pipe_send failed.\n");
-                ret = ERR_P11_CHILD;
-                goto done;
-            }
-            tevent_req_set_callback(subreq, p11_child_done, req);
-        }
-
-        /* Now either wait for the timeout to fire or the child
-         * to finish
-         */
-    } else { /* error */
-        ret = errno;
-        DEBUG(SSSDBG_CRIT_FAILURE, "fork failed [%d][%s].\n",
+    ret = sss_child_start(state, ev,
+                          P11_CHILD_PATH, extra_args, false,
+                          P11_CHILD_LOG_FILE, STDOUT_FILENO,
+                          NULL, NULL,
+                          (unsigned)(timeout),
+                          sss_child_handle_timeout,
+                          sss_child_create_timeout_cb_pvt(req, ERR_P11_CHILD_TIMEOUT),
+                          true,
+                          &(state->io));
+    if (ret != EOK) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "sss_child_start() failed [%d][%s].\n",
                                    ret, sss_strerror(ret));
+        ret = ERR_P11_CHILD;
         goto done;
     }
 
+    if (pd->cmd == SSS_PAM_AUTHENTICATE) {
+        ret = get_p11_child_write_buffer(state, pd, &write_buf,
+                                         &write_buf_len);
+        if (ret != EOK) {
+            DEBUG(SSSDBG_OP_FAILURE,
+                  "get_p11_child_write_buffer failed.\n");
+            goto done;
+        }
+    }
+
+    if (write_buf_len != 0) {
+        subreq = write_pipe_send(state, ev, write_buf, write_buf_len,
+                                 state->io->write_to_child_fd);
+        if (subreq == NULL) {
+            DEBUG(SSSDBG_OP_FAILURE, "write_pipe_send failed.\n");
+            ret = ERR_P11_CHILD;
+            goto done;
+        }
+        tevent_req_set_callback(subreq, p11_child_write_done, req);
+    } else {
+        subreq = read_pipe_send(state, ev, state->io->read_from_child_fd);
+        if (subreq == NULL) {
+            DEBUG(SSSDBG_OP_FAILURE, "read_pipe_send failed.\n");
+            ret = ERR_P11_CHILD;
+            goto done;
+        }
+        tevent_req_set_callback(subreq, p11_child_done, req);
+    }
+
+    /* Now either wait for the timeout to fire or the child
+     * to finish
+     */
     ret = EOK;
 
 done:
     if (ret != EOK) {
-        PIPE_CLOSE(pipefd_from_child);
-        PIPE_CLOSE(pipefd_to_child);
         tevent_req_error(req, ret);
         tevent_req_post(req, ev);
     }
@@ -980,7 +918,7 @@ static void p11_child_write_done(struct tevent_req *subreq)
         return;
     }
 
-    PIPE_FD_CLOSE(state->io->write_to_child_fd);
+    FD_CLOSE(state->io->write_to_child_fd);
 
     subreq = read_pipe_send(state, state->ev, state->io->read_from_child_fd);
     if (subreq == NULL) {
@@ -1001,8 +939,6 @@ static void p11_child_done(struct tevent_req *subreq)
     uint32_t user_info_type;
     int ret;
 
-    talloc_zfree(state->timeout_handler);
-
     ret = read_pipe_recv(subreq, state, &buf, &buf_len);
     talloc_zfree(subreq);
     if (ret != EOK) {
@@ -1010,7 +946,7 @@ static void p11_child_done(struct tevent_req *subreq)
         return;
     }
 
-    PIPE_FD_CLOSE(state->io->read_from_child_fd);
+    FD_CLOSE(state->io->read_from_child_fd);
 
     ret = parse_p11_child_response(state, buf, buf_len, state->sss_certmap_ctx,
                                    &state->cert_list);
@@ -1029,23 +965,6 @@ static void p11_child_done(struct tevent_req *subreq)
 
     tevent_req_done(req);
     return;
-}
-
-static void p11_child_timeout(struct tevent_context *ev,
-                              struct tevent_timer *te,
-                              struct timeval tv, void *pvt)
-{
-    struct tevent_req *req = talloc_get_type(pvt, struct tevent_req);
-    struct pam_check_cert_state *state =
-                              tevent_req_data(req, struct pam_check_cert_state);
-
-    DEBUG(SSSDBG_CRIT_FAILURE,
-          "Timeout reached for p11_child, "
-          "consider increasing p11_child_timeout.\n");
-    child_handler_destroy(state->child_ctx);
-    state->child_ctx = NULL;
-    state->child_status = ETIMEDOUT;
-    tevent_req_error(req, ERR_P11_CHILD_TIMEOUT);
 }
 
 errno_t pam_check_cert_recv(struct tevent_req *req, TALLOC_CTX *mem_ctx,

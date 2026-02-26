@@ -33,8 +33,6 @@
 
 
 
-#ifdef HAVE_LIBINI_CONFIG_V1_3
-
 static char *sssctl_config_snippet_path(TALLOC_CTX *ctx, const char *path)
 {
     char *tmp = NULL;
@@ -58,8 +56,7 @@ static char *sssctl_config_snippet_path(TALLOC_CTX *ctx, const char *path)
 }
 
 errno_t sssctl_config_check(struct sss_cmdline *cmdline,
-                            struct sss_tool_ctx *tool_ctx,
-                            void *pvt)
+                            struct sss_tool_ctx *tool_ctx)
 {
     errno_t ret;
     struct sss_ini *init_data;
@@ -73,8 +70,7 @@ errno_t sssctl_config_check(struct sss_cmdline *cmdline,
     const char *config_path = NULL;
     const char *config_snippet_path = NULL;
     struct poptOption long_options[] = {
-        {"config", 'c', POPT_ARG_STRING, &config_path,
-            0, _("Specify a non-default config file"), NULL},
+        SSSD_CONFIG_OPTS(config_path)
         {"snippet", 's', POPT_ARG_STRING, &config_snippet_path,
             0, _("Specify a non-default snippet dir (The default is to look in "
                  "the same place where the main config file is located. For "
@@ -114,38 +110,15 @@ errno_t sssctl_config_check(struct sss_cmdline *cmdline,
                                  config_path,
                                  config_snippet_path);
 
-    if (ret == ERR_INI_OPEN_FAILED) {
-        PRINT("Failed to open %s\n", config_path);
-        goto done;
-    }
-
-    if (!sss_ini_exists(init_data)) {
+    if (ret == ERR_INI_EMPTY_CONFIG) {
         PRINT("File %1$s does not exist.\n", config_path);
-    }
-
-    if (ret == ERR_INI_INVALID_PERMISSION) {
-        PRINT("File ownership and permissions check failed. "
-              "Expected root:root and 0600.\n");
-        goto done;
-    }
-
-    if (ret == ERR_INI_PARSE_FAILED) {
-        PRINT("Failed to load configuration from %s.\n",
-              config_path);
-        goto done;
-    }
-
-    if (ret == ERR_INI_ADD_SNIPPETS_FAILED) {
-        PRINT("Error while reading configuration directory.\n");
-        goto done;
-    }
-
-    /* Used snippet files */
-    ra_success = sss_ini_get_ra_success_list(init_data);
-    num_ra_success = ref_array_len(ra_success);
-    if ((sss_ini_exists(init_data) == false) && (num_ra_success == 0)) {
         PRINT("There is no configuration.\n");
         ret = ERR_INI_OPEN_FAILED;
+        goto done;
+    }
+    else if (ret != EOK) {
+        PRINT("Configuration validation failed: %s\n", sss_strerror(ret));
+        PRINT("Run with high debug level to see details.\n");
         goto done;
     }
 
@@ -180,12 +153,26 @@ errno_t sssctl_config_check(struct sss_cmdline *cmdline,
     printf("\n");
 
     /* Used snippets */
+    ra_success = sss_ini_get_ra_success_list(init_data);
+    num_ra_success = ref_array_len(ra_success);
     PRINT("Used configuration snippet files: %zu\n", num_ra_success);
 
     i = 0;
     while (ref_array_get(ra_success, i, &msg) != NULL) {
         printf("%s\n", msg);
         i++;
+    }
+
+    /* Match SSSD behavior and do not return an error when the directory
+     * does not exist. */
+    if (num_ra_success == 0 && num_ra_error == 1 &&
+        ref_array_get(ra_error, 0, &msg) != NULL) {
+        char *emsg = talloc_asprintf(tmp_ctx, "Directory %s does not exist.",
+                                     config_snippet_path);
+        if (strcmp(emsg, msg) == 0) {
+            ret = EOK;
+            goto done;
+        }
     }
 
     if (num_errors != 0 || num_ra_error != 0) {
@@ -198,4 +185,3 @@ done:
     talloc_free(tmp_ctx);
     return ret;
 }
-#endif /* HAVE_LIBINI_CONFIG_V1_3 */

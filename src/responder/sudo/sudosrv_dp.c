@@ -157,7 +157,6 @@ sss_dp_get_sudoers_send(TALLOC_CTX *mem_ctx,
     struct sss_dp_get_sudoers_state *state;
     struct tevent_req *subreq;
     struct tevent_req *req;
-    struct be_conn *be_conn;
     DBusMessage *msg;
     errno_t ret;
 
@@ -167,37 +166,21 @@ sss_dp_get_sudoers_send(TALLOC_CTX *mem_ctx,
         return NULL;
     }
 
-    if (is_files_provider(dom)) {
-        DEBUG(SSSDBG_TRACE_INTERNAL, "Domain %s does not check DP\n",
-              dom->name);
-        state->dp_error = DP_ERR_OK;
-        state->error = EOK;
-        state->error_message = talloc_strdup(state, "Success");
-        if (state->error_message == NULL) {
-            ret = ENOMEM;
-            goto done;
-        }
-        ret = EOK;
-        goto done;
-    }
-
-    ret = sss_dp_get_domain_conn(rctx, dom->conn_name, &be_conn);
-    if (ret != EOK) {
+    if (rctx->sbus_conn == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE,
-              "BUG: The Data Provider connection for %s is not available!\n",
-              dom->name);
+            "BUG: The D-Bus connection is not available!\n");
         ret = EIO;
         goto done;
     }
 
-    msg = sss_dp_get_sudoers_msg(state, be_conn->bus_name, dom, fast_reply,
+    msg = sss_dp_get_sudoers_msg(state, dom->conn_name, dom, fast_reply,
                                  type, name, num_rules, rules);
     if (msg == NULL) {
         ret = ENOMEM;
         goto done;
     }
 
-    subreq = sbus_call_dp_dp_sudoHandler_send(state, be_conn->conn, msg);
+    subreq = sbus_call_dp_dp_sudoHandler_send(state, rctx->sbus_conn, msg);
     if (subreq == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create subrequest!\n");
         ret = ENOMEM;
@@ -209,12 +192,6 @@ sss_dp_get_sudoers_send(TALLOC_CTX *mem_ctx,
     ret = EAGAIN;
 
 done:
-#ifdef BUILD_FILES_PROVIDER
-    if (ret == EOK) {
-        tevent_req_done(req);
-        tevent_req_post(req, rctx->ev);
-    } else
-#endif
     if (ret != EAGAIN) {
         tevent_req_error(req, ret);
         tevent_req_post(req, rctx->ev);

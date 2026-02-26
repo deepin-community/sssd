@@ -42,7 +42,7 @@ generate_certs() {
 
     cat > "$cnf" <<EOF
 [ req ]
-default_bits            = 1024
+default_bits            = 2048
 default_keyfile         = privkey.pem
 distinguished_name      = req_distinguished_name
 prompt                  = no
@@ -262,3 +262,25 @@ create_krb_principal() {
     kadmin.local -q "addprinc -pw ${password} ${principal}"
 }
 
+setup_sshd_password_auth() {
+    cat > /etc/ssh/sshd_config.d/00-dep8.conf <<EOF
+PasswordAuthentication yes
+EOF
+    systemctl restart ssh
+}
+
+cleanup_sshd_config() {
+    rm -f /etc/ssh/sshd_config.d/00-dep8.conf 2>/dev/null || :
+    systemctl restart ssh
+}
+
+gather_logs() {
+    echo "## sssd"
+    tail -n 200 /var/log/sssd/*.log
+    echo
+    echo "## journalctl"
+    journalctl -b --lines 200
+    echo
+    echo "## dmesg"
+    dmesg -T | tail -n 200
+}

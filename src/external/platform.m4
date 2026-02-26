@@ -1,17 +1,9 @@
 AC_ARG_WITH([os],
-            [AC_HELP_STRING([--with-os=OS_TYPE], [Type of your operation system (fedora|redhat|suse|gentoo)])]
+            [AC_HELP_STRING([--with-os=OS_TYPE], [Type of your operation system (unknown|fedora|redhat|suse|debian|gentoo)])]
            )
 osname=""
 if test x"$with_os" != x ; then
-    if test x"$with_os" = xfedora || \
-       test x"$with_os" = xredhat || \
-       test x"$with_os" = xsuse || \
-       test x"$with_os" = xgentoo || \
-       test x"$with_os" = xdebian ; then
-        osname=$with_os
-    else
-        AC_MSG_ERROR([Illegal value -$with_os- for option --with-os])
-    fi
+    osname=$with_os
 fi
 
 if test x"$osname" = x ; then
@@ -25,6 +17,13 @@ if test x"$osname" = x ; then
         osname="debian"
     elif test -f /etc/gentoo-release ; then
         osname="gentoo"
+    elif test -f /etc/os-release ; then
+        . /etc/os-release
+        if ([[ "${ID}" = "suse" ]]) || ([[ "${ID_LIKE#*suse*}" != "${ID_LIKE}" ]]); then
+            osname="suse"
+        fi
+    else
+        osname="unknown"
     fi
 
     AC_MSG_NOTICE([Detected operating system type: $osname])
@@ -47,10 +46,17 @@ AS_CASE([$osname],
 AC_CHECK_MEMBERS([struct ucred.pid, struct ucred.uid, struct ucred.gid], , ,
                  [[#include <sys/socket.h>]])
 
+AC_CHECK_MEMBERS([struct xucred.cr_pid, struct xucred.cr_uid, struct xucred.cr_groups], , ,
+                 [[#include <sys/ucred.h>]])
+
 if test x"$ac_cv_member_struct_ucred_pid" = xyes -a \
         x"$ac_cv_member_struct_ucred_uid" = xyes -a \
         x"$ac_cv_member_struct_ucred_gid" = xyes ; then
     AC_DEFINE([HAVE_UCRED], [1], [Define if struct ucred is available])
+elif test x"$ac_cv_member_struct_xucred_cr_pid" = xyes -a \
+        x"$ac_cv_member_struct_xucred_cr_uid" = xyes -a \
+        x"$ac_cv_member_struct_xucred_cr_groups" = xyes ; then
+    AC_DEFINE([HAVE_XUCRED], [1], [Define if struct xucred is available])
 else
-    AC_MSG_WARN([struct ucred is not available])
+    AC_MSG_ERROR([struct ucred is not available])
 fi

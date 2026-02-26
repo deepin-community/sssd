@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-krb5</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-krb5</refname>
+        <refpurpose>Proveedor de Kerberos SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página de manual describe la configuración del motor de autenticación
+de Kerberos 5 para <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>. Para una referencia detallada de
+la sintaxis, refiérase a la sección <quote>FORMATO DE ARCHIVO</quote> de la
+página de manual de <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            El motor de autenticación de Kerberos 5 contiene proveedores auth y
+chpass. Debe ir junto con un proveedor de identidad para que funcione
+adecuadamente (por ejemplo, id_provider = ldap). Algo de información
+requerida por el motor de autenticación de Kerberos 5 debe ser provista por
+el proveedor de identidad, tal como el Nombre Principal del usuario de
+Kerberos (NPU). La configuración del proveedor de identidad debe tener una
+entrada específica para el NPU. Por favor, vea la página del manual para el
+proveedor de identidad aplicable, para más detalles sobre cómo configurar
+esto.
+        </para>
+        <para>
+            Este segundo plano también proporciona control de acceso basado en el
+archivo .k5login en el directorio inicial del usuario. Consulte
+<citerefentry>
+<refentrytitle>k5login</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry> para más detalles. Note que un archivo vacío de .k5login
+denegará todos los accesos a este usuario. Para activar esta característica,
+utilice 'access_provider = krb5' en su configuración de SSSD.
+        </para>
+        <para>
+            En el caso de que el NPU no esté disponible en el motor de identidad,
+<command>sssd</command> construirá un NPU usando el formato
+<replaceable>username</replaceable>@<replaceable>krb5_realm</replaceable>.
+        </para>
+
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPCIONES DE CONFIGURACIÓN</title>
+        <para>
+            Si se utiliza el módulo de autenticación krb5 en un dominio SSSD, se deben
+utilizar las siguientes opciones. Consulte la página del manual
+<citerefentry><refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>,
+sección <quote>SECCIONES DE DOMINIO</quote>, para detalles en la
+configuración de un dominio SSSD.  <variablelist>
+                <varlistentry>
+                    <term>krb5_server, krb5_backup_server (cadena)</term>
+                    <listitem>
+                        <para>
+                            Especifica una lista separada por comas de direcciones IP o nombres de host
+de los servidores Kerberos a los cuales se conectaría SSSD en orden de
+preferencia. Para más información sobre failover y redundancia de servidor,
+vea la sección <quote>FAILOVER</quote>. Un número de puerto opcional
+(precedido de dos puntos) puede ser añadido a las direcciones o nombres de
+host. Si está vacío, el servicio descubridor está habilitado; para más
+información, vea la sección <quote>SERVICE DISCOVERY</quote>.
+                        </para>
+                        <para>
+                            Cuando se utiliza el servicio descubiertos para servidores KDC o kpasswd,
+SSSD primero busca entradas DNS que especifiquen _udop como protocolo y
+regresa a _tcp si no se encuentra nada.
+                        </para>
+                        <para>
+                            Este opción se llamaba <quote>krb5_kdcip</quote> en las revisiones más
+tempranas de SSSD. Mientras el legado de nombre se reconoce por el tiempo
+que sea, los usuarios son advertidos para migrar sus ficheros de
+configuración para usar <quote>krb5_server</quote> en su lugar.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_realm (cadena)</term>
+                    <listitem>
+                        <para>
+                            El nombre del reino Kerberos. Esta opción se requiere y debe ser
+especificada.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_kpasswd, krb5_backup_kpasswd (cadena)</term>
+                    <listitem>
+                        <para>
+                            Si el servicio de cambio de contraseña no se está ejecutando en el KDC, se
+pueden definir aquí servidores alternativos. Un número de puerto opcional
+(precedido de dos puntos) debe ser añadido a las direcciones o nombres de
+host.
+                        </para>
+                        <para>
+                            Para más información sobre recuperación de fallos y redundancia de servidor,
+consulte la sección de <quote>conmutación por error</quote>.  Nota: incluso
+si no hay más servidores kpasswd para  intentar, y el punto final no está
+conmutado para trabajar fuera de línea la autenticación contra el KDC es
+todavía posible.
+                        </para>
+                        <para>
+                            Predeterminado: Use the KDC
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_ccachedir (cadena)</term>
+                    <listitem>
+                        <para>
+                            Directorio para almacenar credencial caché. Todas las secuencias de
+sustitución de krb5_ccname_template puede ser utilizada aquí, también,
+excepto %d y %P.  El directorio es creado como privado y poseído por el
+usuario, con los permisos puestos a 0700.
+                        </para>
+                        <para>
+                            Predeterminado: /tmp
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_ccname_template (cadena)</term>
+                    <listitem>
+                        <para>
+                            Lugar del cache de credencial del usuario. Tres tipos de cachés de
+credential son actualmente admitidos: <quote>ARCHIVO</quote>,
+<quote>DIR</quote> y <quote>LLAVERO:persistente</quote>. La caché puede
+estar especificada bien como <replaceable>TIPO:RESIDUAL</replaceable>, o
+bien como una ruta absoluta, lo cual implica el tipo del
+<quote>ARCHIVO</quote>. En la plantilla, las secuencias siguientes son
+sustituidas: <variablelist>
+                                <varlistentry>
+                                    <term>%u</term>
+                                    <listitem><para>nombre de acceso</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%U</term>
+                                    <listitem><para>UID de acceso</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%p</term>
+                                    <listitem><para>nombre principal</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%r</term>
+                                    <listitem><para>nombre de reino</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%h</term>
+                                    <listitem><para>directorio home</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%d</term>
+                                    <listitem><para>valor de krb5_ccachedir
+                                              </para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%P</term>
+                                    <listitem><para>el ID de proceso del cliente SSSD</para>
+                                    </listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>%%</term>
+                                    <listitem><para>un literal ‘%’</para>
+                                    </listitem>
+                                </varlistentry>
+                            </variablelist> Si los finales de
+plantilla con 'XXXXXX' son utilizados con mkstemp(3) para crear un único
+nombre de archivo en una manera segura.
+                        </para>
+                        <para>
+                            Cuando utiliza tipos de LLAVERO, el mecanismo soportado único es
+<quote>LLAVERO:persistente:%U</quote>, el cual utiliza el llavero del kernel
+Linux para almacenar credenciales en una base por UID. También esto es la
+elección recomendada, como es el método más seguro y previsible .
+                        </para>
+                        <para>
+                            El valor por defecto para el nombre de caché credencial es originado desde
+el perfil almacenado en el archivo de configuración ancha de krb5.conf en la
+sección [libdefaults]. El nombre de opción es default_ccache_name.  Consulte
+el parágrafo PARÁMETRO DE EXPANSIÓN de krb5.conf(5) para información
+adicional en el formato de expansión definido por krb5.conf.
+                        </para>
+                        <para>
+                          NOTA: Tenga en cuenta que la plantilla de expansión de ccache de libkrb5
+desde <citerefentry> <refentrytitle>krb5.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> utiliza secuencias de expansión
+diferentes a las de SSSD.
+                        </para>
+                        <para>
+                            Predeterminado: (desde libkrb5)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_keytab (cadena)</term>
+                    <listitem>
+                        <para>
+                            La localización de la keytab a usar cuando son obtenidas credenciales
+validadas desde KDCs.
+                        </para>
+                        <para>
+                            Por defecto: Keytab del sistema, normalmente
+<filename>/etc/krb5.keytab</filename>
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_store_password_if_offline (booleano)</term>
+                    <listitem>
+                        <para>
+                            Almacena la contraseña del usuario si el proveedor es desconectado y lo
+utiliza para solicitar un TGT cuando el proveedor se conecta otra vez.
+                        </para>
+                        <para>
+                            Nota: esta característica solo está disponible en Linux.  Las contraseñas
+almacenaron de esta manera son conservadas internas al anillo del kernel y
+es potencialmente accesible por el usuario root (con dificultad).
+                        </para>
+                        <para>
+                            Predeterminado: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_use_fast (cadena)</term>
+                    <listitem>
+                        <para>
+                            Habilita la autenticación segura flexible de los túneles (FSAT) para la
+pre-autenticación Kerberos. Se soportan las siguientes opciones:
+                        </para>
+                        <para>
+                            <emphasis>nunca</emphasis> utilice FAST. Esto es equivalente a no fijar esta
+opción en absoluto.
+                        </para>
+                        <para>
+                            <emphasis>intento</emphasis> para utilizar FAST. Si el servidor no admite
+FAST, continúe la autentificación sin ello.
+                        </para>
+                        <para>
+                            <emphasis>demanda</emphasis> para utilizar FAST. La autenticación falla si
+el servidor no requiere rapidez.
+                        </para>
+                        <para>
+                            Por defecto: no fijado, esto es no se usa FAST.
+                        </para>
+                        <para>
+                            NOTA: se requiere una tecla tabulada o soporte para PKINIT anónimo para
+utilizar FAST.
+                        </para>
+                        <para>
+                            NOTA: SSSD admite FAST solo con la versión 1.8 de Kerberos MIT o
+posterior. Si se utiliza SSSD con una versión anterior del Kerberos MIT,
+utilizar esta opción es un error de configuración.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_fast_principal (cadena)</term>
+                    <listitem>
+                        <para>
+                            Especifica el servidor principal para usar por FAST.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_fast_use_anonymous_pkinit (booleano)</term>
+                    <listitem>
+                        <para>
+                            Si se establece en cierto, intentará usar PKINIT anónimo en lugar de una
+tecla tabulada para obtener las credenciales necesarias para FAST. Las
+opciones krb5_fast_principal se ignoran en este caso.
+                        </para>
+                        <para>
+                            Predeterminado: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_use_kdcinfo (booleano)</term>
+                    <listitem>
+                        <para>
+                            Especifica si el SSSD debe instruir a las librerías Kerberos que ámbito y
+que KDCs usar. Esta opción está por defecto, si la deshabilita, necesita
+configurar las librerías Kerberos usando el fichero de configuración
+<citerefentry> <refentrytitle>krb5.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+                        </para>
+                        <para>
+                            Vea la página de manual <citerefentry>
+<refentrytitle>sssd_krb5_locator_plugin</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> para más información sobre el
+complemento localizador.
+                        </para>
+                        <para>
+                            Predeterminado: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_kdcinfo_lookahead (cadena)</term>
+                    <listitem>
+                        <para>
+                            Cuando krb5_use_kdcinfo esté puesto a cierto, puedes limitar la cantidad de
+servidores manipulados a <citerefentry>
+<refentrytitle>sssd_krb5_locator_plugin</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>.  Esto tal vez sea una ayuda cuando
+hay demasiados servidores descubiertos utilizando un registro SRV.
+                        </para>
+                        <para>
+                            La opción krb5_kdcinfo_lookahead contiene dos números separados por dos
+puntos. El primero representa el número de servidores principales utilizados
+y el segundo, el número de servidores de respaldo.
+                        </para>
+                        <para>
+                            Por ejemplo, <emphasis>10:0</emphasis> significa que se entregarán hasta 10
+servidores principales a <citerefentry>
+<refentrytitle>sssd_krb5_locator_plugin</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry> pero ningún servidor de respaldo.
+                        </para>
+                        <para>
+                            Predeterminado: 3:1
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_use_enterprise_principal (booleano)</term>
+                    <listitem>
+                        <para>
+                            Especifica si el principal de usuario debe tratarse como principal de
+empresa. Consulte la sección 5 de RFC 6806 para obtener más información
+sobre los principales de empresa.
+                        </para>
+
+                        <para>
+                            Predeterminado: falso (proveedor AD: cierto)
+                        </para>
+                        <para>
+                            El proveedor IPA establecerá la opción en verdadero, 'true', si detecta que
+el servidor es capaz de manejar entidades de seguridad empresariales y la
+opción no está configurada explícitamente en el archivo de configuración.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_use_subdomain_realm (booleano)</term>
+                    <listitem>
+                        <para>
+                            Especifica el uso de dominios de subdominios para la autenticación de
+usuarios desde dominios confiados. Esta opción se puede poner como ‘true’ si
+se utilizan principales empresariales con upnSuffix desconocidos en los KDC
+del dominio anterior. Si la opción se configura como “true”, SSSD intentará
+enviar la solicitud directamente a un KDC del dominio de confianza del que
+proviene el usuario.
+                        </para>
+
+                        <para>
+                            Predeterminado: false
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>krb5_map_user (cadena)</term>
+                    <listitem>
+                        <para>
+                             El listado de asignaciones se proporciona como un listado de parejas
+separadas por comas: <quote>usuario:primario</quote>, donde
+<quote>usuario</quote> es un nombre de usuario de UNIX y
+<quote>primario</quote> es la parte del usuario de una entidad de seguridad
+Kerberos. Esta asignación se utiliza cuando el usuario se autentica mediante
+<quote>auth_provider = krb5</quote>.
+                        </para>
+
+                        <para>
+                             ejemplo: <programlisting>
+krb5_realm = REALM
+krb5_map_user = joe:juser,dick:richard
+</programlisting>
+                        </para>
+                        <para>
+                             <quote>joe</quote> y <quote>dick</quote> son nombres de usuario de UNIX, y
+<quote>juser</quote> y <quote>richard</quote> son los principales de
+Kerberos. Para el usuario <quote>joe</quote> o <quote>dick</quote>, SSSD
+intentará kinit como <quote>juser@REALM</quote> o
+<quote>richard@REALM</quote>.
+                        </para>
+
+                        <para>
+                            Predeterminado: no definido
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+            </variablelist>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/krb5_options.xml" />
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/failover.xml" />
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/service_discovery.xml" />
+
+    <refsect1 id='example'>
+        <title>EJEMPLO</title>
+        <para>
+            El siguiente ejemplo asume que SSSD está configurado correctamente y que FOO
+es uno de los dominios de la sección <replaceable>[sssd]</replaceable>. Este
+ejemplo solo muestra la configuración de la autenticación Kerberos; no
+incluye ningún proveedor de identidad.
+        </para>
+        <para>
+<programlisting>
+[domain/ALGO]
+auth_provider = krb5
+krb5_server = 192.168.1.1
+krb5_realm = EJEMPLO.COM
+</programlisting>
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

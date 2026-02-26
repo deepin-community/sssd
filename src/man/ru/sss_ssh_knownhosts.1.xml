@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Справка по SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sss_ssh_knownhosts</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sss_ssh_knownhosts</refname>
+        <refpurpose>получить открытые ключи OpenSSH известных узлов</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sss_ssh_knownhosts</command> <arg choice='opt'>
+<replaceable>options</replaceable> </arg> <arg
+choice='plain'><replaceable>HOST</replaceable></arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>ОПИСАНИЕ</title>
+        <para>
+            <command>sss_ssh_knownhosts</command> получает открытые ключи SSH для узла
+<replaceable>HOST</replaceable> и выводит их в формате known_hosts OpenSSH
+(дополнительные сведения доступны в разделе <quote>SSH_KNOWN_HOSTS FILE
+FORMAT</quote> справочной страницы
+<citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>).
+        </para>
+        <para>
+            <citerefentry><refentrytitle>ssh</refentrytitle>
+<manvolnum>1</manvolnum></citerefentry> можно настроить на использование
+<command>sss_ssh_knownhosts</command> для проверки подлинности узла по
+открытым ключам с использованием параметра <quote>KnownHostsCommand</quote>:
+<programlisting>
+                KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H
+            </programlisting> Дополнительные сведения об этом
+параметре доступны на справочной странице <citerefentry>
+<refentrytitle>ssh_config</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry>.
+        </para>
+        <para>
+            Для корректной работы этого инструмента необходимо, чтобы служба SSH в SSSD
+была включена.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>ОПЦИИ</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>-d</option>,<option>--domain</option>
+<replaceable>DOMAIN</replaceable>
+                </term>
+                <listitem>
+                    <para>
+                        Искать открытые ключи узла в домене SSSD <replaceable>DOMAIN</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-o</option>,<option>--only-host-name</option>
+                </term>
+                <listitem>
+                    <para>
+                        Если ключи, полученные от внутреннего сервера, не содержат имя узла, этот
+инструмент добавит неизменное имя узла, предоставленное вызывающей
+стороной. Если этот флаг установлен, к ключам будет добавлено только имя
+узла (без номера порта).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/param_help.xml" />
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='key_retrieval'>
+        <title>ПОЛУЧЕНИЕ КЛЮЧЕЙ</title>
+        <para>
+            Ожидается, что строки ключей, полученные от внутреннего сервера, будут
+соответствовать формату ключа, описанному в разделе <quote>SSH_KNOWN_HOSTS
+FILE FORMAT</quote> <citerefentry><refentrytitle>sshd</refentrytitle>
+<manvolnum>8</manvolnum></citerefentry>. Однако допускается возврат только
+типа ключа и самого ключа. В этом случае имя узла, полученное в качестве
+параметра, будет добавлено к типу ключа для вывода правильно
+отформатированной строки. В зависимости от того, был ли предоставлен
+параметр <option>-o</option>,<option>--only-host-name</option>, будет
+добавлено или имя узла без изменений, или только имя узла (без номера
+порта).
+        </para>
+        <para>
+            Если SSH-сервер прослушивает порт, отличный от порта по умолчанию,
+внутренний сервер ДОЛЖЕН предоставить имя узла с номером порта в правильном
+формате и местоположении как часть строки ключа. Например, минимальная
+строка ключа может быть такой: <programlisting>
+                [canonical.host.name]:2222 &lt;тип_ключа&gt; &lt;ключ_в_кодировке_base64&gt;
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1 id='exit_status'>
+        <title>СОСТОЯНИЕ ВЫХОДА</title>
+        <para>
+            В случае успешного выполнения, даже если для данного узла ключ не найден или
+не удалось связаться с ответчиком SSH, возвращается значение «0». В случае
+любой другой ошибки возвращается «1».
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

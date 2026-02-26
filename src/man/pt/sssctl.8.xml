@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssctl</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssctl</refname>
+        <refpurpose>Utilitário de controle e estado do SSSD</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>sssctl</command> <arg
+choice='plain'><replaceable>COMANDO</replaceable></arg> <arg choice='opt'>
+<replaceable>opções</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            O <command>sssctl</command> fornece uma maneira simples e unificada de obter
+informação acerca do estado do SSSD, tal como o servidor activo, servidores
+auto-descobertos, domínios e objectos em cache. Adicionalmente, pode gerir
+ficheiros de dados do SSSD para resolução de problemas de tal maneira que é
+seguro manipula-los enquanto o SSSD está a correr.
+        </para>
+    </refsect1>
+
+    <refsect1 id='commands'>
+        <title>COMANDOS DISPONÍVEIS</title>
+        <para>
+            Para listar todos os comandos disponíveis corra <command>sssctl</command>
+sem nenhuns parâmetros. Para escrever ajuda para o comando selecionado corra
+<command>sssctl COMANDO --help</command>.
+        </para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES COMUNS</title>
+        <para>
+            Estas opções estão disponíveis com todos os comandos.
+        </para>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>--debug</option> <replaceable>NÍVEL</replaceable>
+                </term>
+                <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/debug_levels_tools.xml" />
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

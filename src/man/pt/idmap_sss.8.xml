@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>idmap_sss</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>idmap_sss</refname>
+        <refpurpose>Backend idmap_sss do SSSD para Winbind</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para>
+            O módulo idmap_sss fornece uma maneira de chamar o SSSD para mapear
+UIDs/GIDs e SIDs. Nenhuma base de dados é requerida neste caso pois o
+mapeamento é feito pelo SSSD.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>OPÇÕES DE IDMAP</title>
+
+        <variablelist>
+            <varlistentry>
+                <term>range = low - high</term>
+                <listitem><para>
+                  Define a gama de UID e GID correspondente disponível para a qual o backend é
+autoridade.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>EXEMPLOS</title>
+        <para>
+            Este exemplo mostra como configurar o idmap_sss como o módulo de mapeamento
+predefinido.
+        </para>
+
+        <programlisting format="linespecific">
+[global]
+security = ads
+workgroup = &lt;AD-DOMAIN-SHORTNAME&gt;
+
+idmap config &lt;AD-DOMAIN-SHORTNAME&gt; : backend        = sss
+idmap config &lt;AD-DOMAIN-SHORTNAME&gt; : range          = 200000-2147483647
+
+idmap config * : backend        = tdb
+idmap config * : range          = 100000-199999
+        </programlisting>
+
+        <para>
+            Por favor substitua &lt;AD-DOMAIN-SHORTNAME&gt; pelo nome de domínio NetBIOS
+do domínio AD. Se devem ser usados múltiplos domínios AD cada domínio
+precisa de uma linha <literal>idmap config</literal> com <literal>backend =
+sss</literal> e uma linha com um <literal>range</literal> apropriado.
+        </para>
+        <para>
+            Como o Winbind requer um backend predefinido com acesso de escrita e o
+idmap_sss é de só-leitura o exemplo inclui <literal>backend = tdb</literal>
+como predefinição.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

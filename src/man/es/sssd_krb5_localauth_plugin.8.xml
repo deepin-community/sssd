@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd_krb5_localauth_plugin</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd_krb5_localauth_plugin</refname>
+        <refpurpose>Complemento autorización local de Kerberos</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            libkrb5 utiliza el complemento de autorización local Kerberos
+<command>sssd_krb5_localauth_plugin</command> para encontrar el nombre local
+de un principal Kerberos determinado o para verificar si un nombre local
+determinado y un principal Kerberos determinado se relacionan entre sí.
+        </para>
+        <para>
+            SSSD manipula los nombres locales de los usuarios de un origen remoto y
+también puede leer el nombre principal de usuario de Kerberos desde dicho
+origen. Con esta información, SSSD puede manipular fácilmente las
+asignaciones mencionadas, incluso si el nombre local y el principal de
+Kerberos difieren considerablemente.
+        </para>
+        <para>
+            Además, con la información leída del origen remoto, SSSD puede ayudar a
+prevenir asignaciones inesperadas o no deseadas en caso de que la parte de
+usuario del principal Kerberos corresponda accidentalmente al nombre local
+de otro usuario. Por defecto, libkrb5 podría simplemente recortar la parte
+de dominio del principal Kerberos para obtener el nombre local, lo cual en
+este caso provocaría asignaciones incorrectas.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration'>
+        <title>CONFIGURACIÓN</title>
+        <para>
+            El complemento de autorización local de Kerberos debe habilitarse
+explícitamente en la configuración de Kerberos; consulte <citerefentry>
+<refentrytitle>krb5.conf</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry>. SSSD creará automáticamente un
+fragmento de configuración con el contenido, como p.e.  <programlisting>
+[plugins]
+ localauth = {
+  module = sssd:/usr/lib64/sssd/modules/sssd_krb5_localauth_plugin.so
+ }
+</programlisting>, en el directorio público de fragmentos de
+configuración de Kerberos de SSSD. Si este directorio está incluido en la
+configuración local de Kerberos, el complemento se habilitará
+automáticamente.
+        </para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

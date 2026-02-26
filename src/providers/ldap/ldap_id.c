@@ -179,6 +179,7 @@ struct tevent_req *users_get_send(TALLOC_CTX *memctx,
     char *sid;
     char *user_filter = NULL;
     char *ep_filter;
+    char *sam_filter = NULL;
 
     req = tevent_req_create(memctx, &state, struct users_get_state);
     if (!req) return NULL;
@@ -230,13 +231,17 @@ struct tevent_req *users_get_send(TALLOC_CTX *memctx,
             ep_filter = get_enterprise_principal_string_filter(state,
                                    ctx->opts->user_map[SDAP_AT_USER_PRINC].name,
                                    clean_value, ctx->opts->basic);
+            sam_filter = principal_string_to_samaccountname(state,
+                                   ctx->opts->user_map[SDAP_AT_USER_SAMACCOUNTNAME].name,
+                                   clean_value, state->domain->realm);
             /* TODO: Do we have to check the attribute names more carefully? */
-            user_filter = talloc_asprintf(state, "(|(%s=%s)(%s=%s)%s)",
+            user_filter = talloc_asprintf(state, "(|(%s=%s)(%s=%s)%s%s)",
                                    ctx->opts->user_map[SDAP_AT_USER_PRINC].name,
                                    clean_value,
                                    ctx->opts->user_map[SDAP_AT_USER_EMAIL].name,
                                    clean_value,
-                                   ep_filter == NULL ? "" : ep_filter);
+                                   ep_filter == NULL ? "" : ep_filter,
+				   sam_filter == NULL ? "" : sam_filter);
             talloc_zfree(clean_value);
             if (user_filter == NULL) {
                 DEBUG(SSSDBG_OP_FAILURE, "talloc_asprintf failed.\n");
@@ -246,11 +251,19 @@ struct tevent_req *users_get_send(TALLOC_CTX *memctx,
         } else {
             attr_name = ctx->opts->user_map[SDAP_AT_USER_NAME].name;
 
-            ret = sss_parse_internal_fqname(state, filter_value,
-                                            &state->shortname, NULL);
-            if (ret != EOK) {
-                DEBUG(SSSDBG_OP_FAILURE, "Cannot parse %s\n", filter_value);
-                goto done;
+            if (strchr(filter_value, '@') == NULL) {
+                state->shortname = talloc_strdup(state, filter_value);
+                if (state->shortname == NULL) {
+                    ret = ENOMEM;
+                    goto done;
+                }
+            } else {
+                ret = sss_parse_internal_fqname(state, filter_value,
+                                                &state->shortname, NULL);
+                if (ret != EOK) {
+                    DEBUG(SSSDBG_OP_FAILURE, "Cannot parse %s\n", filter_value);
+                    goto done;
+                }
             }
 
             ret = sss_filter_sanitize(state, state->shortname, &clean_value);
@@ -1144,6 +1157,8 @@ struct groups_by_user_state {
     const char *filter_value;
     int filter_type;
     const char *extra_value;
+    struct sdap_attr_map *user_map;
+    size_t user_map_cnt;
     const char **attrs;
     bool non_posix;
 
@@ -1165,6 +1180,8 @@ struct tevent_req *groups_by_user_send(TALLOC_CTX *memctx,
                                        const char *filter_value,
                                        int filter_type,
                                        const char *extra_value,
+                                       struct sdap_attr_map *user_map,
+                                       size_t user_map_cnt,
                                        bool noexist_delete,
                                        bool set_non_posix)
 {
@@ -1192,6 +1209,8 @@ struct tevent_req *groups_by_user_send(TALLOC_CTX *memctx,
     state->filter_value = filter_value;
     state->filter_type = filter_type;
     state->extra_value = extra_value;
+    state->user_map = user_map;
+    state->user_map_cnt = user_map_cnt;
     state->domain = sdom->dom;
     state->sysdb = sdom->dom->sysdb;
     state->search_bases = search_bases;
@@ -1256,6 +1275,8 @@ static void groups_by_user_connect_done(struct tevent_req *subreq)
                                   state->sdom,
                                   sdap_id_op_handle(state->op),
                                   state->ctx,
+                                  state->user_map,
+                                  state->user_map_cnt,
                                   state->conn,
                                   state->search_bases,
                                   state->filter_value,
@@ -1457,20 +1478,23 @@ sdap_handle_acct_req_send(TALLOC_CTX *mem_ctx,
                                      ar->filter_value,
                                      ar->filter_type,
                                      ar->extra_value,
+                                     NULL, 0,
                                      noexist_delete, false);
         break;
 
     case BE_REQ_SUBID_RANGES:
 #ifdef BUILD_SUBID
-        if (!ar->extra_value) {
+        if (((strcasecmp(sdom->dom->provider, "ldap") != 0) &&
+             (strcasecmp(sdom->dom->provider, "ipa") != 0))
+            || /* currently it must be "pure" LDAP or IPA - not trusted subdomain */
+            IS_SUBDOMAIN(sdom->dom)) {
             ret = ERR_GET_ACCT_SUBID_RANGES_NOT_SUPPORTED;
             state->err = "This id_provider doesn't support subid ranges";
             goto done;
         }
         subreq = subid_ranges_get_send(state, be_ctx->ev, id_ctx,
                                        sdom, conn,
-                                       ar->filter_value,
-                                       ar->extra_value);
+                                       ar->filter_value);
 #else
         ret = ERR_GET_ACCT_SUBID_RANGES_NOT_SUPPORTED;
         state->err = "Subid ranges are not supported";

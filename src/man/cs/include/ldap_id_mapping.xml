@@ -58,7 +58,7 @@ represent the Active Directory domain identity and the relative identifier
         </para>
         <para>
             The SSSD ID-mapping algorithm takes a range of available UIDs and divides it
-into equally-sized component sections - called "slices"-. Each slice
+into equally-sized component sections - called "slices". Each slice
 represents the space available to an Active Directory domain.
         </para>
         <para>
@@ -90,7 +90,7 @@ consistent. See <quote>Configuration</quote> for details.
             Minimum configuration (in the <quote>[domain/DOMAINNAME]</quote> section):
         </para>
         <para>
-<programlisting>
+syntaxe: <programlisting>
 ldap_id_mapping = True
 ldap_schema = ad
 </programlisting>
@@ -163,7 +163,7 @@ will fail for any user whose RID is greater than this value.
                             For example, if your most recently-added Active Directory user has
 objectSid=S-1-5-21-2153326666-2176343378-3404031434-1107,
 <quote>ldap_idmap_range_size</quote> must be at least 1108 as range size is
-equal to maximal SID minus minimal SID plus one (e.g. 1108 = 1107 - 0 + 1).
+equal to maximal RID minus minimal RID plus one (e.g. 1108 = 1107 - 0 + 1).
                         </para>
                         <para>
                             It is important to plan ahead for future expansion, as changing this value
@@ -218,7 +218,7 @@ with machines running winbind, it is recommended to also use the
 least one domain is consistently allocated to slice zero.
                         </para>
                         <para>
-                            Default: False
+                            Výchozí: false (nepravda)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -236,7 +236,7 @@ generated so far. If value of ldap_idmap_helper_table_size is equal to 0
 then no additional secondary slices are generated.
                         </para>
                         <para>
-                            Default: 10
+                            Výchozí: 10
                         </para>
                     </listitem>
                 </varlistentry>

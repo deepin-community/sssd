@@ -40,7 +40,7 @@
             is required. <command>sssd</command> <emphasis>does
             not</emphasis> support authentication over an unencrypted channel.
             Even if the LDAP server is used only as an identity provider, an encrypted
-            channel is strongly recommended. Please refer to
+            channel is strongly recommended. Please refer to the
             <quote>ldap_access_filter</quote> config option for more information
             about using LDAP as an access provider.
         </para>
@@ -162,6 +162,45 @@
                 </varlistentry>
 
                 <varlistentry>
+                    <term>ldap_read_rootdse (string)</term>
+                    <listitem>
+                        <para>
+                            SSSD reads RootDSE to get information about LDAP and
+                            its capabilities. By default, this is done
+                            anonymously. However, this may not be permitted by
+                            the LDAP server. In such cases we can use this option
+                            to influence SSSD behavior.
+                        </para>
+                        <para>
+                            Allowed values are:
+                            <itemizedlist>
+                                <listitem>
+                                    <para>
+                                        anonymous
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        authenticated
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        never
+                                    </para>
+                                </listitem>
+                            </itemizedlist>
+                            By default, using the "anonymous" option, SSSD tries
+                            to read RootDSE anonymously. If this fails SSSD
+                            retries the attempt with authentication.
+                        </para>
+                        <para>
+                            Default: anonymous
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
                     <term>ldap_schema (string)</term>
                     <listitem>
                         <para>
@@ -232,6 +271,17 @@
                                     <para>
                                         ldap_modify - Direct modification of
                                         userPassword (not recommended).
+                                    </para>
+                                </listitem>
+                                <listitem>
+                                    <para>
+                                        exop_force - Try Password Modify
+                                        Extended Operation (RFC 3062) even if
+                                        there are no grace logins left.
+                                        Depending on the type and configuration
+                                        of the LDAP server the password change
+                                        might fail because an authenticated bind
+                                        is not possible.
                                     </para>
                                 </listitem>
                             </itemizedlist>
@@ -322,11 +372,6 @@
                             Specifies how many seconds SSSD has to wait
                             before refreshing its cache of enumerated
                             records.
-                        </para>
-                        <para>
-                            This option can be also set per subdomain or
-                            inherited via
-                            <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Default: 300
@@ -435,6 +480,21 @@
                     </listitem>
                 </varlistentry>
 
+                <varlistentry condition="with_subid">
+                    <term>ldap_subid_ranges_search_base (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Use the given string as search base for
+                            subordinate ranges related objects.
+                        </para>
+                        <para>
+                            Default: the value of
+                            <emphasis>cn=subids,%basedn</emphasis> for IPA
+                            otherwise <emphasis>ldap_search_base</emphasis>.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
                 <varlistentry>
                     <term>ldap_service_search_base (string)</term>
                     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/ldap_search_bases.xml" />
@@ -485,11 +545,6 @@
                             are allowed to run before they are cancelled and
                             cached results are returned (and offline mode is
                             entered)
-                        </para>
-                        <para>
-                            This option can be also set per subdomain or
-                            inherited via
-                            <emphasis>subdomain_inherit</emphasis>.
                         </para>
                         <para>
                             Default: 60
@@ -681,13 +736,17 @@
                             Disable Active Directory range retrieval.
                         </para>
                         <para>
-                            Active Directory limits the number of members to be
+                            Active Directory limits the number of members that can be
                             retrieved in a single lookup using the MaxValRange
-                            policy (which defaults to 1500 members). If a group
-                            contains more members, the reply would include an
-                            AD-specific range extension. This option disables
-                            parsing of the range extension, therefore large
-                            groups will appear as having no members.
+                            policy, which defaults to 1500 members. If a group
+                            contains more than 1500 members, the reply includes
+                            an AD-specific range extension. When enabled,
+                            this option prevents SSSD from parsing the range
+                            extension. As a result large groups will appear as they
+                            have no members.
+                            This option does not enable SSSD to read subsequent
+                            ranges. To retrieve all members of a group, you must
+                            increase the MaxValRange setting in Active Directory.
                         </para>
                         <para>
                             Default: False
@@ -856,8 +915,9 @@
                             Certificate Authority certificates in separate
                             individual files. Typically the file names need to
                             be the hash of the certificate followed by '.0'.
-                            If available, <command>cacertdir_rehash</command>
-                            can be used to create the correct names.
+                            If available, <command>openssl rehash</command>
+                            or <command>c_rehash</command> can be used to
+                            create the correct names.
                         </para>
                         <para>
                             Default: use OpenLDAP defaults, typically in
@@ -916,7 +976,7 @@
                             <emphasis>true</emphasis> is strongly recommended for security reasons.
                         </para>
                         <para>
-                            Default: false
+                            Default: true
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1002,6 +1062,7 @@ netbiosname$@REALM
 host/hostname@REALM
 *$@REALM
 host/*@REALM
+netbiosname$@*
 host/*
                             </programlisting>
                             If none of them are found, the first principal in keytab is
@@ -1284,7 +1345,7 @@ host/*
                             operation.
                         </para>
                         <para>
-                            It is recommend to set this option explicitly if
+                            It is recommended to set this option explicitly if
                             "ldap_pwd_policy = shadow" is used to let SSSD
                             know if the LDAP server will update
                             shadowLastChange LDAP attribute automatically
@@ -1488,7 +1549,8 @@ ldap_access_filter = (employeeType=admin)
                         <para>
                             Please note that 'access_provider = ldap' must
                             be set for this feature to work. Also 'ldap_pwd_policy'
-                            must be set to an appropriate password policy.
+                            must be set to shadow or mit_kerberos, these options
+                            do not work with server-side password policies.
                         </para>
                         <para>
                             <emphasis>authorized_service</emphasis>: use
@@ -1635,6 +1697,40 @@ ldap_access_filter = (employeeType=admin)
                         </para>
                         <para>
                             Default: 0 (libldap debugging disabled)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_use_ppolicy (boolean)</term>
+                    <listitem>
+                        <para>
+                            Turns on requesting and relying on the server-side
+                            password policy controls. Disabling this allows
+                            interacting with services which send back invalid
+                            ppolicy extension.
+                        </para>
+                        <para>
+                            Default: true
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_ppolicy_pwd_change_threshold (integer)</term>
+                    <listitem>
+                        <para>
+                            Forces a password change when server side password
+                            policy controls are enabled and remaining grace
+                            logins returned by the server after the
+                            authentication reach or go below the threshold.
+                            Note that the minimum useful value is 2, as changing
+                            the password consumes 2 additional grace logins, one
+                            to verify the current password and a second one to
+                            perform the password change.
+                        </para>
+                        <para>
+                            Default: 0
                         </para>
                     </listitem>
                 </varlistentry>

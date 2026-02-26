@@ -5,6 +5,21 @@ set -ex
 . debian/tests/util
 . debian/tests/common-tests
 
+cleanup() {
+    result=$?
+    set +e
+    if [ ${result} -ne 0 ]; then
+        echo "## Something failed, gathering logs"
+        echo
+        gather_logs
+    else
+        echo "## All tests passed, phew"
+    fi
+    cleanup_sshd_config
+}
+
+trap cleanup EXIT
+
 mydomain="example.com"
 myhostname="ldap.${mydomain}"
 mysuffix="dc=example,dc=com"
@@ -30,6 +45,10 @@ enable_pam_mkhomedir
 run_common_tests
 
 # login works with the kerberos password
-echo "The Kerberos principal can login on a terminal"
+echo "The Kerberos principal can login via ssh"
+
+# this test is not via gssapi: we need password authentication
+setup_sshd_password_auth
+
 kdestroy > /dev/null 2>&1 || /bin/true
 /usr/bin/expect -f debian/tests/login.exp "${ldap_user}" "${kerberos_principal_pw}" "${ldap_user}"@"${myrealm}"

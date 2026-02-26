@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
 "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
 <reference>
-<title>Páginas de manual de SSSD</title>
+<title>Páginas del manual de SSSD</title>
 <refentry>
     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
 
@@ -14,23 +14,23 @@
 
     <refnamediv id='name'>
         <refname>sssd-ldap-attributes</refname>
-        <refpurpose>SSSD LDAP Provider: Mapping Attributes</refpurpose>
+        <refpurpose>Proveedor LDAP SSSD: Asignación de atributos</refpurpose>
     </refnamediv>
 
     <refsect1 id='description'>
-        <title>DESCRIPCION</title>
+        <title>DESCRIPCIÓN</title>
         <para>
-            This manual page describes the mapping attributes of SSSD LDAP provider
+            Esta página del manual describe los atributos de asignación del proveedor
+LDAP SSSD <citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>. Consulte la página del manual
 <citerefentry> <refentrytitle>sssd-ldap</refentrytitle>
-<manvolnum>5</manvolnum> </citerefentry>. Refer to the <citerefentry>
-<refentrytitle>sssd-ldap</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> manual page for full details about SSSD LDAP provider
-configuration options.
+<manvolnum>5</manvolnum> </citerefentry> para obtener más información sobre
+las opciones de configuración del proveedor LDAP SSSD.
         </para>
     </refsect1>
 
     <refsect1 id='mapping-attributes'>
-        <title>USER ATTRIBUTES</title>
+        <title>ATRIBUTOS DE USUARIO</title>
         <para>
             <variablelist>
                 <varlistentry>
@@ -115,7 +115,7 @@ ejecutando el proveedor <quote>ldap</quote> con mapeo ID.
 usuario.
                         </para>
                         <para>
-                            Default: homeDirectory (LDAP and IPA), unixHomeDirectory (AD)
+                            Predeterminado: homeDirectory (LDAP y IPA), unixHomeDirectory (AD)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -180,7 +180,7 @@ objeto primario.
                             Cuando se utiliza ldap_pwd_policy=shadow, este parámetro contiene el nombre
 de un atributo LDAP correspondiente a su <citerefentry>
 <refentrytitle>shadow</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> homologo (fecha del último cambio de password).
+</citerefentry> homólogo (fecha del último cambio de contraseña).
                         </para>
                         <para>
                             Predeterminado: shadowLastChange
@@ -195,7 +195,7 @@ de un atributo LDAP correspondiente a su <citerefentry>
                             Cuando se utiliza ldap_pwd_policy=shadow, este parámetro contiene el nombre
 de un atributo LDAP correspondiente a su <citerefentry>
 <refentrytitle>shadow</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> homologo (edad mínima del password).
+</citerefentry> homólogo (edad mínima de contraseña).
                         </para>
                         <para>
                             Predeterminado: shadowMin
@@ -210,7 +210,7 @@ de un atributo LDAP correspondiente a su <citerefentry>
                             Cuando se utiliza ldap_pwd_policy=shadow, este parámetro contiene el nombre
 de un atributo LDAP correspondiente a su <citerefentry>
 <refentrytitle>shadow</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> homologo (edad máxima del password).
+</citerefentry> homólogo (edad máxima de contraseña).
                         </para>
                         <para>
                             Predeterminado: shadowMax
@@ -225,7 +225,7 @@ de un atributo LDAP correspondiente a su <citerefentry>
                             Cuando se utiliza ldap_pwd_policy=shadow, este parámetro contiene el nombre
 de un atributo LDAP correspondiente a su <citerefentry>
 <refentrytitle>shadow</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> homologo (período de aviso de password).
+</citerefentry> homólogo (período de aviso de contraseña).
                         </para>
                         <para>
                             Predeterminado: shadowWarning
@@ -240,7 +240,7 @@ de un atributo LDAP correspondiente a su <citerefentry>
                             Cuando se utiliza ldap_pwd_policy=shadow, este parámetro contiene el nombre
 de un atributo LDAP correspondiente a su <citerefentry>
 <refentrytitle>shadow</refentrytitle> <manvolnum>5</manvolnum>
-</citerefentry> homologo (período de inactividad de password).
+</citerefentry> homólogo (período de inactividad de contraseña).
                         </para>
                         <para>
                             Predeterminado: shadowInactive
@@ -270,7 +270,7 @@ atributo correspondiente con su <citerefentry>
                         <para>
                             Cuando se utiliza ldap_pwd_policy=mit_kerberos, este parámetro contiene el
 nombre de un atributo LDAP que almacena la fecha y la hora del último cambio
-de password en kerberos.
+de contraseña en kerberos.
                         </para>
                         <para>
                             Predeterminado: krbLastPwdChange
@@ -283,8 +283,8 @@ de password en kerberos.
                     <listitem>
                         <para>
                             Cuando se utiliza ldap_pwd_policy=mit_kerberos, este parámetro contiene el
-nombre de un atributo LDAP que almacena la fecha y la hora en la que expira
-el password actual.
+nombre de un atributo LDAP que almacena la fecha y la hora en la que caduca
+la contraseña actual.
                         </para>
                         <para>
                             Predeterminado: krbPasswordExpiration
@@ -394,11 +394,11 @@ el conjunto usual de atributos de usuario.
                         </para>
                         <para>
                             La lista puede contener bien nombres de atributo LDAP solamente o tuplas
-separadas por comas de de nombre de atributo SSSD en caché y nombre de
-atributo LDAP. En el caso de que solo sed especifique el nombre de atributo
-LDAP, el atributo se salva al caché literal.  El uso de un nombre de
-atributo SSSD personal puede ser requerido por entornos que configuran
-varios dominios SSSD con diferentes esquemas LDAP.
+separadas por comas de nombre de atributo SSSD en caché y nombre de atributo
+LDAP. En el caso de que solo sed especifique el nombre de atributo LDAP, el
+atributo se salva al caché literal.  El uso de un nombre de atributo SSSD
+personal puede ser requerido por entornos que configuran varios dominios
+SSSD con diferentes esquemas LDAP.
                         </para>
                         <para>
                             Por favor advierta que varios nombres de atributos están reservados por
@@ -483,14 +483,14 @@ permiso explícito (svc) y finalmente permitir todo (*).
 objetivo de que la opción ldap_user_authorized_service trabaje.
                         </para>
                         <para>
-                            Some distributions (such as Fedora-29+ or RHEL-8)  always include the
-<quote>systemd-user</quote> PAM service as part of the login
-process. Therefore when using service-based access control, the
-<quote>systemd-user</quote> service might need to be added to the list of
-allowed services.
+                            Algunas distribuciones (como Fedora-29+ o RHEL-8) siempre incluyen el
+servicio PAM <quote>systemd-user</quote> como parte del proceso de inicio de
+sesión. Por lo tanto, al usar el control de acceso basado en servicios,
+podría ser necesario añadir el servicio <quote>systemd-user</quote> a la
+lista de servicios permitidos.
                         </para>
                         <para>
-                            Predeterminado: iluminada
+                            Predeterminado: authorizedService
                         </para>
                     </listitem>
                 </varlistentry>
@@ -560,12 +560,14 @@ que la opción ldap_user_authorized_rhost trabaje.
                             Nombre del atributo LDAP que contiene el correo electrónico del usuario.
                         </para>
                         <para>
-                            Note: If an email address of a user conflicts with an email address or fully
-qualified name of another user, then SSSD will not be able to serve those
-users properly. This option allows users to login by (1) username, and (2)
-e-mail address.  If for some reason several users need to share the same
-email address then set this option to a nonexistent attribute name in order
-to disable user lookup/login by email.
+                            Nota: Si la dirección de correo electrónico de un usuario entra en conflicto
+con la dirección o el nombre completo de otro usuario, SSSD no podrá atender
+a esos usuarios correctamente. Esta opción permite a los usuarios iniciar
+sesión con (1) nombre de usuario y (2) dirección de correo electrónico. Si
+por alguna razón varios usuarios necesitan compartir la misma dirección de
+correo electrónico, configure esta opción con un nombre de atributo
+inexistente para deshabilitar la búsqueda/inicio de sesión de usuarios por
+correo electrónico.
                         </para>
                         <para>
                             Predeterminado: mail
@@ -573,13 +575,15 @@ to disable user lookup/login by email.
                     </listitem>
                 </varlistentry>
                 <varlistentry condition="build_passkey">
-                    <term>ldap_user_passkey (string)</term>
+                    <term>ldap_user_passkey (cadena)</term>
                     <listitem>
                         <para>
-                            Name of the LDAP attribute containing the passkey mapping data of the user.
+                            Nombre del atributo LDAP que contiene los datos de asignación de clave de
+acceso del usuario.
                         </para>
                         <para>
-                            Default: passkey (LDAP), ipaPassKey (IPA), altSecurityIdentities (AD)
+                            Predeterminado: clave de acceso (LDAP), ipaPassKey (IPA),
+altSecurityIdentities (AD)
                         </para>
                     </listitem>
                 </varlistentry>
@@ -588,7 +592,7 @@ to disable user lookup/login by email.
     </refsect1>
 
     <refsect1 id='group-attributes'>
-        <title>GROUP ATTRIBUTES</title>
+        <title>ATRIBUTOS DE GRUPO</title>
         <para>
             <variablelist>
                 <varlistentry>
@@ -607,10 +611,10 @@ to disable user lookup/login by email.
                     <term>ldap_group_name (cadena)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that corresponds to the group name. In an environment
-with nested groups, this value must be an LDAP attribute which has a unique
-name for every group. This requirement includes non-POSIX groups in the tree
-of nested groups.
+                            El atributo LDAP correspondiente al nombre del grupo. En un entorno con
+grupos anidados, este valor debe ser un atributo LDAP con un nombre único
+para cada grupo. Este requisito incluye los grupos no POSIX en el árbol de
+grupos anidados.
                         </para>
                         <para>
                             Predeterminado: cn (rfc2307, rfc2307bis and IPA), sAMAccountName (AD)
@@ -683,7 +687,7 @@ objeto primario.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ldap_group_type (string)</term>
+                    <term>ldap_group_type (cadena)</term>
                     <listitem>
                         <para>
                             El atributo LDAP que contiene un valor entero indicando el tipo del grupo y
@@ -719,7 +723,7 @@ estabecido.
     </refsect1>
 
     <refsect1 id='netgroup-attributes'>
-        <title>NETGROUP ATTRIBUTES</title>
+        <title>ATRIBUTOS DE GRUPO DE RED</title>
         <para>
             <variablelist>
                 <varlistentry>
@@ -803,7 +807,7 @@ objeto primario.
     </refsect1>
 
     <refsect1 id='host-attributes'>
-        <title>HOST ATTRIBUTES</title>
+        <title>ATRIBUTOS DEL HOST</title>
         <para>
             <variablelist>
                 <varlistentry>
@@ -895,7 +899,7 @@ del host.
     </refsect1>
 
     <refsect1 id='service-attributes'>
-    <title>SERVICE ATTRIBUTES</title>
+    <title>ATRIBUTOS DE SERVICIO</title>
     <para>
         <variablelist>
             <varlistentry>
@@ -951,7 +955,7 @@ alias.
     </refsect1>
 
     <refsect1 id='sudo-attributes'>
-        <title>SUDO ATTRIBUTES</title>
+        <title>ATRIBUTOS SUDO</title>
         <para>
             <variablelist>
                 <varlistentry>
@@ -1096,34 +1100,34 @@ la regla sudo dejará de ser válida.
     </refsect1>
 
     <refsect1 id='autofs-attributes'>
-        <title>AUTOFS ATTRIBUTES</title>
+        <title>ATRIBUTOS AUTOFS</title>
         <para>
             <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/autofs_attributes.xml" />
         </para>
     </refsect1>
 
     <refsect1 id='iphost-attributes'>
-    <title>IP HOST ATTRIBUTES</title>
+    <title>ATRIBUTOS HOST IP</title>
     <para>
         <variablelist>
             <varlistentry>
-                    <term>ldap_iphost_object_class (string)</term>
+                    <term>ldap_iphost_object_class (cadena)</term>
                     <listitem>
                         <para>
-                            The object class of an iphost entry in LDAP.
+                            La clase del objeto de un apunte iphost en LDAP.
                         </para>
                         <para>
-                            Default: ipHost
+                            Predeterminado: ipHost
                         </para>
                     </listitem>
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ldap_iphost_name (string)</term>
+                    <term>ldap_iphost_name (cadena)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that contains the name of the IP host attributes and
-their aliases.
+                            El atributo LDAP que contiene el nombre de los atributos del host IP y sus
+aliases.
                         </para>
                         <para>
                             Predeterminado: cn
@@ -1132,13 +1136,13 @@ their aliases.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ldap_iphost_number (string)</term>
+                    <term>ldap_iphost_number (cadena)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that contains the IP host address.
+                            El atributo LDAP que contiene la dirección IP del host.
                         </para>
                         <para>
-                            Default: ipHostNumber
+                            Predeterminado: ipHostNumber
                         </para>
                     </listitem>
                 </varlistentry>
@@ -1147,27 +1151,27 @@ their aliases.
     </refsect1>
 
     <refsect1 id='ipnetwork-attributes'>
-    <title>IP NETWORK ATTRIBUTES</title>
+    <title>ATRIBUTOS DE RED IP</title>
     <para>
         <variablelist>
             <varlistentry>
-                    <term>ldap_ipnetwork_object_class (string)</term>
+                    <term>ldap_ipnetwork_object_class (cadena)</term>
                     <listitem>
                         <para>
-                            The object class of an ipnetwork entry in LDAP.
+                            La clase de objeto de un apunte ipnetwork en LDAP.
                         </para>
                         <para>
-                            Default: ipNetwork
+                            Predeterminado: ipNetwork
                         </para>
                     </listitem>
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ldap_ipnetwork_name (string)</term>
+                    <term>ldap_ipnetwork_name (cadena)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that contains the name of the IP network attributes and
-their aliases.
+                            El atributo LDAP que contiene el nombre de los atributos de red IP y sus
+aliases.
                         </para>
                         <para>
                             Predeterminado: cn
@@ -1176,13 +1180,92 @@ their aliases.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ldap_ipnetwork_number (string)</term>
+                    <term>ldap_ipnetwork_number (cadena)</term>
                     <listitem>
                         <para>
-                            The LDAP attribute that contains the IP network address.
+                            El atributo LDAP que contiene la dirección de red IP.
                         </para>
                         <para>
-                            Default: ipNetworkNumber
+                            Predeterminado: ipNetworkNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+        </variablelist>
+    </para>
+    </refsect1>
+
+    <refsect1 id='subid-attributes'>
+    <title>SUBID ATTRIBUTES</title>
+    <para>
+        <variablelist>
+            <varlistentry>
+                    <term>ldap_subuid_object_class (string)</term>
+                    <listitem>
+                        <para>
+                            The object class of an subid entry in LDAP.
+                        </para>
+                        <para>
+                            Default: subordinateIdEntry
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subuid_count (string)</term>
+                    <listitem>
+                        <para>
+                            Subordinate user ID count (range size)
+                        </para>
+                        <para>
+                            Default: subUidCount
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subgid_count (string)</term>
+                    <listitem>
+                        <para>
+                            Subordinate group ID count (range size)
+                        </para>
+                        <para>
+                            Default: subGidCount
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subuid_number (string)</term>
+                    <listitem>
+                        <para>
+                            Numerical subordinate user ID (range start value)
+                        </para>
+                        <para>
+                            Default: subUidNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subgid_number (string)</term>
+                    <listitem>
+                        <para>
+                            Numerical subordinate group ID (range start value)
+                        </para>
+                        <para>
+                            Default: subGidNumber
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ldap_subid_range_owner (string)</term>
+                    <listitem>
+                        <para>
+                            Owner of an entry
+                        </para>
+                        <para>
+                            Default: subidRangeOwner
                         </para>
                     </listitem>
                 </varlistentry>

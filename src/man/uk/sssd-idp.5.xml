@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Сторінки підручника SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-idp</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Формати файлів та правила</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-idp</refname>
+        <refpurpose>Модуль надання даних IdP SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>ОПИС</title>
+        <para>
+            На цій сторінці довідника описано налаштування засобу керування доступом IdP
+для <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>. Щоб дізнатися більше про синтаксис
+налаштування, зверніться до розділу «ФОРМАТ ФАЙЛІВ» сторінки довідника
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+        <para>
+            Надавач даних (IdP) – це модуль, який використовують для встановлення
+з'єднання з надавачем ідентифікаційних даних (IdP) на основі OAuth 2.0 та
+REST. Оскільки продукти можуть мати окрему реалізацію програмного інтерфейсу
+REST для пошуку атрибутів користувачів та груп, може знадобитися спеціальний
+код, див. подробиці щодо параметра <quote>idp_type</quote>.
+        </para>
+        <para>
+            Надавачі ідентифікаторів (IdP) зазвичай не надають атрибутів POSIX, таких як
+ідентифікатор користувача (UID) або домашній каталог. Постачальник IdP SSSD
+автоматично породжуватиме необхідні атрибути. Типовий алгоритм для
+породження ідентифікаторів користувачів (UID) та ідентифікаторів груп (GID)
+спрямований на створення відтворюваних ідентифікаторів на різних
+системах. Недолік може полягати у тому, що алгоритм призначає один і той
+самий ідентифікатор різним об'єктам, і доступним буде лише перший, серез
+запитаних за допомогою SSSD.
+        </para>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>ПАРАМЕТРИ НАЛАШТУВАННЯ</title>
+        <para>Зверніться до розділу «РОЗДІЛИ ДОМЕНІВ» сторінки довідника (man)
+<citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>, щоб дізнатися більше про
+налаштування домену SSSD. <variablelist>
+                <varlistentry>
+                    <term>idp_type (рядок)</term>
+                    <listitem>
+                        <para>
+                            Обов'язковий параметр, який вказує продукт IdP. У поточній версії
+передбачено підтримку Entra ID (entra_id) і Keycloak (keycloak).
+                        </para>
+                        <para>
+                             Залежно від продукту IdP, додаткові параметри, специфічні для платформи,
+можуть йти після назви, з відокремленням двокрапкою (:). Наприклад, для
+Keycloak необхідно вказати базову адресу для програмного інтерфейсу REST
+користувача та групи. Для ідентифікатор Entra потреби у цьому немає,
+оскільки існує загальна кінцева точка для всіх викликів.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено (обов'язкове)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_client_id (рядок)</term>
+                    <listitem>
+                        <para>
+                            Ідентифікатор клієнта IdP, який використовується SSSD для розпізнавання
+користувачів та як клієнт для пошуку атрибутів користувачів і груп. Цей
+клієнт повинен пропонувати уповноваження пристрою відповідно до RFC-8628 і
+повинен мати дозволи на пошук і читання атрибутів користувачів і груп.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено (обов'язкове)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_client_secret (рядок)</term>
+                    <listitem>
+                        <para>
+                            Пароль клієнта IdP. Пароль потрібен для id_provider. Те, чи потрібен він,
+якщо відбувається використання лише як auth_provider, залежить від
+налаштувань сервера.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_token_endpoint (рядок)</term>
+                    <listitem>
+                        <para>
+                            Кінцева точки IdP для запиту щодо жетоні доступу.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено (обов'язкове)
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_device_auth_endpoint (рядок)</term>
+                    <listitem>
+                        <para>
+                            Кінцева точка IdP для уповноваження пристрою відповідно до RFC-8628. Це
+необхідно для розпізнавання користувача.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_userinfo_endpoint (рядок)</term>
+                    <listitem>
+                        <para>
+                            Кінцева точка IdP userinfo для запиту атрибутів користувача після успішного
+розпізнавання користувача. Обов'язкова для розпізнавання.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_id_scope (рядок)</term>
+                    <listitem>
+                        <para>
+                            Область, необхідна для пошуку атрибутів користувачів та груп за допомогою
+програманого інтерфейсу REST. Області використовуються сервером для
+визначення того, які атрибути/інструкції слід повертати стороні, з боку якої
+відбувся виклик.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_auth_scope (рядок)</term>
+                    <listitem>
+                        <para>
+                            Область дії, необхідна під час розпізнавання. Області дії використовується
+сервером для визначення того, які атрибути/інструкції буде повернуто
+процесу, яким було здійснено виклик.
+                        </para>
+                        <para>
+                            У поточній версії жетони, що повертаються під час розпізнавання користувача,
+не використовуються з іншою метою, тому єдиною важливою інструкцією є
+ідентифікатор теми «sub», який використовується для перевірки, чи є
+розпізнаний користувач саме тим, хто намагається увійти. Це може змінитися у
+майбутніх версіях.
+                        </para>
+                        <para>
+                            Типове значення: не встановлено
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idp_request_timeout (ціле число)</term>
+                    <listitem>
+                        <para>
+                            Час очікування на відповідь у секундах для окремого запиту до IdP.
+                        </para>
+                        <para>
+                            Типове значення: 10
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_min (ціле число)</term>
+                    <listitem>
+                        <para>
+                            Визначає нижню (включну) межу діапазону ідентифікаторів POSIX, які слід
+використовувати для встановлення відповідності груп ID POSIX користувачів і
+користувачів IdP. Це перший ідентифікатор POSIX, яким можна скористатися для
+прив'язки.
+                        </para>
+                        <para>
+                            The interval between <quote>idmap_range_min</quote> and
+<quote>idmap_range_max</quote> will be split into smaller ranges of size
+<quote>idmap_range_size</quote> which will be used by an individual IdP
+domain.
+                        </para>
+                        <para>
+                            Типове значення: 200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_max (ціле число)</term>
+                    <listitem>
+                        <para>
+                            Визначає верхню (виключну) межу діапазону ідентифікаторів POSIX, які слід
+використовувати для встановлення відповідності груп ID POSIX користувачів і
+груп IdP. Це перший ідентифікатор POSIX, який після цього не буде
+використано для прив'язки до ID POSIX.
+                        </para>
+                        <para>
+                            Типове значення: 2000200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>idmap_range_size (ціле число)</term>
+                    <listitem>
+                        <para>
+                            Визначає кількість ідентифікаторів POSIX, які є доступними для окремого
+домену IdP.
+                        </para>
+                        <para>
+                            Типове значення: 200000
+                        </para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </para>
+    </refsect1>
+
+    <refsect1 id='example'>
+        <title>ПРИКЛАД</title>
+        <para>
+<programlisting>
+[domain/entra_id]
+id_provider = idp
+idp_type = entra_id
+idp_client_id = 12345678-abcd-0101-efef-ba9876543210
+idp_client_secret = YOUR-CLIENT-SCERET
+idp_token_endpoint = https://login.microsoftonline.com/TENNANT-ID/oauth2/v2.0/token
+idp_userinfo_endpoint = https://graph.microsoft.com/v1.0/me
+idp_device_auth_endpoint = https://login.microsoftonline.com/TENNANT-ID/oauth2/v2.0/devicecode
+idp_id_scope = https%3A%2F%2Fgraph.microsoft.com%2F.default
+idp_auth_scope = openid profile email
+</programlisting> <programlisting>
+[domain/keycloak]
+idp_type = keycloak:https://master.keycloak.test:8443/auth/admin/realms/master/
+id_provider = idp
+idp_client_id = myclient
+idp_client_secret = YOUR-CLIENT-SCERET
+idp_token_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/token
+idp_userinfo_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/userinfo
+idp_device_auth_endpoint = https://master.keycloak.test:8443/auth/realms/master/protocol/openid-connect/auth/device
+idp_id_scope = profile
+idp_auth_scope = openid profile email
+</programlisting>
+        </para>
+    </refsect1>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

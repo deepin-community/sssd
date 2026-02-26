@@ -27,43 +27,6 @@
 #include "sss_iface/sss_iface_async.h"
 
 char *
-sss_iface_domain_address(TALLOC_CTX *mem_ctx,
-                         struct sss_domain_info *domain)
-{
-    struct sss_domain_info *head;
-
-    /* There is only one bus that belongs to the top level domain. */
-    head = get_domains_head(domain);
-
-    return talloc_asprintf(mem_ctx, SSS_BACKEND_ADDRESS, head->name);
-}
-
-char *
-sss_iface_domain_bus(TALLOC_CTX *mem_ctx,
-                     struct sss_domain_info *domain)
-{
-    struct sss_domain_info *head;
-    char *safe_name;
-    char *bus_name;
-
-
-    /* There is only one bus that belongs to the top level domain. */
-    head = get_domains_head(domain);
-
-    safe_name = sbus_opath_escape(mem_ctx, head->name);
-    if (safe_name == NULL) {
-        return NULL;
-    }
-
-    /* Parts of bus names must not start with digit thus we concatenate
-     * the name with underscore instead of period. */
-    bus_name = talloc_asprintf(mem_ctx, "sssd.domain_%s", safe_name);
-    talloc_free(safe_name);
-
-    return bus_name;
-}
-
-char *
 sss_iface_proxy_bus(TALLOC_CTX *mem_ctx,
                     uint32_t id)
 {
@@ -72,7 +35,7 @@ sss_iface_proxy_bus(TALLOC_CTX *mem_ctx,
     return talloc_asprintf(mem_ctx, "sssd.proxy_%"PRIu32, id);
 }
 
-errno_t
+static errno_t
 sss_iface_connect_address(TALLOC_CTX *mem_ctx,
                           struct tevent_context *ev,
                           const char *conn_name,
@@ -124,57 +87,56 @@ sss_iface_connect_address(TALLOC_CTX *mem_ctx,
     return EOK;
 }
 
-static void
-sss_monitor_service_init_done(struct tevent_req *req);
-
 errno_t
-sss_monitor_service_init(TALLOC_CTX *mem_ctx,
-                         struct tevent_context *ev,
-                         const char *conn_name,
-                         const char *svc_name,
-                         uint16_t svc_version,
-                         uint16_t svc_type,
-                         time_t *last_request_time,
-                         struct sbus_connection **_conn)
+sss_sbus_connect(TALLOC_CTX *mem_ctx,
+                 struct tevent_context *ev,
+                 const char *conn_name,
+                 time_t *last_request_time,
+                 struct sbus_connection **_conn)
 {
     struct sbus_connection *conn;
-    struct tevent_req *req;
     errno_t ret;
 
-    ret = sss_iface_connect_address(mem_ctx, ev, conn_name,
-                                    SSS_MONITOR_ADDRESS,
+    ret = sss_iface_connect_address(mem_ctx, ev, conn_name, SSS_BUS_ADDRESS,
                                     last_request_time, &conn);
     if (ret != EOK) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "Unable to connect to monitor sbus server "
+        DEBUG(SSSDBG_CRIT_FAILURE, "Unable to connect to SSSD D-Bus server "
               "[%d]: %s\n", ret, sss_strerror(ret));
         return ret;
     }
+
+    *_conn = conn;
+
+    return EOK;
+}
+
+static void
+sss_monitor_register_service_done(struct tevent_req *req);
+
+errno_t
+sss_monitor_register_service(TALLOC_CTX *mem_ctx,
+                             struct sbus_connection *conn,
+                             const char *svc_name,
+                             uint16_t svc_version,
+                             uint16_t svc_type)
+{
+    struct tevent_req *req;
 
     req = sbus_call_monitor_RegisterService_send(conn, conn, SSS_BUS_MONITOR,
                                                  SSS_BUS_PATH, svc_name,
                                                  svc_version, svc_type);
     if (req == NULL) {
         DEBUG(SSSDBG_CRIT_FAILURE, "Unable to create tevent request!\n");
-        ret = ENOMEM;
-        goto done;
+        return ENOMEM;
     }
 
-    tevent_req_set_callback(req, sss_monitor_service_init_done, conn);
+    tevent_req_set_callback(req, sss_monitor_register_service_done, conn);
 
-    *_conn = conn;
-
-    ret = EOK;
-
-done:
-    if (ret != EOK) {
-        talloc_free(conn);
-    }
-
-    return ret;
+    return EOK;
 }
 
 static void
-sss_monitor_service_init_done(struct tevent_req *req)
+sss_monitor_register_service_done(struct tevent_req *req)
 {
     uint16_t version;
     errno_t ret;

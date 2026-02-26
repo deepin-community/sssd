@@ -140,6 +140,7 @@ enum sdap_basic_opt {
     SDAP_URI = 0,
     SDAP_BACKUP_URI,
     SDAP_SEARCH_BASE,
+    SDAP_READ_ROOTDSE,
     SDAP_DEFAULT_BIND_DN,
     SDAP_DEFAULT_AUTHTOK_TYPE,
     SDAP_DEFAULT_AUTHTOK,
@@ -237,6 +238,9 @@ enum sdap_basic_opt {
     SDAP_PWDLOCKOUT_DN,
     SDAP_WILDCARD_LIMIT,
     SDAP_LIBRARY_DEBUG_LEVEL,
+    SDAP_USE_PPOLICY,
+    SDAP_PPOLICY_PWD_CHANGE_THRESHOLD,
+    SDAP_SUBID_RANGES_SEARCH_BASE,
 
     SDAP_OPTS_BASIC /* opts counter */
 };
@@ -290,6 +294,7 @@ enum sdap_user_attrs {
     SDAP_AT_USER_AUTH_TYPE,
     SDAP_AT_USER_CERT,
     SDAP_AT_USER_EMAIL,
+    SDAP_AT_USER_SAMACCOUNTNAME,
     SDAP_AT_USER_PASSKEY,
 
     SDAP_OPTS_USER /* attrs counter */
@@ -419,6 +424,7 @@ struct sdap_attr_map {
     char *name;
 };
 #define SDAP_ATTR_MAP_TERMINATOR { NULL, NULL, NULL, NULL }
+#define SDAP_ATTR_MAP_NO_OPT "==NO OPTION=="
 
 struct sdap_search_base {
     const char *basedn;
@@ -546,8 +552,9 @@ struct sdap_options {
 
     /* password modify mode */
     enum pwmodify_mode {
-        SDAP_PWMODIFY_EXOP = 1,     /* pwmodify extended operation */
-        SDAP_PWMODIFY_LDAP = 2      /* ldap_modify of userPassword */
+        SDAP_PWMODIFY_EXOP = 1,      /* pwmodify extended operation */
+        SDAP_PWMODIFY_LDAP = 2,      /* ldap_modify of userPassword */
+        SDAP_PWMODIFY_EXOP_FORCE = 3 /* forced pwmodify extended operation */
     } pwmodify_mode;
 
     /* The search bases for the domain or its subdomain */
@@ -557,7 +564,6 @@ struct sdap_options {
     bool support_matching_rule;
     enum dc_functional_level dc_functional_level;
     const char *schema_basedn;
-    bool allow_remote_domain_local_groups;
 
     /* Certificate mapping support */
     struct sdap_certmap_ctx *sdap_certmap_ctx;

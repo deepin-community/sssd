@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Manual do SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude"
+                href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>pam_sss</refentrytitle>
+        <manvolnum>8</manvolnum>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>pam_sss</refname>
+        <refpurpose>Módulo PAM para SSSD</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv id='synopsis'>
+        <cmdsynopsis>
+<command>pam_sss.so</command> <arg choice='opt'>
+<replaceable>quiet</replaceable> </arg> <arg choice='opt'>
+<replaceable>forward_pass</replaceable> </arg> <arg choice='opt'>
+<replaceable>use_first_pass</replaceable> </arg> <arg choice='opt'>
+<replaceable>use_authtok</replaceable> </arg> <arg choice='opt'>
+<replaceable>retry=N</replaceable> </arg> <arg choice='opt'>
+<replaceable>ignore_unknown_user</replaceable> </arg> <arg choice='opt'>
+<replaceable>ignore_authinfo_unavail</replaceable> </arg> <arg choice='opt'>
+<replaceable>domains=X</replaceable> </arg> <arg choice='opt'>
+<replaceable>allow_missing_name</replaceable> </arg> <arg choice='opt'>
+<replaceable>prompt_always</replaceable> </arg> <arg choice='opt'>
+<replaceable>try_cert_auth</replaceable> </arg> <arg choice='opt'>
+<replaceable>require_cert_auth</replaceable> </arg> <arg choice='opt'>
+<replaceable>allow_chauthtok_by_root</replaceable> </arg></cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1 id='description'>
+        <title>DESCRIÇÃO</title>
+        <para><command>pam_sss.so</command> é a interface do PAM para o System Security
+Services daemon (SSSD). Erros e resultados são registados através do
+<command>syslog(3)</command> com a habilidade LOG_AUTHPRIV.</para>
+    </refsect1>
+
+    <refsect1 id='options'>
+        <title>OPÇÕES</title>
+        <variablelist remap='IP'>
+            <varlistentry>
+                <term>
+                    <option>quiet</option>
+                </term>
+                <listitem>
+                    <para>Suprime mensagens de relatório para utilizadores desconhecidos.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>forward_pass</option>
+                </term>
+                <listitem>
+                    <para>Se <option>forward_pass</option> for definida a palavra passe inserida é
+colocada na pilha para ser usada por outros módulos PAM.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>use_first_pass</option>
+                </term>
+                <listitem>
+                    <para>O argumento use_first_pass força o módulo a usar uma palavra passe de
+módulos empilhada previamente e nunca irá pedir ao utilizador - se nenhuma
+palavra passe estiver disponível ou se a palavra passe não for apropriada,
+será negado o acesso ao utilizador.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>use_authtok</option>
+                </term>
+                <listitem>
+                    <para>Quando o mudar de palavra passe força o módulo a definir a nova palavra
+passe para aquela fornecida por um módulo de palavra passe empilhada
+previamente.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>retry=N</option>
+                </term>
+                <listitem>
+                    <para>Se especificada é pedida ao utilizador outras N vezes por uma palavra passe
+se a autenticação falhar. A predefinição é 0.</para>
+                    <para>Por favor note que esta opção pode não funcionar como esperado se a
+aplicação que chama o PAM lidar por si própria com o diálogo com o
+utilizador. Um exemplo típico é <command>sshd</command> com
+<option>PasswordAuthentication</option>.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>ignore_unknown_user</option>
+                </term>
+                <listitem>
+                    <para>Se esta opção for especificada e o utilizador não existir, o módulo PAM irá
+retornar PAM_IGNORE. Isto faz a estrutura do PAM ignorar este módulo.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>ignore_authinfo_unavail</option>
+                </term>
+                <listitem>
+                    <para>
+                    Especifica que o módulo PAM deve retornar PAM_IGNORE se não puder contactar
+o daemon do SSSD. Isto faz a estrutura do PAM ignorar este módulo.</para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>domains</option>
+                </term>
+                <listitem>
+                    <para>
+                        Permite ao administrador restringir os domínios a que um serviço PAM
+particular tem permissão de se autenticar. O formato é uma lista separada
+por vírgulas de nomes de domínio SSSD, como especificada no ficheiro
+sssd.conf.
+                    </para>
+                    <para>
+                        NOTA: Se isto for usado para um serviço que não corre como utilizador root,
+ex. um servidor web, tem de ser usado em conjunto com as opções
+<quote>pam_trusted_users</quote> e <quote>pam_public_domains</quote>.  Por
+favor veja o manual <citerefentry> <refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry> para mais informação sobre estas
+duas opções do respondedor PAM.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>allow_missing_name</option>
+                </term>
+                <listitem>
+                    <para>
+                        O principal objectivo desta opção é deixar o SSSD determinar o nome de
+utilizador baseando-se em informação adicional, por ex, o certificado a
+partir de um Smartcard.
+                    </para>
+                    <para>
+                        O caso de utilização actual são gestores de login que conseguem monitorizar
+um leitor Smartcard para eventos de cartão. No caso de um Smartcard ser
+inserido o gestor de login irá chamar a pilha PAM que inclui uma linha como
+<programlisting>
+auth sufficient pam_sss.so allow_missing_name
+                        </programlisting> Neste caso o SSSD irá tentar
+determinar o nome de utilizador baseando-se no conteúdo do Smartcard,
+retorna-o para pam_sss o qual irá finalmente coloca-lo na pilha do PAM.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>prompt_always</option>
+                </term>
+                <listitem>
+                    <para>
+                        Pede sempre ao utilizador por credenciais. Com esta opção as credenciais
+pedidas por outros módulos PAM, tipicamente uma palavra passe, serão
+ignoradas e o pam_sss irá incitar as credenciais outra vez. Com base na
+resposta de pré-autorização dada pelo SSSD o pam_sss pode pedir uma palavra
+passe, um PIN de Smartcard ou outras credenciais.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>try_cert_auth</option>
+                </term>
+                <listitem>
+                    <para>
+                        Tenta usar autenticação baseada em certificado, isto é, autenticação com um
+Smartcard ou dispositivos semelhantes. Se um Smartcard estiver disponível e
+o serviço for permitido para autenticação por Smartcard o utilizador será
+incitado por um PIN e a autenticação baseada em certificado irá continuar
+                    </para>
+                    <para>
+                        Se nenhum Smartcard estiver disponível ou a autenticação baseada em
+certificado não seja permitida para o serviço actual será retornado
+PAM_AUTHINFO_UNAVAIL.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>require_cert_auth</option>
+                </term>
+                <listitem>
+                    <para>
+                        Faz autenticação baseada em certificado, isto é, autenticação com Smartcard
+ou dispositivo semelhante. Se um Smartcard não estiver disponível o
+utilizador será incitado a inserir um. O SSSD irá esperar pelo Smartcard até
+ao tempo limite definido por p11_wait_for_card_timeout, por favor veja
+<citerefentry><refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum></citerefentry> para detalhes.
+                    </para>
+                    <para>
+                        Se nenhum Smartcard estiver disponível após o tempo limite ou a autenticação
+baseada em certificado não seja permitida para o serviço actual será
+retornado PAM_AUTHINFO_UNAVAIL.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>allow_chauthtok_by_root</option>
+                </term>
+                <listitem>
+                    <para>
+                        Por predefinição a acção PAM chauthtok irá fazer curto-circuito para
+retornar PAM_SUCCESS quando pam_sss.so é invocado pelo utilizador root.
+                    </para>
+                    <para>
+                        Esta opção desativa este comportamento permitindo altera testemunhos de
+autenticação quando se corre como root.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='module_types_provides'>
+        <title>TIPOS DE MÓDULOS FORNECIDOS</title>
+        <para>São disponibilizados todos os tipos de módulos (<option>account</option>,
+<option>auth</option>, <option>password</option> e
+<option>session</option>).
+        </para>
+        <para>Se o respondedor PAM do SSSD não estiver a correr, ex. se o socket do
+respondedor PAM não estiver disponível, o pam_sss irá retornar
+PAM_USER_UNKNOWN quando chamado como módulo <option>account</option> para
+evitar problemas com utilizadores de outras fontes durante o controlo de
+acesso.</para>
+    </refsect1>
+
+    <refsect1 id="return_values">
+        <title>VALORES DE RETORNO</title>
+        <variablelist>
+            <varlistentry>
+                <term>PAM_SUCCESS</term>
+                <listitem>
+                    <para>
+                        A operação do PAM terminou com sucesso.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_USER_UNKNOWN</term>
+                <listitem>
+                    <para>
+                        O utilizador não é conhecido pelo serviço de autenticação ou o respondedor
+PAM do SSSD não esta a correr.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTH_ERR</term>
+                <listitem>
+                    <para>
+                        Falha de autenticação. Também pode ser retornado quando existir um problema
+com a obtenção do certificado.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_PERM_DENIED</term>
+                <listitem>
+                    <para>
+                        Permissão negada. Os ficheiros de relatório do SSSD podem conter informação
+adicional acerca do erro.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_IGNORE</term>
+                <listitem>
+                    <para>
+                        Veja as opções <option>ignore_unknown_user</option> e
+<option>ignore_authinfo_unavail</option>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTHTOK_ERR</term>
+                <listitem>
+                    <para>
+                        Incapaz de obter o novo testemunho de autenticação. Também pode ser
+retornado quando o utilizador se autenticar com certificados e estiverem
+disponíveis múltiplos certificados, mas a versão instalada do GDM não
+suporta a selecção de múltiplos certificados.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTHINFO_UNAVAIL</term>
+                <listitem>
+                    <para>
+                        Incapaz de aceder à informação de autenticação.  Isto pode ser devido a uma
+falha de rede ou de hardware.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_BUF_ERR</term>
+                <listitem>
+                    <para>
+                        Ocorreu um erro de memória. Também pode ser retornado quando as opções
+use_first_pass ou use_authtok foram definidas, mas nenhuma palavra passe foi
+encontrada a partir do módulo PAM previamente empilhado.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_SYSTEM_ERR</term>
+                <listitem>
+                    <para>
+                        Ocorreu um erro do sistema. Os ficheiros log do SSSD podem conter informação
+adicional acerca do erro.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_CRED_ERR</term>
+                <listitem>
+                    <para>
+                        Incapaz de definir as credenciais do utilizador.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_CRED_INSUFFICIENT</term>
+                <listitem>
+                    <para>
+                        A aplicação não tem credenciais suficientes para autenticar o
+utilizador. Por exemplo, PIN em falta durante autenticação por smartcard ou
+factor em falta durante autenticação de dois-factores.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_SERVICE_ERR</term>
+                <listitem>
+                    <para>
+                        Erro em módulo de serviço.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_NEW_AUTHTOK_REQD</term>
+                <listitem>
+                    <para>
+                        O testemunho de autenticação do utilizador expirou.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_ACCT_EXPIRED</term>
+                <listitem>
+                    <para>
+                        A conta do utilizador expirou.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_SESSION_ERR</term>
+                <listitem>
+                    <para>
+                        Incapaz de obter regras IPA Desktop Profile ou informação do utilizador.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_CRED_UNAVAIL</term>
+                <listitem>
+                    <para>
+                        Incapaz de obter credenciais de utilizador do Kerberos.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_NO_MODULE_DATA</term>
+                <listitem>
+                    <para>
+                        Nenhum método de autenticação encontrado pelo Kerberos.  Isto pode acontecer
+se o utilizador tiver uma Smartcard assinada mas o plugin pkint não está
+disponível no cliente.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_CONV_ERR</term>
+                <listitem>
+                    <para>
+                       Falha de conversação.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_AUTHTOK_LOCK_BUSY</term>
+                <listitem>
+                    <para>
+                       Nenhum KDC apropriado disponível para mudança de palavra passe.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_ABORT</term>
+                <listitem>
+                    <para>
+                       Chamada PAM desconhecida.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_MODULE_UNKNOWN</term>
+                <listitem>
+                    <para>
+                       Tarefa ou comando PAM não suportado.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>PAM_BAD_ITEM</term>
+                <listitem>
+                    <para>
+                       O módulo de autenticação não é capaz de lidar com credenciais Smartcard.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1 id='files'>
+        <title>FICHEIROS</title>
+        <para>Se um reset de palavra passe pelo root falhar, porque o provedor SSSD
+correspondente não suporta resets de palavras passe, pode ser mostrada uma
+mensagem individual. A mensagem pode, por exemplo, conter instruções sobre
+como fazer reset à palavra passe.</para>
+
+        <para>A mensagem é lida do ficheiro
+<filename>pam_sss_pw_reset_message.LOC</filename> onde LOC significa uma
+string de locale retornado por <citerefentry>
+<refentrytitle>setlocale</refentrytitle><manvolnum>3</manvolnum>
+</citerefentry>. Se não existir ficheiro correspondente é mostrado o
+conteúdo de <filename>pam_sss_pw_reset_message.txt</filename>. O root tem de
+ser o dono dos ficheiros e apenas o root pode ter permissões de leitura e
+escrita enquanto todos os outros utilizadores só podem ter permissões de
+leitura.</para>
+
+        <para>Estes ficheiros são procurados no directório
+<filename>/etc/sssd/customize/NOME_DOMÍNIO/</filename>. Se não estiver
+presente nenhum ficheiro correspondente, é mostrada uma mensagem genérica.</para>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

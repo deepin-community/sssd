@@ -1,5 +1,6 @@
 <para>
-    Please note that the automounter only reads the master map on startup, so if
-any autofs-related changes are made to the sssd.conf, you typically also
-need to restart the automounter daemon after restarting the SSSD.
+    Por favor note que o automounter apenas lê o mapa mestre no arranque, assim
+se quaisquer alterações relacionadas com autofs forem feitas no sssd.conf,
+tipicamente você também precisa de reiniciar o daemon automounter após
+reiniciar o SSSD.
 </para>

@@ -1,31 +1,31 @@
 <listitem>
     <para>
-        An optional base DN, search scope and LDAP filter to restrict LDAP searches
-for this attribute type.
+        Um DN base opcional, escopo de busca e filtro LDAP para restringir as buscas
+LDAP para este tipo de atributo.
     </para>
     <para>
-        syntax: <programlisting>
+        sintaxe: <programlisting>
 search_base[?scope?[filter][?search_base?scope?[filter]]*]
 </programlisting>
     </para>
     <para>
-        The scope can be one of "base", "onelevel" or "subtree". The scope functions
-as specified in section 4.5.1.2 of http://tools.ietf.org/html/rfc4511
+        O escopo pode ser um de "base", "onelevel" ou "subtree". O escopo funciona
+como especificado na secção 4.5.1.2 de http://tools.ietf.org/html/rfc4511
     </para>
     <para>
-        The filter must be a valid LDAP search filter as specified by
+        O filtro tem de ser um filtro de busca LDAP válido como especificado por
 http://www.ietf.org/rfc/rfc2254.txt
     </para>
     <para>
-        For examples of this syntax, please refer to the
-<quote>ldap_search_base</quote> examples section.
+        Para exemplos desta sintaxe, por favor consulte a secção exemplos de
+<quote>ldap_search_base</quote>.
     </para>
     <para>
-        Default: the value of <emphasis>ldap_search_base</emphasis>
+        Predefinição: o valor de <emphasis>ldap_search_base</emphasis>
     </para>
     <para>
-        Please note that specifying scope or filter is not supported for searches
-against an Active Directory Server that might yield a large number of
-results and trigger the Range Retrieval extension in the response.
+        Por favor note que especificar um escopo ou filtro não é suportado para
+buscas contra um Servidor Active Directory que pode produzir um grande
+número de resultado e despoletar a extensão Range Retrieval na resposta.
     </para>
 </listitem>

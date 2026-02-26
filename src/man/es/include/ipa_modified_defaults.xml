@@ -1,12 +1,12 @@
 <refsect1 id='modified-default-options'>
-    <title>MODIFIED DEFAULT OPTIONS</title>
+    <title>OPCIONES PREDETERMINADAS MODIFICADAS</title>
     <para>
-        Certain option defaults do not match their respective backend provider
-defaults, these option names and IPA provider-specific defaults are listed
-below:
+        Ciertas opciones predeterminadas no coinciden con las de su respectivo
+proveedor de backend; estos nombres de opciones y los valores
+predeterminados específicos del proveedor de IPA se enumeran a continuación:
     </para>
     <refsect2 id='krb5_modifications'>
-        <title>KRB5 Provider</title>
+        <title>Proveedor KRB5</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -26,7 +26,7 @@ below:
         </itemizedlist>
     </refsect2>
     <refsect2 id='ldap_general_modifications'>
-        <title>LDAP Provider - General</title>
+        <title>Proveedor LDAP: General</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -61,7 +61,7 @@ below:
         </itemizedlist>
     </refsect2>
     <refsect2 id='ldap_user_modifications'>
-        <title>LDAP Provider - User options</title>
+        <title>Proveedor LDAP: Opciones de usuario</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -86,7 +86,7 @@ below:
         </itemizedlist>
     </refsect2>
     <refsect2 id='ldap_group_modifications'>
-        <title>LDAP Provider - Group options</title>
+        <title>Proveedor LDAP - Opciones de grupo</title>
         <itemizedlist>
             <listitem>
                 <para>

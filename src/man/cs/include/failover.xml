@@ -72,7 +72,7 @@ in the <citerefentry>
 server before trying next one.
                         </para>
                         <para>
-                            Default: 1000
+                            Výchozí: 1000
                         </para>
                     </listitem>
                 </varlistentry>

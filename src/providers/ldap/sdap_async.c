@@ -607,7 +607,8 @@ struct tevent_req *sdap_exop_modify_passwd_send(TALLOC_CTX *memctx,
                                            char *user_dn,
                                            const char *password,
                                            const char *new_password,
-                                           int timeout)
+                                           int timeout,
+                                           bool use_ppolicy)
 {
     struct tevent_req *req = NULL;
     struct sdap_exop_modify_passwd_state *state;
@@ -652,15 +653,17 @@ struct tevent_req *sdap_exop_modify_passwd_send(TALLOC_CTX *memctx,
         return NULL;
     }
 
-    ret = sdap_control_create(state->sh, LDAP_CONTROL_PASSWORDPOLICYREQUEST,
-                              0, NULL, 0, &ctrls[0]);
-    if (ret != LDAP_SUCCESS && ret != LDAP_NOT_SUPPORTED) {
-        DEBUG(SSSDBG_CRIT_FAILURE, "sdap_control_create failed to create "
-                  "Password Policy control.\n");
-        ret = ERR_INTERNAL;
-        goto fail;
+    if (use_ppolicy) {
+        ret = sdap_control_create(state->sh, LDAP_CONTROL_PASSWORDPOLICYREQUEST,
+                                  0, NULL, 0, &ctrls[0]);
+        if (ret != LDAP_SUCCESS && ret != LDAP_NOT_SUPPORTED) {
+            DEBUG(SSSDBG_CRIT_FAILURE, "sdap_control_create failed to create "
+                                       "Password Policy control.\n");
+            ret = ERR_INTERNAL;
+            goto fail;
+        }
+        request_controls = ctrls;
     }
-    request_controls = ctrls;
 
     DEBUG(SSSDBG_CONF_SETTINGS, "Executing extended operation\n");
 
@@ -1613,9 +1616,7 @@ static errno_t sdap_get_generic_ext_step(struct tevent_req *req)
 {
     struct sdap_get_generic_ext_state *state =
             tevent_req_data(req, struct sdap_get_generic_ext_state);
-    char *errmsg;
     int lret;
-    int optret;
     errno_t ret;
     int msgid;
     bool disable_paging;
@@ -1635,7 +1636,7 @@ static errno_t sdap_get_generic_ext_step(struct tevent_req *req)
           state->search_base);
     if (state->attrs) {
         for (int i = 0; state->attrs[i]; i++) {
-            DEBUG(SSSDBG_TRACE_LIBS,
+            DEBUG(SSSDBG_TRACE_ALL,
                   "Requesting attrs: [%s]\n", state->attrs[i]);
         }
     }
@@ -1674,15 +1675,9 @@ static errno_t sdap_get_generic_ext_step(struct tevent_req *req)
               "ldap_search_ext failed: %s\n", sss_ldap_err2string(lret));
         if (lret == LDAP_SERVER_DOWN) {
             ret = ETIMEDOUT;
-            optret = sss_ldap_get_diagnostic_msg(state, state->sh->ldap,
-                                                 &errmsg);
-            if (optret == LDAP_SUCCESS) {
-                DEBUG(SSSDBG_MINOR_FAILURE, "Connection error: %s\n", errmsg);
-                sss_log(SSS_LOG_ERR, "LDAP connection error: %s", errmsg);
-            } else {
-                sss_log(SSS_LOG_ERR, "LDAP connection error, %s",
-                                     sss_ldap_err2string(lret));
-            }
+            sss_ldap_error_debug(SSSDBG_MINOR_FAILURE, "Connection error",
+                                 state->sh->ldap, lret);
+            sss_log(SSS_LOG_ERR, "LDAP connection error");
         } else if (lret == LDAP_FILTER_ERROR) {
             ret = ERR_INVALID_FILTER;
         } else {

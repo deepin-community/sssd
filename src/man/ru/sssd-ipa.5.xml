@@ -50,9 +50,10 @@ IPA. Поставщик данных IPA принимает те же парам
 доступен в разделе <quote>ИЗМЕНЁННЫЕ СТАНДАРТНЫЕ ПАРАМЕТРЫ</quote>.
         </para>
         <para>
-            As an access provider, the IPA provider has a minimal configuration (see
-<quote>ipa_access_order</quote>) as it mainly uses HBAC (host-based access
-control) rules. Please refer to freeipa.org for more information about HBAC.
+            Как поставщик доступа, поставщик данных IPA имеет минимальную конфигурацию
+(см. <quote>ipa_access_order</quote>), поскольку он в основном использует
+правила HBAC (управление доступом на основе узлов). Более подробные сведения
+о HBAC доступны на веб-сайте freeipa.org.
         </para>
         <para>
             Если в sssd.conf указано <quote>auth_provider=ipa</quote> или
@@ -124,12 +125,6 @@ control) rules. Please refer to freeipa.org for more information about HBAC.
 Kerberos в /etc/krb5.conf
                         </para>
                         <para>
-                            ПРИМЕЧАНИЕ: прежнее имя параметра, <emphasis>ipa_dyndns_update</emphasis>,
-всё ещё можно использовать, но пользователям рекомендуется перейти на
-использование нового имени, <emphasis>dyndns_update</emphasis>, в файле
-конфигурации.
-                        </para>
-                        <para>
                             По умолчанию: false
                         </para>
                     </listitem>
@@ -145,12 +140,6 @@ Kerberos в /etc/krb5.conf
 сервера, оно будет переопределено этим параметром.
                         </para>
                         <para>
-                            ПРИМЕЧАНИЕ: прежнее имя параметра, <emphasis>ipa_dyndns_ttl</emphasis>, всё
-ещё можно использовать, но пользователям рекомендуется перейти на
-использование нового имени, <emphasis>dyndns_ttl</emphasis>, в файле
-конфигурации.
-                        </para>
-                        <para>
                             По умолчанию: 1200 (секунд)
                         </para>
                     </listitem>
@@ -160,24 +149,40 @@ Kerberos в /etc/krb5.conf
                     <term>dyndns_iface (строка)</term>
                     <listitem>
                         <para>
-                            Необязательный параметр. Применимо только тогда, когда параметр
-dyndns_update установлен в значение «true». Выберите интерфейс или список
-интерфейсов, IP-адреса которых должны использоваться для динамических
-обновлений DNS. Специальное значение <quote>*</quote> подразумевает, что
-следует использовать IP-адреса всех интерфейсов.
-                        </para>
-                        <para>
-                            ПРИМЕЧАНИЕ: прежнее имя параметра, <emphasis>ipa_dyndns_iface</emphasis>,
-всё ещё можно использовать, но пользователям рекомендуется перейти на
-использование нового имени, <emphasis>dyndns_iface</emphasis>, в файле
-конфигурации.
+                            Optional. Applicable only when dyndns_update is true. Choose the interface
+or a list of interfaces whose IP addresses should be used for dynamic DNS
+updates. The name of interface can be a wildcard pattern prefixed with
+<emphasis>!</emphasis> for interface excluding. First match stops the
+evaluation. For example list <emphasis>!eth1, *</emphasis> instruct SSSD to
+use all interfaces except <emphasis>eth1</emphasis>.  See <emphasis>man 7
+glob</emphasis> for details about patterns.
                         </para>
                         <para>
                             По умолчанию: использовать IP-адреса интерфейса, который используется для
 подключения LDAP IPA
                         </para>
                         <para>
-                            Пример: dyndns_iface = em1, vnet1, vnet2
+                            Example: dyndns_iface = em[12], !vnet1, vnet*
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_address (string)</term>
+                    <listitem>
+                        <para>
+                            Optional. Applicable only when <emphasis>dyndns_update</emphasis> is true.
+A list of IP addresses or IP networks to be used for dynamic DNS
+updates. Network addresses must be in CIDR format. An entry can be prefixed
+with <emphasis>!</emphasis> to indicate exclusion.  The <emphasis>best
+match</emphasis> is used to determine whether an address is included or
+excluded (i.e., a longer prefix takes precedence).
+                        </para>
+                        <para>
+                            Default: No filtering of IP addresses.
+                        </para>
+                        <para>
+                            Example: dyndns_address = 10.0.0.0/16, !10.0.1.0/24
                         </para>
                     </listitem>
                 </varlistentry>
@@ -206,29 +211,6 @@ dyndns_update установлен в значение «true». Выберит�
                         </para>
                         <para>
                             По умолчанию: то же, что и dyndns_auth
-                        </para>
-                    </listitem>
-                </varlistentry>
-
-                <varlistentry>
-                    <term>ipa_enable_dns_sites (логическое значение)</term>
-                    <listitem>
-                        <para>
-                            Включить сайты DNS — обнаружение служб по расположению.
-                        </para>
-                        <para>
-                            Если параметр установлен в значение «true» и включено обнаружение служб
-(смотрите абзац об обнаружении служб в нижней части справочной страницы),
-SSSD сначала будет пробовать выполнить обнаружение на основе расположения с
-помощью запроса, который содержит «_location.hostname.example.com», а затем
-перейдёт к традиционному обнаружению SRV. Если обнаружение на основе
-расположения будет выполнено успешно, серверы IPA, обнаруженные с помощью
-обнаружения на основе расположения, будут считаться основными, а серверы
-IPA, обнаруженные с помощью традиционного обнаружения SRV, будут
-использоваться в качестве резервных
-                        </para>
-                        <para>
-                            По умолчанию: false
                         </para>
                     </listitem>
                 </varlistentry>
@@ -263,8 +245,9 @@ IPA, обнаруженные с помощью традиционного об�
 автоматически при смене записей перенаправления.
                         </para>
                         <para>
-                            Note that <emphasis>dyndns_update_per_family</emphasis> parameter does not
-apply for PTR record updates.  Those updates are always sent separately.
+                            Обратите внимание, что параметр
+<emphasis>dyndns_update_per_family</emphasis> не применяется для обновлений
+записей PTR.  Эти обновления всегда отправляются отдельно.
                         </para>
                         <para>
                             По умолчанию: false (отключено)
@@ -295,12 +278,25 @@ apply for PTR record updates.  Those updates are always sent separately.
                         </para>
                         <para>
                             Установка этого параметра имеет смысл для сред, в которых сервер DNS
-отличается от сервера данных идентификации.
+отличается от сервера данных идентификации или если мы используем
+зашифрованный DNS.
+                        </para>
+                        <para>
+                           Параметр может быть простой строкой, содержащей DNS-имя или IP-адрес. Это
+также может быть URI. URI может выглядеть как
+<emphasis>dns://servername/</emphasis> или
+<emphasis>dns+tls://1.2.3.4:853#servername/</emphasis>.
+                        </para>
+                        <para>
+                            Второй пример включает протокол DNS-over-TLS для обновлений DNS. Утилита
+nsupdate должна поддерживать DoT — проверьте <emphasis>man
+nsupdate</emphasis> перед её включением в SSSD.
                         </para>
                         <para>
                             Обратите внимание, что этот параметр используется только для резервной
 попытки, которая выполняется тогда, когда предыдущая попытка с
-использованием автоматически определённых параметров завершилась неудачей.
+использованием автоматически определённых параметров завершилась неудачей
+или когда включен DNS-over-TLS.
                         </para>
                         <para>
                             По умолчанию: none (разрешить nsupdate выбрать сервер)
@@ -323,14 +319,61 @@ apply for PTR record updates.  Those updates are always sent separately.
                 </varlistentry>
 
                 <varlistentry>
-                    <term>ipa_access_order (string)</term>
+                    <term>dyndns_dot_cacert (строка)</term>
+                    <listitem>
+                        <para>
+                            Этот параметр указывает файл сертификатов удостоверяющих центров (в формате
+PEM) для проверки TLS-сертификата удаленного сервера при использовании DoT.
+                        </para>
+                        <para>
+                            По умолчанию: none (использовать глобальное хранилище сертификатов)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_cert (строка)</term>
+                    <listitem>
+                        <para>
+                            Эта опция задаёт файл сертификата(ов) для аутентификации при использовании
+транспорта DoT с удалённым сервером. Ожидается, что файл цепочки
+сертификатов будет в формате PEM.
+                        </para>
+                        <para>
+                            Для достижения взаимной аутентификации TLS необходимо установить оба
+параметра <emphasis>dyndns_dot_cert</emphasis> и
+<emphasis>dyndns_dot_key</emphasis>.
+                        </para>
+                        <para>
+                            По умолчанию: none (не использовать TLS-аутентификацию)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>dyndns_dot_key (строка)</term>
+                    <listitem>
+                        <para>
+                            Этот параметр устанавливает файл ключа для аутентифицированного шифрования
+при использовании транспорта DoT с удалённым сервером. Ожидается, что файл
+закрытого ключа будет в формате PEM.
+                        </para>
+                        <para>
+                            По умолчанию: none (не использовать TLS-аутентификацию)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>ipa_access_order (строка)</term>
                     <listitem>
                         <para>
                             Разделённый запятыми список параметров управления доступом. Допустимые
 значения:
                         </para>
                         <para>
-                            <emphasis>expire</emphasis>: use IPA's account expiration policy.
+                            <emphasis>expire</emphasis>: использовать политику истечения срока действия
+учетной записи IPA.
                         </para>
                         <para>
                             <emphasis>pwd_expire_policy_reject, pwd_expire_policy_warn,
@@ -339,30 +382,30 @@ pwd_expire_policy_renew: </emphasis> эти параметры полезны, �
 и для проверки подлинности используются не пароли, а, например, ключи SSH.
                        </para>
                        <para>
-                            The difference between these options is the action taken if user password is
-expired:
+                            Разница между этими параметрами заключается в действиях, которые
+предпринимаются, если срок действия пароля пользователя истёк:
                             <itemizedlist>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_reject - user is denied to log in,
+                                    pwd_expire_policy_reject — пользователю отказано во входе в систему,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_warn - user is still able to log in,
+                                    pwd_expire_policy_warn — пользователь по-прежнему может войти в систему,
                                     </para>
                                 </listitem>
                                 <listitem>
                                     <para>
-                                    pwd_expire_policy_renew - user is prompted to change their password
-immediately.
+                                    pwd_expire_policy_renew — пользователю будет предложено немедленно изменить
+свой пароль.
                                     </para>
                                 </listitem>
                             </itemizedlist>
                         </para>
                         <para>
-                            Please note that 'access_provider = ipa' must be set for this feature to
-work.
+                            Следует учитывать, что для работы этой возможности необходимо указать
+«access_provider = ipa».
                         </para>
                     </listitem>
                 </varlistentry>
@@ -384,11 +427,7 @@ work.
                     <term>ipa_subid_ranges_search_base (строка)</term>
                     <listitem>
                         <para>
-                            Необязательный параметр. Использовать указанную строку как базу поиска
-объектов, связанных с подчиненными диапазонами объектов.
-                        </para>
-                        <para>
-                            По умолчанию: значение <emphasis>cn=subids,%basedn</emphasis>
+                            Deprecated. Use ldap_subid_ranges_search_base instead.
                         </para>
                     </listitem>
                 </varlistentry>
@@ -809,6 +848,12 @@ ad_server = dc.ad.domain.com
                         <para>ad_site</para>
                     </listitem>
                     <listitem>
+                        <para>ipa_server</para>
+                    </listitem>
+                    <listitem>
+                        <para>ipa_backup_server</para>
+                    </listitem>
+                    <listitem>
                         <para>ldap_search_base</para>
                     </listitem>
                     <listitem>
@@ -822,11 +867,15 @@ ad_server = dc.ad.domain.com
                     </listitem>
                 </itemizedlist>
             </para>
+            <para>
+                Параметры с префиксом «ad_» или «ipa_» применяются только к соответствующему
+типу поддомена.
+            </para>
         </refsect2>
         <refsect2 id='client_configuration'>
             <title>ПАРАМЕТРЫ, КОТОРЫЕ МОЖНО НАСТРОИТЬ НА КЛИЕНТАХ IPA</title>
             <para>
-                В разделе поддомена на клиенте IPA можно настроить следующие параметры:
+                В разделе поддомена AD на клиенте IPA можно настроить следующие параметры:
                 <itemizedlist>
                     <listitem>
                         <para>ad_server</para>

@@ -1,12 +1,12 @@
 <refsect1 id='modified-default-options'>
-    <title>MODIFIED DEFAULT OPTIONS</title>
+    <title>OPCIONES PREDETERMINADAS MODIFICADAS</title>
     <para>
-        Certain option defaults do not match their respective backend provider
-defaults, these option names and AD provider-specific defaults are listed
-below:
+        Ciertas opciones predeterminadas no coinciden con sus respectivos
+proveedores de backend; estos nombres de opciones y los valores
+predeterminados específicos del proveedor de AD se enumeran a continuación:
     </para>
     <refsect2 id='krb5_modifications'>
-        <title>KRB5 Provider</title>
+        <title>Proveedor KRB5</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -21,7 +21,7 @@ below:
         </itemizedlist>
     </refsect2>
     <refsect2 id='ldap_modifications'>
-        <title>LDAP Provider</title>
+        <title>Proveedor LDAP</title>
         <itemizedlist>
             <listitem>
                 <para>
@@ -63,40 +63,41 @@ below:
                     ldap_sasl_authid = sAMAccountName@REALM (typically SHORTNAME$@REALM)
                 </para>
                 <para>
-                    The AD provider looks for a different principal than the LDAP provider by
-default, because in an Active Directory environment the principals are
-divided into two groups - User Principals and Service Principals. Only User
-Principal can be used to obtain a TGT and by default, computer object's
-principal is constructed from its sAMAccountName and the AD realm. The
-well-known host/hostname@REALM principal is a Service Principal and thus
-cannot be used to get a TGT with.
+                    El proveedor de AD busca un principal diferente al del proveedor LDAP de
+forma predeterminada, ya que en un entorno de Active Directory los
+principales se dividen en dos grupos: principales de usuario y principales
+de servicio. Solo el principal de usuario puede usarse para obtener un TGT
+y, de forma predeterminada, el principal del objeto de equipo se construye a
+partir de su sAMAccountName y el dominio de AD. El principal
+host/hostname@REALM, bien conocido, es un principal de servicio y, por lo
+tanto, no puede usarse para obtener un TGT.
                 </para>
             </listitem>
         </itemizedlist>
     </refsect2>
     <refsect2 id='nss_modifications'>
-        <title>NSS configuration</title>
+        <title>Configuración de NSS</title>
         <itemizedlist>
             <listitem>
                 <para>
                     fallback_homedir = /home/%d/%u
                 </para>
                 <para>
-                    The AD provider automatically sets "fallback_homedir = /home/%d/%u" to
-provide personal home directories for users without the homeDirectory
-attribute. If your AD Domain is properly populated with Posix attributes,
-and you want to avoid this fallback behavior, you can explicitly set
-"fallback_homedir = %o".
+                    El proveedor de AD configura automáticamente "fallback_homedir =
+/home/%d/%u" para proporcionar directorios personales a los usuarios sin el
+atributo homeDirectory. Si su dominio de AD está correctamente configurado
+con atributos POSIX y desea evitar este comportamiento de respaldo, puede
+configurar explícitamente "fallback_homedir = %o".
                 </para>
                 <para>
-                    Note that the system typically expects a home directory in /home/%u
-folder. If you decide to use a different directory structure, some other
-parts of your system may need adjustments.
+                    Tenga en cuenta que el sistema normalmente espera un directorio de inicio en
+la carpeta /home/%u. Si decide usar una estructura de directorios diferente,
+es posible que sea necesario ajustar otras partes del sistema.
                 </para>
                 <para>
-                    For example automated creation of home directories in combination with
-selinux requires selinux adjustment, otherwise the home directory will be
-created with wrong selinux context.
+                    Por ejemplo, la creación automatizada de directorios de inicio en
+combinación con selinux requiere un ajuste de selinux; de lo contrario, el
+directorio de inicio se creará con un contexto selinux incorrecto.
                 </para>
             </listitem>
         </itemizedlist>

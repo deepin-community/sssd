@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DocBook V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<reference>
+<title>Páginas del manual de SSSD</title>
+<refentry>
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/upstream.xml" />
+
+    <refmeta>
+        <refentrytitle>sssd-ifp</refentrytitle>
+        <manvolnum>5</manvolnum>
+        <refmiscinfo class="manual">Formatos de archivo y convenciones</refmiscinfo>
+    </refmeta>
+
+    <refnamediv id='name'>
+        <refname>sssd-ifp</refname>
+        <refpurpose>Contestador InfoPipe de SSSD</refpurpose>
+    </refnamediv>
+
+    <refsect1 id='description'>
+        <title>DESCRIPCIÓN</title>
+        <para>
+            Esta página de manual describe la configuración de la respuesta InfoPipe
+para <citerefentry> <refentrytitle>sssd</refentrytitle>
+<manvolnum>8</manvolnum> </citerefentry>. Para una referencia detallada de
+sintaxis, refiérase a la sección <quote>FORMATO DE ARCHIVO</quote> de la
+página de manual <citerefentry>
+<refentrytitle>sssd.conf</refentrytitle><manvolnum>5</manvolnum>
+</citerefentry>.
+        </para>
+        <para>
+            El contestador de InfoPipe proporciona una interfaz pública D-Bus accesible
+a través del bus del sistema. Esta interfaz permite al usuario consultar
+información sobre usuarios y grupos remotos a través del bus del sistema.
+        </para>
+
+    <refsect2 id='valid_certificate'>
+        <title>BUSCAR CERTIFICADO VÁLIDO</title>
+        <para>
+            Las siguientes opciones se pueden utilizar para controlar cómo se validan
+los certificados al utilizar la API FindByValidCertificate():
+            <itemizedlist>
+                <listitem><para>ca_db</para></listitem>
+                <listitem><para>p11_child_timeout</para></listitem>
+                <listitem><para>certificate_verification</para></listitem>
+            </itemizedlist>
+            Para más detalles sobre las opciones consulte
+<citerefentry><refentrytitle>sssd.conf</refentrytitle>
+<manvolnum>5</manvolnum> </citerefentry>.
+        </para>
+    </refsect2>
+    </refsect1>
+
+    <refsect1 id='configuration-options'>
+        <title>OPCIONES DE CONFIGURACIÓN</title>
+            <para>
+                Estas opciones pueden ser usadas para configurar el contestador InfoPipe.
+            </para>
+            <variablelist>
+                <varlistentry>
+                    <term>allowed_uids (cadena)</term>
+                    <listitem>
+                        <para>
+                            Especifica el listado separado por comas de los valores UID o nombres de
+usuario que están concedidos para acceder al contestador InfoPipe. Los
+nombres de usuario son resueltos a los UID en el arranque.
+                        </para>
+                        <para>
+                            Por defecto: 0 (solo está permitido el acceso al usuario root al contestador
+InfoPipe)
+                        </para>
+                        <para>
+                            Por favor advierta que aunque el UID 0 se usa por defecto será anulada con
+esta opción. Si usted aún concede al usuario root acceder al contestador
+InfoPipe, el cual sería el caso típico, también tiene que añadir 0 al
+listado de los UID permitidos.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>user_attributes (string)</term>
+                    <listitem>
+                        <para>
+                            Specifies the comma-separated list of white or blacklisted attributes. This
+option only applies to the <quote>Users</quote> interface. The deprecated
+<quote>GetUserAttr</quote> interface does not utilize this option, it allows
+any attribute requested.
+                        </para>
+                        <para>
+                            By default, the InfoPipe responder `/Users` interface only allows the
+default set of POSIX attributes to be requested. This set is the same as
+returned by <citerefentry> <refentrytitle>getpwnam</refentrytitle>
+<manvolnum>3</manvolnum> </citerefentry> and includes: <variablelist>
+                                <varlistentry>
+                                    <term>nombre</term>
+                                    <listitem><para>nombre de inicio de sesión del usuario</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>uidNumber</term>
+                                    <listitem><para>ID de usuario</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>gidNumber</term>
+                                    <listitem><para>ID de grupo primario</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>gecos</term>
+                                    <listitem><para>información de usuario, típicamente nombre completo</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>homeDirectory</term>
+                                    <listitem><para>directorio home</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                    <term>loginShell</term>
+                                    <listitem><para>el intérprete del usuario</para></listitem>
+                                </varlistentry>
+                            </variablelist>
+                        </para>
+                        <para>
+                            It is possible to add another attribute to this set by using
+<quote>+attr_name</quote> or explicitly remove an attribute using
+<quote>-attr_name</quote>. Added attributes will be made available in the
+<quote>extraAttributes</quote> array. For example, to allow
+<quote>telephoneNumber</quote> but deny <quote>loginShell</quote>, you would
+use the following configuration: <programlisting>
+user_attributes = +telephoneNumber, -loginShell
+                        </programlisting>
+                        </para>
+                        <para>
+                            Valor predeterminado: no establecido. Solo se concede el conjunto
+predeterminado de atributos POSIX.
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term>wildcard_limit (entero)</term>
+                    <listitem>
+                        <para>
+                            Especifica un límite superior en la cantidad de entradas que se descargan
+durante una búsqueda de comodín que anula el límite proporcionado por el
+invocador.
+                        </para>
+                        <para>
+                            Predeterminado: 0 (permite que quien llama establezca un límite superior)
+                        </para>
+                    </listitem>
+                </varlistentry>
+
+            </variablelist>
+    </refsect1>
+
+    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="include/seealso.xml" />
+
+</refentry>
+</reference>

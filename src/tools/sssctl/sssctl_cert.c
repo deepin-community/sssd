@@ -35,8 +35,7 @@
 #define PEM_FOOT "-----END CERTIFICATE-----"
 
 errno_t sssctl_cert_show(struct sss_cmdline *cmdline,
-                         struct sss_tool_ctx *tool_ctx,
-                         void *pvt)
+                         struct sss_tool_ctx *tool_ctx)
 {
     TALLOC_CTX *tmp_ctx = NULL;
     errno_t ret;
@@ -52,7 +51,7 @@ errno_t sssctl_cert_show(struct sss_cmdline *cmdline,
         POPT_TABLEEND
     };
 
-    ret = sss_tool_popt_ex(cmdline, options, SSS_TOOL_OPT_OPTIONAL,
+    ret = sss_tool_popt_ex(cmdline, options, NULL, SSS_TOOL_OPT_OPTIONAL,
                            NULL, NULL, "CERTIFICATE-BASE64-ENCODED",
                            _("Specify base64 encoded certificate."),
                            SSS_TOOL_OPT_REQUIRED, &cert_b64, NULL);
@@ -92,8 +91,7 @@ done:
 }
 
 errno_t sssctl_cert_map(struct sss_cmdline *cmdline,
-                        struct sss_tool_ctx *tool_ctx,
-                        void *pvt)
+                        struct sss_tool_ctx *tool_ctx)
 {
     TALLOC_CTX *tmp_ctx = NULL;
     errno_t ret;
@@ -111,7 +109,7 @@ errno_t sssctl_cert_map(struct sss_cmdline *cmdline,
         POPT_TABLEEND
     };
 
-    ret = sss_tool_popt_ex(cmdline, options, SSS_TOOL_OPT_OPTIONAL,
+    ret = sss_tool_popt_ex(cmdline, options, NULL, SSS_TOOL_OPT_OPTIONAL,
                            NULL, NULL, "CERTIFICATE-BASE64-ENCODED",
                            _("Specify base64 encoded certificate."),
                            SSS_TOOL_OPT_REQUIRED, &cert_b64, NULL);
@@ -194,8 +192,7 @@ void certmap_ext_debug(void *private, const char *file, long line,
 }
 
 errno_t sssctl_cert_eval_rule(struct sss_cmdline *cmdline,
-                              struct sss_tool_ctx *tool_ctx,
-                              void *pvt)
+                              struct sss_tool_ctx *tool_ctx)
 {
     TALLOC_CTX *tmp_ctx = NULL;
     errno_t ret;
@@ -218,7 +215,7 @@ errno_t sssctl_cert_eval_rule(struct sss_cmdline *cmdline,
         POPT_TABLEEND
     };
 
-    ret = sss_tool_popt_ex(cmdline, options, SSS_TOOL_OPT_OPTIONAL,
+    ret = sss_tool_popt_ex(cmdline, options, NULL, SSS_TOOL_OPT_OPTIONAL,
                            NULL, NULL, "CERTIFICATE-BASE64-ENCODED",
                            _("Specify base64 encoded certificate."),
                            SSS_TOOL_OPT_REQUIRED, &cert_b64, NULL);

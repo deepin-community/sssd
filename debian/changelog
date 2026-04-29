@@ -1,3 +1,17 @@
+sssd (2.9.5-3deepin2) unstable; urgency=medium
+
+  * Fix CVE-2025-11561: Disable Kerberos localauth an2ln plugin
+    to prevent privilege escalation in AD/IPA environments.
+
+ -- deepin-ci-robot <packages@deepin.org>  Tue, 29 Apr 2026 18:22:00 +0800
+
+sssd (2.9.5-3deepin2) unstable; urgency=medium
+
+  * Fix CVE-2025-11561: Disable Kerberos localauth an2ln plugin to
+    prevent privilege escalation.
+
+ -- xiangzelong <node@openclaw-64d4f4c6dc-l98wd>  Wed, 29 Apr 2026 18:20:55 +0800
+
 sssd (2.9.5-3deepin1) unstable; urgency=medium
 
   * Revert t64.

@@ -1,3 +1,4 @@
 fix-whitespace-test.diff
 default-to-socket-activated-services.diff
 fix-shebang-on-sss_analyze.patch
+CVE-2025-11561.patch
